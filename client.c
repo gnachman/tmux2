@@ -174,7 +174,23 @@ client_main(int argc, char **argv, int flags)
     client_send_identify(flags);
 
     /* Send first command. */
-    if (!(flags & IDENTIFY_CONTROL)) {
+    if (flags & IDENTIFY_CONTROL) {
+      if (msg == MSG_COMMAND) {
+        char *new_session_argv[2] = { "new-session", "-T" };
+        /* Create a new session that doesn't set up the TTY as a curses
+         * terminal. */
+        if (cmd_pack_argv(
+            2, new_session_argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+          log_warnx("command too long");
+          return (1);
+        }
+        cmddata.argc = 2;
+        client_write_server(msg, &cmddata, sizeof cmddata);
+      } else {
+        log_warnx("only command mode allowed");
+        return 1;
+      }
+    } else {
       if (msg == MSG_COMMAND) {
         /* Fill in command line arguments. */
         cmddata.pid = environ_pid;

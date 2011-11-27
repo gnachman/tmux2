@@ -98,12 +98,15 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
     ctx.cmdclient = c;
 
     if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
+        /* Error */
         if (cause) {
+            /* cause should always be set if there's an error. */
             evbuffer_add_printf(out->output, "%s", cause);
             bufferevent_write(out, "\n", 1);
             xfree(cause);
         }
     } else {
+        /* Parsed ok. Run command. */
         cmd_list_exec(cmdlist, &ctx);
         cmd_list_free(cmdlist);
     }
@@ -190,7 +193,7 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
 {
     for (int i = 0; i < (int) ARRAY_LENGTH(&clients); i++) {
         struct client *c = ARRAY_ITEM(&clients, i);
-        if (c->flags & CLIENT_CONTROL) {
+        if (c && c->flags & CLIENT_CONTROL) {
             if (c->flags & CLIENT_SUSPENDED) {
                 continue;
             }

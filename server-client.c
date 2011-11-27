@@ -478,6 +478,9 @@ server_client_reset_state(struct client *c)
     if (c->flags & CLIENT_SUSPENDED)
         return;
 
+    if (c->flags & CLIENT_CONTROL)
+        return;
+
     tty_region(&c->tty, 0, c->tty.sy - 1);
 
     status = options_get_number(oo, "status");
@@ -613,6 +616,9 @@ server_client_check_redraw(struct client *c)
     struct session      *s = c->session;
     struct window_pane  *wp;
     int          flags, redraw;
+
+    if (c->flags & CLIENT_CONTROL)
+        return;
 
     flags = c->tty.flags & TTY_FREEZE;
     c->tty.flags &= ~TTY_FREEZE;
@@ -968,15 +974,12 @@ server_client_msg_identify(
         c->cwd = xstrdup(data->cwd);
 
     /*
-     * If this is a control client, mark the client, send the ready message
-     * and continue.
+     * If this is a control client, mark the client, and initiate the control
+     * events.
      */
     if (data->flags & IDENTIFY_CONTROL) {
         c->flags |= CLIENT_CONTROL;
-
         control_start(c);
-        server_write_client(c, MSG_READY, NULL, 0);
-        return;
     }
 
     if (!isatty(fd))
@@ -996,7 +999,8 @@ server_client_msg_identify(
 
     tty_resize(&c->tty);
 
-    c->flags |= CLIENT_TERMINAL;
+    if (!(data->flags & IDENTIFY_CONTROL))
+        c->flags |= CLIENT_TERMINAL;
 }
 
 /* Handle shell message. */
