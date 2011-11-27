@@ -1660,11 +1660,14 @@ void control_start(struct client *);
 void control_write(struct client *c, const char *buf, int len);
 void control_write_str(struct client* c, const char* str);
 void control_write_printf(struct client* c, const char* format, ...);
+void control_write_window(struct client *c, struct window *w);
 void control_write_window_pane(struct client *c, struct window_pane *wp);
 void control_write_input(struct client *c, struct window_pane *wp,
     const u_char *buf, int len);
 void control_broadcast_input(struct window_pane *wp, const u_char *buf,
     size_t len);
+void control_broadcast_layout_change(struct window *w);
+void control_broadcast_windows_changed(void);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;

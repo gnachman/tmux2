@@ -25,6 +25,13 @@
 
 #include "tmux.h"
 
+typedef void control_write_cb(struct client *c, void *user_data);
+
+struct control_input_ctx {
+    struct window_pane *wp;
+    const u_char *buf;
+    size_t len;
+};
 
 /*
  * XXX TODO
@@ -120,7 +127,7 @@ void
 control_error_callback(
     unused struct bufferevent *bufev, unused short what, void *data)
 {
-    struct client   *c = data;
+    //struct client   *c = data;
     //TODO(georgen): implement this
 }
 
@@ -168,6 +175,14 @@ control_write_printf(struct client *c, const char *format, ...)
 }
 
 void
+control_write_window(struct client *c, struct window *w)
+{
+    u_int i = -1;
+    window_index(w, &i);
+    control_write_printf(c, "%u", i);
+}
+
+void
 control_write_window_pane(struct client *c, struct window_pane *wp)
 {
     u_int i = -1;
@@ -188,8 +203,8 @@ control_write_input(struct client *c, struct window_pane *wp,
     control_write_str(c, "\n");
 }
 
-void
-control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
+static void
+control_foreach_client(control_write_cb *cb, void *user_data)
 {
     for (int i = 0; i < (int) ARRAY_LENGTH(&clients); i++) {
         struct client *c = ARRAY_ITEM(&clients, i);
@@ -197,7 +212,51 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
             if (c->flags & CLIENT_SUSPENDED) {
                 continue;
             }
-            control_write_input(c, wp, buf, len);
+            cb(c, user_data);
         }
     }
+}
+
+static void
+control_write_input_cb(struct client *c, void *user_data)
+{
+    struct control_input_ctx *ctx = user_data;
+    control_write_input(c, ctx->wp, ctx->buf, ctx->len);
+}
+
+void
+control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
+{
+    struct control_input_ctx ctx;
+    ctx.wp = wp;
+    ctx.buf = buf;
+    ctx.len = len;
+    control_foreach_client(control_write_input_cb, &ctx);
+}
+
+static void
+control_write_layout_change_cb(struct client *c, void *user_data)
+{
+    struct window *w = user_data;
+    control_write_str(c, "%layout-change ");
+    control_write_window(c, w);
+    control_write_str(c, "\n");
+}
+
+void
+control_broadcast_layout_change(struct window *w)
+{
+    control_foreach_client(control_write_layout_change_cb, w);
+}
+
+static void
+control_write_windows_change_cb(struct client *c, unused void *user_data)
+{
+    control_write_str(c, "%windows-changed\n");
+}
+
+void
+control_broadcast_windows_changed(void)
+{
+    control_foreach_client(control_write_windows_change_cb, NULL);
 }
