@@ -108,14 +108,18 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
         /* Error */
         if (cause) {
             /* cause should always be set if there's an error. */
-            evbuffer_add_printf(out->output, "%s", cause);
+            evbuffer_add_printf(out->output, "%%error %s", cause);
             bufferevent_write(out, "\n", 1);
             xfree(cause);
         }
     } else {
         /* Parsed ok. Run command. */
+        evbuffer_add_printf(out->output, "%%begin");
+        bufferevent_write(out, "\n", 1);
         cmd_list_exec(cmdlist, &ctx);
         cmd_list_free(cmdlist);
+        evbuffer_add_printf(out->output, "%%end");
+        bufferevent_write(out, "\n", 1);
     }
 
     xfree(line);
@@ -148,7 +152,6 @@ control_start(struct client *c)
 
     /* Write the protocol identifier and version. */
     bufferevent_enable(c->stdout_event, EV_WRITE);
-    control_write_str(c, "\033_tmux1\033\\%%noop tmux ready\n");
 }
 
 void
@@ -252,7 +255,7 @@ control_broadcast_layout_change(struct window *w)
 static void
 control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
-    control_write_str(c, "%windows-changed\n");
+    control_write_str(c, "%windows-change\n");
 }
 
 void
