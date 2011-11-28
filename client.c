@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <termios.h>
 
 #include "tmux.h"
 
@@ -173,6 +174,14 @@ client_main(int argc, char **argv, int flags)
         client_send_environ();
     client_send_identify(flags);
 
+    if (flags & IDENTIFY_CONTROL) {
+        /* Turn off echo in control mode. */
+        struct termios termios;
+        tcgetattr(1, &termios);
+        termios.c_lflag &= ~ECHO;
+        tcsetattr(1, TCSANOW, &termios);
+    }
+
     /* Send first command. */
     if ((flags & IDENTIFY_CONTROL) && msg == MSG_COMMAND && argc == 0) {
         static char *new_session_argv[2] = { (char *)"new-session", (char *)"-T" };
@@ -196,14 +205,22 @@ client_main(int argc, char **argv, int flags)
     } else if (msg == MSG_SHELL)
       client_write_server(msg, NULL, 0);
 
+    if (flags & IDENTIFY_CONTROL) {
+        printf("\033_tmux1\033\\%%noop tmux ready\n");
+    }
     /* Set the event and dispatch. */
     client_update_event();
     event_dispatch();
 
     /* Print the exit message, if any, and exit. */
     if (client_attached) {
-        if (client_exitmsg != NULL && !login_shell)
-            printf("[%s]\n", client_exitmsg);
+        if (client_exitmsg != NULL && !login_shell) {
+            if (flags & IDENTIFY_CONTROL) {
+                printf("%%exit %s", client_exitmsg);
+            } else {
+                printf("[%s]\n", client_exitmsg);
+            }
+        }
 
         ppid = getppid();
         if (client_exittype == MSG_DETACHKILL && ppid > 1)
