@@ -25,7 +25,7 @@
 
 struct layout_cell     *layout_find_bottomright(struct layout_cell *);
 u_short         layout_checksum(const char *);
-int         layout_append(struct layout_cell *, char *, size_t);
+int         layout_append(struct layout_cell *, int, char *, size_t);
 struct layout_cell     *layout_construct(struct layout_cell *, const char **);
 void            layout_assign(struct window_pane **, struct layout_cell *);
 
@@ -55,21 +55,24 @@ layout_checksum(const char *layout)
 
 /* Dump layout as a string. */
 char *
-layout_dump(struct window *w)
+layout_dump(struct window *w, int detail)
 {
     char    layout[BUFSIZ], *out;
 
     *layout = '\0';
-    if (layout_append(w->layout_root, layout, sizeof layout) != 0)
+    if (layout_append(w->layout_root, detail, layout, sizeof layout) != 0)
         return (NULL);
 
     xasprintf(&out, "%4x,%s", layout_checksum(layout), layout);
     return (out);
 }
 
-/* Append information for a single cell. */
+/* Append information for a single cell.
+ * detail 0: baseline: width,height,xoff,yoff(children)
+ * detail 1: extended: width,height,xoff,yoff,pane-id(children)
+ */
 int
-layout_append(struct layout_cell *lc, char *buf, size_t len)
+layout_append(struct layout_cell *lc, int detail, char *buf, size_t len)
 {
     struct layout_cell     *lcchild;
     char            tmp[64];
@@ -79,8 +82,19 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
     if (len == 0)
         return (-1);
 
-    tmplen = xsnprintf(tmp, sizeof tmp,
-        "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff);
+    if (detail == 0) {
+        tmplen = xsnprintf(tmp, sizeof tmp,
+            "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff);
+    } else {
+        if (lc->wp) {
+            tmplen = xsnprintf(tmp, sizeof tmp,
+                "%ux%u,%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff,
+                lc->wp->id);
+        } else {
+            tmplen = xsnprintf(tmp, sizeof tmp,
+                "%ux%u,%u,%u,na", lc->sx, lc->sy, lc->xoff, lc->yoff);
+        }
+    }
     if (tmplen > (sizeof tmp) - 1)
         return (-1);
     if (strlcat(buf, tmp, len) >= len)
@@ -94,7 +108,7 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
         if (strlcat(buf, &brackets[1], len) >= len)
             return (-1);
         TAILQ_FOREACH(lcchild, &lc->cells, entry) {
-            if (layout_append(lcchild, buf, len) != 0)
+            if (layout_append(lcchild, detail, buf, len) != 0)
                 return (-1);
             if (strlcat(buf, ",", len) >= len)
                 return (-1);
