@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -26,40 +27,68 @@
  * Send keys to client.
  */
 
-int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
+int cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_keys_entry = {
-	"send-keys", "send",
-	"t:", 0, -1,
-	"[-t target-pane] key ...",
-	0,
-	NULL,
-	NULL,
-	cmd_send_keys_exec
+    "send-keys", "send",
+    "ht:", 0, -1,
+    "[-t target-pane] [-h] key ...",
+    0,
+    NULL,
+    NULL,
+    cmd_send_keys_exec
 };
+
+static int
+hextoint(char hex)
+{
+    if (hex >= '0' && hex <= '9') {
+        return hex - '0';
+    }
+    if (hex >= 'a' && hex <= 'f') {
+        return hex - 'a' + 10;
+    }
+    if (hex >= 'A' && hex <= 'F') {
+        return hex - 'A' + 10;
+    }
+    return 0;
+}
+
+static int
+hexdecode(char *hex)
+{
+    return hextoint(hex[0]) * 16 + hextoint(hex[1]);
+}
 
 int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct window_pane	*wp;
-	struct session		*s;
-	const char		*str;
-	int			 i, key;
+    struct args     *args = self->args;
+    struct window_pane  *wp;
+    struct session      *s;
+    const char      *str;
+    int          i, key;
+    int          hex_code;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
-		return (-1);
+    hex_code = args_has(args, 'h');
+    if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
+        return (-1);
 
-	for (i = 0; i < args->argc; i++) {
-		str = args->argv[i];
+    for (i = 0; i < args->argc; i++) {
+        str = args->argv[i];
 
-		if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
-			    window_pane_key(wp, s, key);
-		} else {
-			for (; *str != '\0'; str++)
-			    window_pane_key(wp, s, *str);
-		}
-	}
+        if (hex_code) {
+            int arglen = strlen(args->argv[i]);
+            for (int j = 0; j < arglen - 1; j += 2) {
+                window_pane_key(wp, s, hexdecode(args->argv[i] + j));
+            }
+        } else if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
+                window_pane_key(wp, s, key);
+        } else {
+            for (; *str != '\0'; str++)
+                window_pane_key(wp, s, *str);
+        }
+    }
 
-	return (0);
+    return (0);
 }
