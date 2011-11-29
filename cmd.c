@@ -44,6 +44,7 @@ const struct cmd_entry *cmd_table[] = {
     &cmd_detach_client_entry,
     &cmd_display_message_entry,
     &cmd_display_panes_entry,
+    &cmd_dump_history_entry,
     &cmd_find_window_entry,
     &cmd_has_session_entry,
     &cmd_if_shell_entry,

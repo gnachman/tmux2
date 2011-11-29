@@ -78,6 +78,7 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
+	cmd-dump-history.c \
 	cmd-find-window.c \
 	cmd-has-session.c \
 	cmd-if-shell.c \
