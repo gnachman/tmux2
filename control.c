@@ -48,6 +48,7 @@ void printflike2 control_msg_info(unused struct cmd_ctx *ctx,
 void   control_read_callback(unused struct bufferevent *bufev, void *data);
 void   control_error_callback(unused struct bufferevent *bufev,
     unused short what, void *data);
+void control_write_b64(struct client *c, const char *buf, int len);
 
 void printflike2
 control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
@@ -161,6 +162,18 @@ control_write_str(struct client *c, const char *str)
 }
 
 void
+control_write_b64(struct client *c, const char *buf, int len)
+{
+    // TODO: I don't have an internet connection atm so I'll just do something
+    // hacky instead of base 64
+    for (int i = 0; i < len; i++) {
+        char temp[3];
+        snprintf(temp, sizeof(temp), "%02x", (int)buf[i]);
+        control_write(c, temp, 2);
+    }
+}
+
+void
 control_write(struct client *c, const char *buf, int len)
 {
     evbuffer_add(c->stdout_event->output, buf, len);
@@ -201,8 +214,8 @@ control_write_input(struct client *c, struct window_pane *wp,
 {
     control_write_str(c, "%output ");
     control_write_window_pane(c, wp);
-    control_write_printf(c, " %d ", len);
-    control_write(c, buf, len);
+    control_write_str(c, " ");
+    control_write_b64(c, buf, len);
     control_write_str(c, "\n");
 }
 
