@@ -188,7 +188,7 @@ cmd_dump_history_exec(struct cmd *self, struct cmd_ctx *ctx)
         return (-1);
     max_lines = temp;  /* assign to unsigned to do comparisons later */
 
-    grid = wp->screen->grid;
+    grid = wp->base.grid;
     limit = MIN(grid->hlimit, grid->hsize + grid->sy);
     if (limit >= max_lines) {
         start = limit - max_lines;
