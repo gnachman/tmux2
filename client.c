@@ -216,7 +216,7 @@ client_main(int argc, char **argv, int flags)
     if (client_attached) {
         if (client_exitmsg != NULL && !login_shell) {
             if (flags & IDENTIFY_CONTROL) {
-                printf("%%exit %s", client_exitmsg);
+                printf("%%exit %s\n", client_exitmsg);
             } else {
                 printf("[%s]\n", client_exitmsg);
             }
