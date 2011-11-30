@@ -206,7 +206,8 @@ client_main(int argc, char **argv, int flags)
       client_write_server(msg, NULL, 0);
 
     if (flags & IDENTIFY_CONTROL) {
-        printf("\033_tmux1\033\\%%noop tmux ready\n");
+        printf("\033_tmux1\033\\");
+        fflush(stdout);
     }
     /* Set the event and dispatch. */
     client_update_event();

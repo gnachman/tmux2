@@ -25,19 +25,10 @@
 
 #define DUMP_HISTORY_UTF8_BUFFER_SIZE ((UTF8_SIZE) * 2 + 1)
 #define DUMP_HISTORY_CONTEXT_SIZE 4
-#define DSTRING_STATIC_BUFFER_SIZE 1024
 
 /*
  * Print out the last n lines of history plus screen contents.
  */
-
-/* dstring is a dynamic string. It is null terminated. */
-struct dstring {
-    char *buffer;  /* always points at the current value */
-    int used;
-    int available;
-    char staticbuffer[DSTRING_STATIC_BUFFER_SIZE];
-};
 
 int cmd_dump_history_exec(struct cmd *, struct cmd_ctx *);
 
@@ -66,50 +57,6 @@ dump_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
         o += 2;
     }
     return buffer;
-}
-
-static void
-ds_init(struct dstring *ds)
-{
-    ds->buffer = ds->staticbuffer;
-    ds->used = 0;
-    ds->available = DSTRING_STATIC_BUFFER_SIZE;
-    ds->buffer[0] = '\0';
-}
-
-static void
-ds_free(struct dstring *ds)
-{
-    if (ds->buffer != ds->staticbuffer) {
-        xfree(ds->buffer);
-    }
-}
-
-static void
-ds_appendf(struct dstring *ds, const char *fmt, ...)
-{
-    char    *temp;
-    va_list ap;
-    int     len;
-
-    va_start(ap, fmt);
-    xvasprintf(&temp, fmt, ap);
-    va_end(ap);
-
-    len = strlen(temp);
-    if (ds->used + len >= ds->available) {
-        ds->available *= 2;
-        if (ds->buffer == ds->staticbuffer) {
-            ds->buffer = xmalloc(ds->available);
-            memmove(ds->buffer, ds->staticbuffer, ds->used);
-        } else {
-            ds->buffer = xrealloc(ds->buffer, ds->available, 1);
-        }
-    }
-    memmove(ds->buffer + ds->used, temp, len);
-    xfree(temp);
-    ds->used += len;
-    ds->buffer[ds->used] = '\0';
 }
 
 static void
@@ -205,6 +152,5 @@ cmd_dump_history_exec(struct cmd *self, struct cmd_ctx *ctx)
     for (i = start; i < limit; i++) {
         dump_history_line(ctx, grid->linedata + i, dump_context);
     }
-
     return (0);
 }

@@ -745,6 +745,16 @@ struct screen_write_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
+/* dstring is a dynamic string. It is null terminated. It allocates memory as
+ * needed and has an amortized O(n) cost of appending. */
+struct dstring {
+    char *buffer;   /* always points at the current buffer. */
+    int used;       /* this does not include the trailing nul. */
+    int available;  /* amount of allocated space in buffer. */
+#define DSTRING_STATIC_BUFFER_SIZE 1024
+    char staticbuffer[DSTRING_STATIC_BUFFER_SIZE];
+};
+
 /* Input parser context. */
 struct input_ctx {
     struct window_pane     *wp;
@@ -775,6 +785,11 @@ struct input_ctx {
 #define INPUT_DISCARD 0x1
 
     const struct input_state *state;
+
+    /* All input received since we were last in the ground state. Sent to
+     * control clients on connection so their vt100 state can be the same as
+     * ours. */
+    struct dstring   input_since_ground;
 };
 
 /*
@@ -1159,7 +1174,7 @@ struct client {
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
-#define CLIENT_REPEAT 0x20  /* allow command to repeat within repeat time */
+#define CLIENT_REPEAT 0x20          /* allow command to repeat within repeat time */
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100
@@ -1168,7 +1183,8 @@ struct client {
 #define CLIENT_READONLY 0x800
 #define CLIENT_BACKOFF 0x1000
 #define CLIENT_REDRAWWINDOW 0x2000
-#define CLIENT_CONTROL 0x4000
+#define CLIENT_CONTROL 0x4000        /* is a control client */
+#define CLIENT_CONTROL_READY 0x8000  /* control client is ready for %output */
     int      flags;
 
     struct event     identify_timer;
@@ -1578,6 +1594,7 @@ extern const struct cmd_entry cmd_display_message_entry;
 extern const struct cmd_entry cmd_display_panes_entry;
 extern const struct cmd_entry cmd_down_pane_entry;
 extern const struct cmd_entry cmd_dump_history_entry;
+extern const struct cmd_entry cmd_dump_state_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_if_shell_entry;
@@ -1636,6 +1653,7 @@ extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
 extern const struct cmd_entry cmd_split_window_entry;
 extern const struct cmd_entry cmd_start_server_entry;
+extern const struct cmd_entry cmd_start_control_entry;
 extern const struct cmd_entry cmd_suspend_client_entry;
 extern const struct cmd_entry cmd_swap_pane_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
@@ -1669,6 +1687,14 @@ void control_broadcast_input(struct window_pane *wp, const u_char *buf,
     size_t len);
 void control_broadcast_layout_change(struct window *w);
 void control_broadcast_windows_changed(void);
+
+/* dstring.c */
+void ds_init(struct dstring *ds);
+void ds_free(struct dstring *ds);
+void ds_appendf(struct dstring *ds, const char *fmt, ...);
+void ds_append(struct dstring *ds, const char *str);
+void ds_appendl(struct dstring *ds, const char *str, int len);
+void ds_truncate(struct dstring *ds, int new_length);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;

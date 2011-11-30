@@ -115,12 +115,8 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
         }
     } else {
         /* Parsed ok. Run command. */
-        evbuffer_add_printf(out->output, "%%begin");
-        bufferevent_write(out, "\n", 1);
         cmd_list_exec(cmdlist, &ctx);
         cmd_list_free(cmdlist);
-        evbuffer_add_printf(out->output, "%%end");
-        bufferevent_write(out, "\n", 1);
     }
 
     xfree(line);
@@ -237,7 +233,9 @@ static void
 control_write_input_cb(struct client *c, void *user_data)
 {
     struct control_input_ctx *ctx = user_data;
-    control_write_input(c, ctx->wp, ctx->buf, ctx->len);
+    if (c->flags & CLIENT_CONTROL_READY) {
+        control_write_input(c, ctx->wp, ctx->buf, ctx->len);
+    }
 }
 
 void
