@@ -28,7 +28,7 @@
 #define DSTRING_STATIC_BUFFER_SIZE 1024
 
 /*
- * Print out the last n lines of history plus screen contents
+ * Print out the last n lines of history plus screen contents.
  */
 
 /* dstring is a dynamic string. It is null terminated. */
@@ -43,7 +43,7 @@ int cmd_dump_history_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_dump_history_entry = {
     "dump-history", "dumphist",
-    "l:t:", 0, 0,
+    "al:t:", 0, 0,
     "",
     0,
     NULL,
@@ -188,14 +188,20 @@ cmd_dump_history_exec(struct cmd *self, struct cmd_ctx *ctx)
         return (-1);
     max_lines = temp;  /* assign to unsigned to do comparisons later */
 
-    grid = wp->base.grid;
-    limit = MIN(grid->hlimit, grid->hsize + grid->sy);
+    if (args_has(args, 'a')) {
+        grid = wp->saved_grid;
+        if (!grid) {
+            return (0);
+        }
+    } else {
+        grid = wp->base.grid;
+    }
+    limit = grid->hsize + grid->sy;
     if (limit >= max_lines) {
         start = limit - max_lines;
     } else {
         start = 0;
     }
-    limit = MIN(max_lines, MIN(grid->hlimit, grid->hsize + grid->sy));
     for (i = start; i < limit; i++) {
         dump_history_line(ctx, grid->linedata + i, dump_context);
     }
