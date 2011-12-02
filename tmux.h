@@ -1473,7 +1473,8 @@ void    tty_puts(struct tty *, const char *);
 void    tty_putc(struct tty *, u_char);
 void    tty_pututf8(struct tty *, const struct grid_utf8 *);
 void    tty_init(struct tty *, int, char *);
-int tty_resize(struct tty *);
+int     tty_resize(struct tty *);
+int     tty_set_size(struct tty *tty, u_int sx, u_int sy);
 void    tty_start_tty(struct tty *);
 void    tty_stop_tty(struct tty *);
 void    tty_set_title(struct tty *, const char *);
@@ -1643,6 +1644,7 @@ extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
+extern const struct cmd_entry cmd_set_control_client_attr_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
@@ -1686,8 +1688,11 @@ void control_write_input(struct client *c, struct window_pane *wp,
     const u_char *buf, int len);
 void control_broadcast_input(struct window_pane *wp, const u_char *buf,
     size_t len);
-void control_broadcast_layout_change(struct window *w);
-void control_broadcast_windows_changed(void);
+void control_set_spontaneous_messages_allowed(int allowed);
+void control_notify_layout_change(struct window *w);
+void control_notify_window_added(void);
+void control_notify_window_removed(struct window *w);
+void control_broadcast_queue(void);
 
 /* dstring.c */
 void ds_init(struct dstring *ds);

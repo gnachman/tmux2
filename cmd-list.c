@@ -95,6 +95,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
      * take charge.*/
     print_guards = c && (c->flags & CLIENT_CONTROL) && c->session;
     retval = 0;
+    control_set_spontaneous_messages_allowed(0);
     TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
         if (print_guards)
             ctx->print(ctx, "%%begin");
@@ -128,6 +129,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
             }
         }
     }
+    control_set_spontaneous_messages_allowed(1);
     return (retval);
 }
 

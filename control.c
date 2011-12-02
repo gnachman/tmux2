@@ -26,6 +26,12 @@
 #include "tmux.h"
 
 typedef void control_write_cb(struct client *c, void *user_data);
+static int windows_changed;
+static struct window **layouts_changed;
+static int num_layouts_changed;
+static int spontaneous_message_allowed;
+
+static void control_notify_windows_changed(void);
 
 struct control_input_ctx {
     struct window_pane *wp;
@@ -126,7 +132,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 /* ARGSUSED */
 void
 control_error_callback(
-    unused struct bufferevent *bufev, unused short what, void *data)
+    unused struct bufferevent *bufev, unused short what, unused void *data)
 {
     //struct client   *c = data;
     //TODO(georgen): implement this
@@ -172,7 +178,13 @@ control_write_b64(struct client *c, const char *buf, int len)
 void
 control_write(struct client *c, const char *buf, int len)
 {
-    evbuffer_add(c->stdout_event->output, buf, len);
+    if (c->session) {
+        // Only write to control clients that have an attached session. This
+        // indicates that the initial setup performed by the local client is
+        // complete and the remote client is expecting to send and receive
+        // commands.
+        evbuffer_add(c->stdout_event->output, buf, len);
+    }
 }
 
 void
@@ -259,18 +271,67 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
 }
 
 static void
-control_write_layout_change_cb(struct client *c, void *user_data)
+control_write_layout_change_cb(struct client *c, unused void *user_data)
 {
-    struct window *w = user_data;
-    control_write_str(c, "%layout-change ");
-    control_write_window(c, w);
-    control_write_str(c, "\n");
+    for (int i = 0; i < num_layouts_changed; i++) {
+        struct window *w = layouts_changed[i];
+        if (w) {
+            control_write_str(c, "%layout-change ");
+            control_write_window(c, w);
+            control_write_str(c, "\n");
+        }
+    }
 }
 
 void
-control_broadcast_layout_change(struct window *w)
+control_notify_layout_change(struct window *w)
 {
-    control_foreach_client(control_write_layout_change_cb, w);
+    for (int i = 0; i < num_layouts_changed; i++) {
+        if (layouts_changed[i] == w) {
+            // Don't add a duplicate
+            return;
+        }
+    }
+
+    ++num_layouts_changed;
+    if (!layouts_changed) {
+        layouts_changed = xmalloc(sizeof(struct window *));
+    } else {
+        layouts_changed = xrealloc(layouts_changed, num_layouts_changed,
+                                   sizeof(struct window *));
+    }
+    layouts_changed[num_layouts_changed - 1] = w;
+
+    if (spontaneous_message_allowed) {
+        control_broadcast_queue();
+    }
+}
+
+void
+control_notify_window_removed(struct window *w)
+{
+    for (int i = 0; i < num_layouts_changed; i++) {
+        if (layouts_changed[i] == w) {
+            layouts_changed[i] = NULL;
+            break;
+        }
+    }
+    control_notify_windows_changed();
+}
+
+void
+control_notify_window_added(void)
+{
+    control_notify_windows_changed();
+}
+
+static void
+control_notify_windows_changed(void)
+{
+    windows_changed = 1;
+    if (spontaneous_message_allowed) {
+        control_broadcast_queue();
+    }
 }
 
 static void
@@ -279,8 +340,24 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
     control_write_str(c, "%windows-change\n");
 }
 
-void
-control_broadcast_windows_changed(void)
+void control_broadcast_queue(void)
 {
-    control_foreach_client(control_write_windows_change_cb, NULL);
+    if (num_layouts_changed) {
+        control_foreach_client(control_write_layout_change_cb, NULL);
+        num_layouts_changed = 0;
+        xfree(layouts_changed);
+        layouts_changed = NULL;
+    }
+    if (windows_changed) {
+        control_foreach_client(control_write_windows_change_cb, NULL);
+        windows_changed = 0;
+    }
+}
+
+void control_set_spontaneous_messages_allowed(int allowed)
+{
+    if (allowed && !spontaneous_message_allowed) {
+        control_broadcast_queue();
+    }
+    spontaneous_message_allowed = allowed;
 }

@@ -143,7 +143,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
             fatalx("index not found");
         ctx->print(ctx, "%s:%u.%u", s->name, wl->idx, paneidx);
     }
-    control_broadcast_layout_change(w);
+    control_notify_layout_change(w);
     return (0);
 
 error:

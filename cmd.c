@@ -93,6 +93,7 @@ const struct cmd_entry *cmd_table[] = {
     &cmd_send_prefix_entry,
     &cmd_server_info_entry,
     &cmd_set_buffer_entry,
+    &cmd_set_control_client_attr_entry,
     &cmd_set_environment_entry,
     &cmd_set_option_entry,
     &cmd_set_window_option_entry,

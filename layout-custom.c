@@ -87,9 +87,12 @@ layout_append(struct layout_cell *lc, int detail, char *buf, size_t len)
             "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff);
     } else {
         if (lc->wp) {
+            u_int idx;
+            if (window_pane_index(lc->wp, &idx) != 0)
+                return (-1);
             tmplen = xsnprintf(tmp, sizeof tmp,
                 "%ux%u,%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff,
-                lc->wp->id);
+                idx);
         } else {
             tmplen = xsnprintf(tmp, sizeof tmp,
                 "%ux%u,%u,%u,na", lc->sx, lc->sy, lc->xoff, lc->yoff);
@@ -182,7 +185,7 @@ layout_parse(struct window *w, const char *layout)
     layout_print_cell(lc, __func__, 0);
 
     /* Notify control clients of the change. */
-    control_broadcast_layout_change(w);
+    control_notify_layout_change(w);
 
     return (0);
 

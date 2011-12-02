@@ -39,6 +39,7 @@ const char     *client_exitmsg;
 int     client_exitval;
 enum msgtype    client_exittype;
 int     client_attached;
+static int      is_control_client;
 
 int     client_connect(char *, int);
 void        client_send_identify(int);
@@ -176,6 +177,7 @@ client_main(int argc, char **argv, int flags)
 
     if (flags & IDENTIFY_CONTROL) {
         /* Turn off echo in control mode. */
+        is_control_client = 1;
         struct termios termios;
         tcgetattr(1, &termios);
         termios.c_lflag &= ~ECHO;
@@ -205,10 +207,6 @@ client_main(int argc, char **argv, int flags)
     } else if (msg == MSG_SHELL)
       client_write_server(msg, NULL, 0);
 
-    if (flags & IDENTIFY_CONTROL) {
-        printf("\033_tmux1\033\\");
-        fflush(stdout);
-    }
     /* Set the event and dispatch. */
     client_update_event();
     event_dispatch();
@@ -421,6 +419,10 @@ client_dispatch_wait(void *data)
                 fatalx("bad MSG_READY size");
 
             client_attached = 1;
+            if (is_control_client) {
+                printf("\033_tmux1\033\\");
+                fflush(stdout);
+            }
             break;
         case MSG_VERSION:
             if (datalen != 0)

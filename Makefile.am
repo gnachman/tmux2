@@ -120,6 +120,7 @@ dist_tmux_SOURCES = \
 	cmd-send-prefix.c \
 	cmd-server-info.c \
 	cmd-set-buffer.c \
+	cmd-set-control-client-attr.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
 	cmd-show-buffer.c \
