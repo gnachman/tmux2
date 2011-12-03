@@ -213,7 +213,9 @@ control_write_window_pane(struct client *c, struct window_pane *wp)
     window_index(wp->window, &i);
     control_write_printf(c, "%u", i);
     control_write_str(c, ".");
-    control_write_printf(c, "%u", wp->id);
+    u_int j = -1;
+    window_pane_index(wp, &j);
+    control_write_printf(c, "%u", j);
 }
 
 void
