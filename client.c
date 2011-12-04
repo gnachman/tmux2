@@ -419,10 +419,6 @@ client_dispatch_wait(void *data)
                 fatalx("bad MSG_READY size");
 
             client_attached = 1;
-            if (is_control_client) {
-                printf("\033_tmux1\033\\");
-                fflush(stdout);
-            }
             break;
         case MSG_VERSION:
             if (datalen != 0)

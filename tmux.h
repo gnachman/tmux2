@@ -1693,6 +1693,7 @@ void control_notify_layout_change(struct window *w);
 void control_notify_window_added(void);
 void control_notify_window_removed(struct window *w);
 void control_broadcast_queue(void);
+void control_handshake(struct client *c);
 
 /* dstring.c */
 void ds_init(struct dstring *ds);

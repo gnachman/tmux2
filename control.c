@@ -275,12 +275,26 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
 static void
 control_write_layout_change_cb(struct client *c, unused void *user_data)
 {
+    struct format_tree  *ft;
+    struct winlink      *wl;
+
+    if (!(c->flags & CLIENT_CONTROL_READY)) {
+        /* Don't issue spontaneous commands until the remote client has
+         * finished its initalization. It's ok because the remote client should
+         * fetch all window and layout info at the same time as it's marked
+         * ready. */
+        return;
+    }
+
     for (int i = 0; i < num_layouts_changed; i++) {
         struct window *w = layouts_changed[i];
         if (w) {
-            control_write_str(c, "%layout-change ");
-            control_write_window(c, w);
-            control_write_str(c, "\n");
+            const char *template = "%layout-change #{window_index} "
+                "#{window_width}x#{window_height} #{window_layout_ex}\n";
+            ft = format_create();
+            wl = winlink_find_by_window(&c->session->windows, w);
+            format_winlink(ft, c->session, wl);
+            control_write_str(c, format_expand(ft, template));
         }
     }
 }
@@ -339,6 +353,14 @@ control_notify_windows_changed(void)
 static void
 control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
+    if (!(c->flags & CLIENT_CONTROL_READY)) {
+        /* Don't issue spontaneous commands until the remote client has
+         * finished its initalization. It's ok because the remote client should
+         * fetch all window and layout info at the same time as it's marked
+         * ready. */
+        return;
+    }
+
     control_write_str(c, "%windows-change\n");
 }
 
@@ -362,4 +384,12 @@ void control_set_spontaneous_messages_allowed(int allowed)
         control_broadcast_queue();
     }
     spontaneous_message_allowed = allowed;
+}
+
+void control_handshake(struct client *c)
+{
+    control_write_str(c, "\033_tmux1\033\\%noop If you can see this message, "
+                      "your terminal emulator does not support tmux mode. "
+                      "Type \"detach\" and press the enter key to return to "
+                      "your shell.\n");
 }
