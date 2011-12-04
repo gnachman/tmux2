@@ -86,7 +86,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
     struct client *c;
     int            print_guards;
 
-    c = ctx->cmdclient;
+    c = ctx->curclient;
     /* print %begin...%end guards around command output only if the client is a
      * control client that has an attached session. The requirement for an
      * attached session exists because the local client may issue an

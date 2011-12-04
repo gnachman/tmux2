@@ -1184,7 +1184,7 @@ struct client {
 #define CLIENT_BACKOFF 0x1000
 #define CLIENT_REDRAWWINDOW 0x2000
 #define CLIENT_CONTROL 0x4000            /* is a control client */
-#define CLIENT_CONTROL_READY 0x8000      /* control client ready for %output */
+#define CLIENT_CONTROL_READY 0x8000      /* control client ready for messages */
 #define CLIENT_CONTROL_UPTODATE 0x10000  /* input-since-ground state was sent */
     int      flags;
 

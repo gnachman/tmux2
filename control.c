@@ -62,10 +62,10 @@ control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    evbuffer_add_vprintf(ctx->cmdclient->stdout_event->output, fmt, ap);
+    evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
     va_end(ap);
 
-    bufferevent_write(ctx->cmdclient->stdout_event, "\n", 1);
+    bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
 }
 
 void printflike2
@@ -74,10 +74,10 @@ control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    evbuffer_add_vprintf(ctx->cmdclient->stdout_event->output, fmt, ap);
+    evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
     va_end(ap);
 
-    bufferevent_write(ctx->cmdclient->stdout_event, "\n", 1);
+    bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
 }
 
 void printflike2
@@ -103,13 +103,12 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 
     /* Parse command. */
     ctx.msgdata = NULL;
-    ctx.curclient = NULL;
+    ctx.cmdclient = NULL;
+    ctx.curclient = c;
 
     ctx.error = control_msg_error;
     ctx.print = control_msg_print;
     ctx.info = control_msg_info;
-
-    ctx.cmdclient = c;
 
     if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
         /* Error */
