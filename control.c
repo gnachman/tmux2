@@ -290,7 +290,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
         struct window *w = layouts_changed[i];
         if (w) {
             const char *template = "%layout-change #{window_index} "
-                "#{window_width}x#{window_height} #{window_layout_ex}\n";
+                "#{window_layout_ex}\n";
             ft = format_create();
             wl = winlink_find_by_window(&c->session->windows, w);
             format_winlink(ft, c->session, wl);
