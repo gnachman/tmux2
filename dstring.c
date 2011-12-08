@@ -1,7 +1,7 @@
 /* $Id$ */
 
 /*
- * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2011 George Nachman <tmux@georgester.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -78,6 +78,19 @@ ds_appendl(struct dstring *ds, const char *str, int len)
     memmove(ds->buffer + ds->used, str, len);
     ds->used += len;
     ds->buffer[ds->used] = '\0';
+}
+
+/* Encode str with base64 encoding and append to ds. */
+void
+ds_appendb64(struct dstring *ds, const char *str, int len)
+{
+    size_t b64len;
+    char *temp = base64_xencode(str, len, &b64len);
+    if (!temp) {
+        return;
+    }
+    ds_appendl(ds, temp, b64len);
+    xfree(temp);
 }
 
 void

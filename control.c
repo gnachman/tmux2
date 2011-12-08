@@ -165,12 +165,15 @@ control_write_str(struct client *c, const char *str)
 void
 control_write_b64(struct client *c, const char *buf, int len)
 {
-    // TODO: I don't have an internet connection atm so I'll just do something
-    // hacky instead of base 64
-    for (int i = 0; i < len; i++) {
-        char temp[3];
-        snprintf(temp, sizeof(temp), "%02x", (int)buf[i]);
-        control_write(c, temp, 2);
+    size_t         out_len;
+    unsigned char *code;
+
+    code = base64_xencode(buf, len, &out_len);
+
+    if (code) {
+        /* encoding only fails if the buffer is enormous. */
+	control_write(c, code, out_len);
+	xfree(code);
     }
 }
 

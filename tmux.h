@@ -1677,6 +1677,12 @@ int cmd_string_parse(const char *, struct cmd_list **, char **);
 /* client.c */
 int client_main(int, char **, int);
 
+/* base64.c */
+unsigned char *base64_xencode(const unsigned char *src, size_t len,
+	size_t *out_len);
+unsigned char *base64_xdecode(const unsigned char *src, size_t len,
+	size_t *out_len);
+
 /* control.c */
 void control_start(struct client *);
 void control_write(struct client *c, const char *buf, int len);
@@ -1701,6 +1707,7 @@ void ds_free(struct dstring *ds);
 void ds_appendf(struct dstring *ds, const char *fmt, ...);
 void ds_append(struct dstring *ds, const char *str);
 void ds_appendl(struct dstring *ds, const char *str, int len);
+void ds_appendb64(struct dstring *ds, const char *str, int len);
 void ds_truncate(struct dstring *ds, int new_length);
 
 /* key-bindings.c */

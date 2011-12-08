@@ -31,8 +31,8 @@ int cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_keys_entry = {
     "send-keys", "send",
-    "ht:", 0, -1,
-    "[-t target-pane] [-h] key ...",
+    "6t:", 0, -1,
+    "[-t target-pane] key ...",
     0,
     NULL,
     NULL,
@@ -68,20 +68,24 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
     struct session      *s;
     const char      *str;
     int          i, key;
-    int          hex_code;
+    int          b64;
 
-    hex_code = args_has(args, 'h');
+    b64 = args_has(args, '6');  /* Key is formatted base base-64 data */
     if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
         return (-1);
 
     for (i = 0; i < args->argc; i++) {
         str = args->argv[i];
 
-        if (hex_code) {
-            int arglen = strlen(args->argv[i]);
-            for (int j = 0; j < arglen - 1; j += 2) {
-                window_pane_key(wp, s, hexdecode(args->argv[i] + j));
-            }
+        if (b64) {
+	    unsigned char *bytes = base64_xdecode(args->argv[i],
+						  strlen(args->argv[i]),
+						  NULL);
+	    if (bytes) {
+		for (int j = 0; bytes[j]; j++)
+		    window_pane_key(wp, s, bytes[j]);
+		xfree(bytes);
+	    }
         } else if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
                 window_pane_key(wp, s, key);
         } else {
