@@ -51,8 +51,11 @@ recalculate_sizes(void)
     struct window_pane  *wp;
     u_int            i, j, ssx, ssy, has, limit;
     int          flag;
+    int                 session_has_status;
+    u_int               ssy_ex_status;
 
     RB_FOREACH(s, sessions, &sessions) {
+        session_has_status = options_get_number(&s->options, "status");
         ssx = ssy = UINT_MAX;
         for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
             c = ARRAY_ITEM(&clients, j);
@@ -61,8 +64,15 @@ recalculate_sizes(void)
             if (c->session == s) {
                 if (c->tty.sx < ssx)
                     ssx = c->tty.sx;
-                if (c->tty.sy < ssy)
-                    ssy = c->tty.sy;
+                /* Reserve one line for status if the session wants it, the
+                 * client supports it, and there is room. */
+                ssy_ex_status = c->tty.sy;
+                if (session_has_status &&
+                    !(c->flags & CLIENT_CONTROL) &&
+                    ssy_ex_status > 1)
+                    --ssy_ex_status;
+                if (ssy_ex_status < ssy)
+                    ssy = ssy_ex_status;
             }
         }
         if (ssx == UINT_MAX || ssy == UINT_MAX) {
@@ -71,12 +81,9 @@ recalculate_sizes(void)
         }
         s->flags &= ~SESSION_UNATTACHED;
 
-        if (options_get_number(&s->options, "status")) {
-            if (ssy == 0)
-                ssy = 1;
-            else
-                ssy--;
-        }
+        if (session_has_status && ssy == 0)
+            ssy = 1;
+
         if (s->sx == ssx && s->sy == ssy)
             continue;
 
