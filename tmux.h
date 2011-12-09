@@ -1694,6 +1694,8 @@ void control_notify_window_added(void);
 void control_notify_window_removed(struct window *w);
 void control_broadcast_queue(void);
 void control_handshake(struct client *c);
+void control_print_session_layouts(struct session *session,
+    struct cmd_ctx *ctx);
 
 /* dstring.c */
 void ds_init(struct dstring *ds);

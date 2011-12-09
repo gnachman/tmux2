@@ -64,17 +64,7 @@ set_client_size(struct client *c, u_int w, u_int h, struct cmd_ctx *ctx)
     if (tty_set_size(&c->tty, w, h) > 0) {
         recalculate_sizes();
     }
-    struct format_tree  *ft;
-    struct winlink      *wl;
-    struct winlinks     *wwl;
-
-    wwl = &c->session->windows;
-    RB_FOREACH(wl, winlinks, wwl) {
-        const char *template = "#{window_index} #{window_layout_ex}";
-        ft = format_create();
-        format_winlink(ft, c->session, wl);
-        ctx->print(ctx, "%s", format_expand(ft, template));
-    }
+    control_print_session_layouts(c->session, ctx);
 }
 
 int

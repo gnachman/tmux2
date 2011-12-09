@@ -392,3 +392,20 @@ void control_handshake(struct client *c)
                       "Type \"detach\" and press the enter key to return to "
                       "your shell.\n");
 }
+
+/* Print one line for each window in the session with the window number and the
+ * layout. */
+void control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
+{
+    struct format_tree  *ft;
+    struct winlink      *wl;
+    struct winlinks     *wwl;
+
+    wwl = &session->windows;
+    RB_FOREACH(wl, winlinks, wwl) {
+        const char *template = "#{window_index} #{window_layout_ex}";
+        ft = format_create();
+        format_winlink(ft, session, wl);
+        ctx->print(ctx, "%s", format_expand(ft, template));
+    }
+}
