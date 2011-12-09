@@ -815,7 +815,7 @@ server_client_msg_dispatch(struct client *c)
             if (datalen != 0)
                 fatalx("bad MSG_RESIZE size");
 
-            if (tty_resize(&c->tty)) {
+            if (!(c->flags & CLIENT_CONTROL) && tty_resize(&c->tty)) {
                 recalculate_sizes();
                 server_redraw_client(c);
             }
