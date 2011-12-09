@@ -57,6 +57,7 @@ endif
 dist_tmux_SOURCES = \
 	arguments.c \
 	attributes.c \
+	base64.c \
 	cfg.c \
 	client.c \
 	clock.c \

@@ -61,34 +61,31 @@ dump_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 
 static void
 dump_history_cell(struct dstring *output, struct grid_cell *celldata,
-                  struct grid_utf8 *utf8data, int *dump_context)
+                  struct grid_utf8 *utf8data, int *dump_context,
+		  struct dstring *current_run)
 {
-    if (celldata->attr == dump_context[0] &&
-        celldata->flags == dump_context[1] &&
-        celldata->fg == dump_context[2] &&
-        celldata->bg == dump_context[3]) {
-        /* Don't repeat context if it's the same as the last character. */
-        if (celldata->flags & GRID_FLAG_UTF8) {
-            char temp[DUMP_HISTORY_UTF8_BUFFER_SIZE];
-            ds_appendf(output, "%s", dump_history_encode_utf8(utf8data, temp));
-        } else {
-            ds_appendf(output, "%x", celldata->data);
-        }
-    } else {
+    if (celldata->attr != dump_context[0] ||
+        celldata->flags != dump_context[1] ||
+        celldata->fg != dump_context[2] ||
+        celldata->bg != dump_context[3]) {
+	/* The context (colors, etc.) has changed so dump the previous run of
+	 * characters to output and append the new context. */
+	if (current_run->used) {
+	    ds_appendb64(output, current_run->buffer, current_run->used);
+	    ds_truncate(current_run, 0);
+	}
         dump_context[0] = celldata->attr;
         dump_context[1] = celldata->flags;
         dump_context[2] = celldata->fg;
         dump_context[3] = celldata->bg;
 
-        if (celldata->flags & GRID_FLAG_UTF8) {
-            char temp[DUMP_HISTORY_UTF8_BUFFER_SIZE];
-            ds_appendf(output, ":%x,%x,%x,%x,%s", celldata->attr,
-                       celldata->flags, celldata->fg, celldata->bg,
-                       dump_history_encode_utf8(utf8data, temp));
-        } else {
-            ds_appendf(output, ":%x,%x,%x,%x,%x", celldata->attr,
-                       celldata->flags, celldata->fg, celldata->bg, celldata->data);
-        }
+	ds_appendf(output, ":%x,%x,%x,%x,", celldata->attr,
+		   celldata->flags, celldata->fg, celldata->bg);
+    }
+    if (celldata->flags & GRID_FLAG_UTF8) {
+	ds_appendl(current_run, utf8data->data, utf8data->width);
+    } else {
+	ds_appendl(current_run, &celldata->data, 1);
     }
 }
 
@@ -98,18 +95,46 @@ dump_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 {
     unsigned int   i;
     struct dstring output;
+    struct dstring current_run;
+
     ds_init(&output);
+    ds_init(&current_run);
     for (i = 0; i < linedata->cellsize; i++) {
         dump_history_cell(&output, linedata->celldata + i,
-                          linedata->utf8data + i, dump_context);
+                          linedata->utf8data + i, dump_context,
+			  &current_run);
     }
+    if (current_run.used)
+      ds_appendb64(&output, current_run.buffer, current_run.used);
+
     if (linedata->flags & GRID_LINE_WRAPPED) {
-        ds_appendf(&output, "+");
+        ds_appendf(&output, ">");
     }
     ctx->print(ctx, "%s", output.buffer);
+
     ds_free(&output);
+    ds_free(&current_run);
 }
 
+/*
+ * Dumps history lines from a single window pane, including what's on the
+ * screen.
+ *
+ * The format of a history line is this:
+ * HISTORY_LINE       ::= REPEATED_LINE_DATA EOLFLAG "\n"
+ * REPEATED_LINE_DATA ::= LINE_DATA REPEATED_LINE_DATA | LINE_DATA
+ * LINE_DATA          ::= CONTEXT B64CHARS | B64CHARS
+ * CONTEXT            ::= ":" ATTRIBUTES "," FLAGS "," FGCOLOR "," BGCOLOR ","
+ * B64CHARS           ::= base64-encoded bytes
+ * EOLFLAG            ::= SOFT_EOL | ""
+ * SOFT_EOL           ::= ">"      // If present, a long line was wrapped.
+ * ATTRIBUTES         ::= hex int  // See grid_cell.celldata.
+ * FLAGS              ::= hex int  // See grid_cell.flags.
+ * FGCOLOR            ::= hex int  // See grid_cell.fg.
+ * BGCOLOR            ::= hex int  // See grid_cell.bg.
+ *
+ * The very first LINE_DATA will always begin with CONTEXT.
+ */
 int
 cmd_dump_history_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
