@@ -174,6 +174,43 @@ if test "x$found_b64_ntop" = xyes; then
 fi
 AM_CONDITIONAL(NO_B64_NTOP, [test "x$found_b64_ntop" = xno])
 
+# Check for b64_pton.
+AC_MSG_CHECKING(for b64_pton)
+AC_TRY_LINK(
+	[
+		#include <sys/types.h>
+		#include <netinet/in.h>
+		#include <resolv.h>
+	],
+	[b64_pton(NULL, NULL, 0);],
+	found_b64_pton=yes,
+	found_b64_pton=no
+)
+if test "x$found_b64_pton" = xno; then
+	AC_MSG_RESULT(no)
+
+	AC_MSG_CHECKING(for b64_pton with -lresolv)
+	LIBS="$LIBS -lresolv"
+	AC_TRY_LINK(
+		[
+			#include <sys/types.h>
+			#include <netinet/in.h>
+			#include <resolv.h>
+		],
+		[b64_pton(NULL, NULL, 0);],
+		found_b64_pton=yes,
+		found_b64_pton=no
+	)
+	if test "x$found_b64_pton" = xno; then
+		AC_MSG_RESULT(no)
+	fi
+fi
+if test "x$found_b64_pton" = xyes; then
+	AC_DEFINE(HAVE_B64_pton)
+	AC_MSG_RESULT(yes)
+fi
+AM_CONDITIONAL(NO_B64_PTON, [test "x$found_b64_pton" = xno])
+
 # Look for networking libraries.
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)

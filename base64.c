@@ -1,145 +1,57 @@
+/* $Id$ */
+
 /*
- * Base64 encoding/decoding (RFC1341)
- * Copyright (c) 2005, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2011 George Nachman <tmux@georgester.com>
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * Alternatively, this software may be distributed under the terms of BSD
- * license.
- *
- * See README and COPYING for more details.
- *
- * Modified for tmux by George Nachman <tmux@georgester.com>.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <resolv.h>
 #include <string.h>
-
 #include "tmux.h"
 
-static const unsigned char base64_table[65] =
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-/**
- * base64_encode - Base64 encode
- * src: Data to be encoded
- * len: Length of the data to be encoded
- * out_len: Pointer to output length variable, or NULL if not used
- * Returns: Allocated buffer of out_len bytes of encoded data,
- * or NULL on failure
- *
- * Caller is responsible for freeing the returned buffer. Returned buffer is
- * null terminated to make it easier to use as a C string. The null terminator
- * is not included in out_len.
- */
 unsigned char *base64_xencode(const unsigned char *src, size_t len,
-			      size_t *out_len)
+                  size_t *out_len)
 {
-	unsigned char		*out, *pos;
-	const unsigned char	*end, *in;
-	size_t			olen;
-
-	olen = len * 4 / 3 + 4; /* 3-byte blocks to 4-byte */
-	olen += olen / 72; /* line feeds */
-	olen++; /* null termination */
-	if (olen < len)
-		return NULL; /* integer overflow */
-	out = xmalloc(olen);
-	if (out == NULL)
-		return NULL;
-
-	end = src + len;
-	in = src;
-	pos = out;
-	while (end - in >= 3) {
-		*pos++ = base64_table[in[0] >> 2];
-		*pos++ = base64_table[((in[0] & 0x03) << 4) | (in[1] >> 4)];
-		*pos++ = base64_table[((in[1] & 0x0f) << 2) | (in[2] >> 6)];
-		*pos++ = base64_table[in[2] & 0x3f];
-		in += 3;
-	}
-
-	if (end - in) {
-		*pos++ = base64_table[in[0] >> 2];
-		if (end - in == 1) {
-			*pos++ = base64_table[(in[0] & 0x03) << 4];
-			*pos++ = '=';
-		} else {
-			*pos++ = base64_table[((in[0] & 0x03) << 4) |
-					      (in[1] >> 4)];
-			*pos++ = base64_table[(in[1] & 0x0f) << 2];
-		}
-		*pos++ = '=';
-	}
-
-	*pos = '\0';
-	if (out_len)
-		*out_len = pos - out;
-	return out;
+    size_t targetsize = 4 * ((len + 2) / 3) + 1;
+    unsigned char *target = xmalloc(targetsize + 1);
+    int rc = b64_ntop(src, len, (char *)target, targetsize);
+    if (rc < 0) {
+        xfree(target);
+        if (out_len)
+            *out_len = 0;
+        return 0;
+    } else {
+        if (out_len)
+            *out_len = rc;
+        return target;
+    }
 }
 
 
-/**
- * base64_decode - Base64 decode
- * src: Data to be decoded
- * len: Length of the data to be decoded
- * out_len: Pointer to output length variable
- * Returns: Allocated buffer of out_len bytes of decoded data,
- * or NULL on failure
- *
- * Caller is responsible for freeing the returned buffer.
- */
-unsigned char *base64_xdecode(const unsigned char *src, size_t len,
-			      size_t *out_len)
+unsigned char *base64_xdecode(const unsigned char *src, size_t *out_len)
 {
-	unsigned char	dtable[256], *out, *pos, in[4], block[4], tmp;
-	size_t		i, count, olen;
-
-	memset(dtable, 0x80, 256);
-	for (i = 0; i < sizeof(base64_table) - 1; i++)
-		dtable[base64_table[i]] = (unsigned char) i;
-	dtable['='] = 0;
-
-	count = 0;
-	for (i = 0; i < len; i++) {
-		if (dtable[src[i]] != 0x80)
-			count++;
-	}
-
-	if (count == 0 || count % 4)
-		return NULL;
-
-	olen = count / 4 * 3;
-	pos = out = xmalloc(olen);
-	if (out == NULL)
-		return NULL;
-
-	count = 0;
-	for (i = 0; i < len; i++) {
-		tmp = dtable[src[i]];
-		if (tmp == 0x80)
-			continue;
-
-		in[count] = src[i];
-		block[count] = tmp;
-		count++;
-		if (count == 4) {
-			*pos++ = (block[0] << 2) | (block[1] >> 4);
-			*pos++ = (block[1] << 4) | (block[2] >> 2);
-			*pos++ = (block[2] << 6) | block[3];
-			count = 0;
-		}
-	}
-
-	if (pos > out) {
-		if (in[2] == '=')
-			pos -= 2;
-		else if (in[3] == '=')
-			pos--;
-	}
-
-	if (out_len)
-		*out_len = pos - out;
-	return out;
+    size_t target_size = b64_pton(src, 0, 0);
+    unsigned char *target = xmalloc(target_size + 1);
+    int rc = b64_pton(src, target, target_size);
+    if (rc < 0) {
+        xfree(target);
+        if (out_len)
+            *out_len = 0;
+        return 0;
+    } else {
+        if (out_len)
+            *out_len = strlen(target);
+        return target;
+    }
 }

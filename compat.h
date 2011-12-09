@@ -38,11 +38,11 @@ typedef uint64_t u_int64_t;
 #endif
 
 #ifndef HAVE_PATHS_H
-#define	_PATH_BSHELL	"/bin/sh"
-#define	_PATH_TMP	"/tmp/"
-#define _PATH_DEVNULL	"/dev/null"
-#define _PATH_TTY	"/dev/tty"
-#define _PATH_DEV	"/dev/"
+#define _PATH_BSHELL    "/bin/sh"
+#define _PATH_TMP   "/tmp/"
+#define _PATH_DEVNULL   "/dev/null"
+#define _PATH_TTY   "/dev/tty"
+#define _PATH_DEV   "/dev/"
 #endif
 
 #ifdef HAVE_QUEUE_H
@@ -100,9 +100,9 @@ typedef uint64_t u_int64_t;
 #ifdef BROKEN_CMSG_FIRSTHDR
 #undef CMSG_FIRSTHDR
 #define CMSG_FIRSTHDR(mhdr) \
-	((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
-	    (struct cmsghdr *)(mhdr)->msg_control :	    \
-	    (struct cmsghdr *)NULL)
+    ((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
+        (struct cmsghdr *)(mhdr)->msg_control :     \
+        (struct cmsghdr *)NULL)
 #endif
 
 #ifndef CMSG_ALIGN
@@ -134,22 +134,22 @@ typedef uint64_t u_int64_t;
 #endif
 
 #ifndef timercmp
-#define	timercmp(tvp, uvp, cmp)						\
-	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
-	    ((tvp)->tv_usec cmp (uvp)->tv_usec) :			\
-	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
+#define timercmp(tvp, uvp, cmp)                     \
+    (((tvp)->tv_sec == (uvp)->tv_sec) ?             \
+        ((tvp)->tv_usec cmp (uvp)->tv_usec) :           \
+        ((tvp)->tv_sec cmp (uvp)->tv_sec))
 #endif
 
 #ifndef timeradd
-#define	timeradd(tvp, uvp, vvp)						\
-	do {								\
-		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
-		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
-		if ((vvp)->tv_usec >= 1000000) {			\
-			(vvp)->tv_sec++;				\
-			(vvp)->tv_usec -= 1000000;			\
-		}							\
-	} while (0)
+#define timeradd(tvp, uvp, vvp)                     \
+    do {                                \
+        (vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;      \
+        (vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;   \
+        if ((vvp)->tv_usec >= 1000000) {            \
+            (vvp)->tv_sec++;                \
+            (vvp)->tv_usec -= 1000000;          \
+        }                           \
+    } while (0)
 #endif
 
 #ifndef TTY_NAME_MAX
@@ -163,77 +163,82 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_CLOSEFROM
 /* closefrom.c */
-void	closefrom(int);
+void    closefrom(int);
 #endif
 
 #ifndef HAVE_STRCASESTR
 /* strcasestr.c */
-char		*strcasestr(const char *, const char *);
+char        *strcasestr(const char *, const char *);
 #endif
 
 #ifndef HAVE_STRSEP
 /* strsep.c */
-char		*strsep(char **, const char *);
+char        *strsep(char **, const char *);
 #endif
 
 #ifndef HAVE_STRTONUM
 /* strtonum.c */
-long long	 strtonum(const char *, long long, long long, const char **);
+long long    strtonum(const char *, long long, long long, const char **);
 #endif
 
 #ifndef HAVE_STRLCPY
 /* strlcpy.c */
-size_t	 	 strlcpy(char *, const char *, size_t);
+size_t       strlcpy(char *, const char *, size_t);
 #endif
 
 #ifndef HAVE_STRLCAT
 /* strlcat.c */
-size_t	 	 strlcat(char *, const char *, size_t);
+size_t       strlcat(char *, const char *, size_t);
 #endif
 
 #ifndef HAVE_DAEMON
 /* daemon.c */
-int	 	 daemon(int, int);
+int      daemon(int, int);
 #endif
 
 #ifndef HAVE_B64_NTOP
 /* b64_ntop.c */
-int		 b64_ntop(const char *, size_t, char *, size_t);
+int      b64_ntop(const char *, size_t, char *, size_t);
+#endif
+
+#ifndef HAVE_B64_PTON
+/* b64_pton.c */
+int      b64_pton(char const *src, uint8_t *target, size_t targsize);
 #endif
 
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
 #include <sys/ioctl.h>
-pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
+pid_t        forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 
 #ifndef HAVE_ASPRINTF
 /* asprintf.c */
-int		 asprintf(char **, const char *, ...);
-int		 vasprintf(char **, const char *, va_list);
+int      asprintf(char **, const char *, ...);
+int      vasprintf(char **, const char *, va_list);
 #endif
 
 #ifndef HAVE_FGETLN
 /* fgetln.c */
-char		*fgetln(FILE *, size_t *);
+char        *fgetln(FILE *, size_t *);
 #endif
 
 #ifndef HAVE_SETENV
 /* setenv.c */
-int		 setenv(const char *, const char *, int);
-int		 unsetenv(const char *);
+int      setenv(const char *, const char *, int);
+int      unsetenv(const char *);
 #endif
 
 #ifdef HAVE_GETOPT
 #include <getopt.h>
 #else
 /* getopt.c */
-extern int	BSDopterr;
-extern int	BSDoptind;
-extern int	BSDoptopt;
-extern int	BSDoptreset;
+extern int  BSDopterr;
+extern int  BSDoptind;
+extern int  BSDoptopt;
+extern int  BSDoptreset;
 extern char    *BSDoptarg;
-int	BSDgetopt(int, char *const *, const char *);
+int BSDgetopt(int, char *const *, const char *);
 #define getopt(ac, av, o)  BSDgetopt(ac, av, o)
 #define opterr             BSDopterr
 #define optind             BSDoptind

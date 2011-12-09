@@ -1679,9 +1679,8 @@ int client_main(int, char **, int);
 
 /* base64.c */
 unsigned char *base64_xencode(const unsigned char *src, size_t len,
-	size_t *out_len);
-unsigned char *base64_xdecode(const unsigned char *src, size_t len,
-	size_t *out_len);
+    size_t *out_len);
+unsigned char *base64_xdecode(const unsigned char *src, size_t *out_len);
 
 /* control.c */
 void control_start(struct client *);

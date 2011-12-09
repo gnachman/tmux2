@@ -39,27 +39,6 @@ const struct cmd_entry cmd_send_keys_entry = {
     cmd_send_keys_exec
 };
 
-static int
-hextoint(char hex)
-{
-    if (hex >= '0' && hex <= '9') {
-        return hex - '0';
-    }
-    if (hex >= 'a' && hex <= 'f') {
-        return hex - 'a' + 10;
-    }
-    if (hex >= 'A' && hex <= 'F') {
-        return hex - 'A' + 10;
-    }
-    return 0;
-}
-
-static int
-hexdecode(char *hex)
-{
-    return hextoint(hex[0]) * 16 + hextoint(hex[1]);
-}
-
 int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -78,14 +57,12 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
         str = args->argv[i];
 
         if (b64) {
-	    unsigned char *bytes = base64_xdecode(args->argv[i],
-						  strlen(args->argv[i]),
-						  NULL);
-	    if (bytes) {
-		for (int j = 0; bytes[j]; j++)
-		    window_pane_key(wp, s, bytes[j]);
-		xfree(bytes);
-	    }
+            unsigned char *bytes = base64_xdecode(args->argv[i], NULL);
+            if (bytes) {
+                for (int j = 0; bytes[j]; j++)
+                    window_pane_key(wp, s, bytes[j]);
+                xfree(bytes);
+            }
         } else if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
                 window_pane_key(wp, s, key);
         } else {

@@ -766,7 +766,7 @@ input_parse(struct window_pane *wp)
         }
         if (ictx->state != &input_state_ground) {
             /* Not in ground state, so save input. */
-            ds_appendl(&ictx->input_since_ground, &ictx->ch, 1);
+            ds_appendl(&ictx->input_since_ground, (const char *) &ictx->ch, 1);
         }
     }
 
