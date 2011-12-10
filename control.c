@@ -178,7 +178,7 @@ control_write_b64(struct client *c, const char *buf, int len)
     // hacky instead of base 64
     for (int i = 0; i < len; i++) {
         char temp[3];
-        snprintf(temp, sizeof(temp), "%02x", (int)buf[i]);
+        snprintf(temp, sizeof(temp), "%02x", ((int) buf[i]) & 0xff);
         control_write(c, temp, 2);
     }
 }
