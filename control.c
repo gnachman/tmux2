@@ -217,13 +217,7 @@ control_write_window(struct client *c, struct window *w)
 void
 control_write_window_pane(struct client *c, struct window_pane *wp)
 {
-    u_int i = -1;
-    window_index(wp->window, &i);
-    control_write_printf(c, "%u", i);
-    control_write_str(c, ".");
-    u_int j = -1;
-    window_pane_index(wp, &j);
-    control_write_printf(c, "%u", j);
+    control_write_printf(c, "%%%u", wp->id);
 }
 
 void
@@ -296,8 +290,11 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 
     for (int i = 0; i < num_layouts_changed; i++) {
         struct window *w = layouts_changed[i];
-        if (w) {
-            const char *template = "%layout-change #{window_index} "
+        /* When the last pane in a window is closed it won't have a layout root and
+         * we don't need to inform the client about its layout change because the whole
+         * window will go away soon. */
+        if (w && w->layout_root) {
+            const char *template = "%layout-change #{window_id} "
                 "#{window_layout_ex}\n";
             ft = format_create();
             wl = winlink_find_by_window(&c->session->windows, w);

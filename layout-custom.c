@@ -81,18 +81,13 @@ layout_append(struct layout_cell *lc, int detail, char *buf, size_t len)
 
     if (len == 0)
         return (-1);
-
-    if (detail == 0) {
         tmplen = xsnprintf(tmp, sizeof tmp,
             "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff);
     } else {
         if (lc->wp) {
-            u_int idx;
-            if (window_pane_index(lc->wp, &idx) != 0)
-                return (-1);
             tmplen = xsnprintf(tmp, sizeof tmp,
                 "%ux%u,%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff,
-                idx);
+                lc->wp->id);
         } else {
             tmplen = xsnprintf(tmp, sizeof tmp,
                 "%ux%u,%u,%u,na", lc->sx, lc->sy, lc->xoff, lc->yoff);

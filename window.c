@@ -56,6 +56,7 @@ struct windows windows;
 /* Global panes tree. */
 struct window_pane_tree all_window_panes;
 u_int   next_window_pane;
+u_int   next_window;
 
 void    window_pane_read_callback(struct bufferevent *, void *);
 void    window_pane_error_callback(struct bufferevent *, short, void *);
@@ -252,6 +253,7 @@ window_create1(u_int sx, u_int sy)
     u_int        i;
 
     w = xcalloc(1, sizeof *w);
+    w->id = next_window++;
     w->name = NULL;
     w->flags = 0;
 

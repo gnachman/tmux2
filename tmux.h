@@ -861,6 +861,7 @@ RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
 struct window {
+    u_int            id;
     char        *name;
     struct event     name_timer;
     struct timeval   silence_timer;

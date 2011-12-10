@@ -101,9 +101,9 @@ cmd_list_windows_session(
                 "#{?window_active, (active),}";
             break;
         case 2:
-            ctx->print(ctx, "session_name\twindow_index\twindow_name\twindow_width\t"
+            ctx->print(ctx, "session_name\twindow_id\twindow_name\twindow_width\t"
                        "window_height\twindow_layout\twindow_active");
-            template = "#{session_name}\t#{window_index}\t"
+            template = "#{session_name}\t#{window_id}\t"
                 "#{window_name}\t"
                 "#{window_width}\t#{window_height}\t"
                 "#{window_layout_ex}\t"
