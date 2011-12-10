@@ -409,7 +409,7 @@ void control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
 
     wwl = &session->windows;
     RB_FOREACH(wl, winlinks, wwl) {
-        const char *template = "#{window_index} #{window_layout_ex}";
+        const char *template = "#{window_id} #{window_layout_ex}";
         ft = format_create();
         format_winlink(ft, session, wl);
         ctx->print(ctx, "%s", format_expand(ft, template));
