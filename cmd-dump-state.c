@@ -73,16 +73,12 @@ dump_state_bits(struct cmd_ctx *ctx, bitstr_t *value, int length, const char *na
 }
 
 static void
-dump_state_binstr(struct cmd_ctx *ctx, char *str, int length, char *name)
+dump_state_string(struct cmd_ctx *ctx, char *str, const char *name)
 {
     struct dstring ds;
     ds_init(&ds);
 
-    for (int i = 0; i < length; i++) {
-        ds_appendf(&ds, "%02x", ((int) str[i]) & 0xff);
-    }
-
-    ctx->print(ctx, "%s=%s", name, ds.buffer);
+    ctx->print(ctx, "%s=%s", name, str);
     ds_free(&ds);
 }
 
@@ -112,6 +108,7 @@ cmd_dump_state_exec(struct cmd *self, struct cmd_ctx *ctx)
     dump_state_uint(ctx, wp->base.sel.sy, "selection_start_y");
     dump_state_uint(ctx, wp->base.sel.ex, "selection_end_x");
     dump_state_uint(ctx, wp->base.sel.ey, "selection_end_y");
+    dump_state_string(ctx, wp->base.title, "title");
 
     /* This is the saved cursor position from CSI DECSC. */
     dump_state_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
