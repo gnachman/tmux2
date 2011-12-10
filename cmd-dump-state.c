@@ -102,12 +102,6 @@ cmd_dump_state_exec(struct cmd *self, struct cmd_ctx *ctx)
     dump_state_uint(ctx, wp->base.rupper, "scroll_region_upper");
     dump_state_uint(ctx, wp->base.rlower, "scroll_region_lower");
     dump_state_bits(ctx, wp->base.tabs, wp->base.grid->sx, "tabstops");
-    dump_state_int(ctx, wp->base.sel.flag, "has_selection");
-    dump_state_int(ctx, wp->base.sel.rectflag, "has_rectangular_selection");
-    dump_state_uint(ctx, wp->base.sel.sx, "selection_start_x");
-    dump_state_uint(ctx, wp->base.sel.sy, "selection_start_y");
-    dump_state_uint(ctx, wp->base.sel.ex, "selection_end_x");
-    dump_state_uint(ctx, wp->base.sel.ey, "selection_end_y");
     dump_state_string(ctx, wp->base.title, "title");
 
     /* This is the saved cursor position from CSI DECSC. */
