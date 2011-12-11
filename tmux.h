@@ -1679,6 +1679,7 @@ int cmd_string_parse(const char *, struct cmd_list **, char **);
 int client_main(int, char **, int);
 
 /* control.c */
+void control_init(void);
 void control_start(struct client *);
 void control_write(struct client *c, const char *buf, int len);
 void control_write_str(struct client* c, const char* str);
@@ -1691,7 +1692,7 @@ void control_broadcast_input(struct window_pane *wp, const u_char *buf,
     size_t len);
 void control_set_spontaneous_messages_allowed(int allowed);
 void control_notify_layout_change(struct window *w);
-void control_notify_window_added(void);
+void control_notify_window_added(u_int id);
 void control_notify_window_removed(struct window *w);
 void control_broadcast_queue(void);
 void control_handshake(struct client *c);

@@ -26,7 +26,15 @@
 #include "tmux.h"
 
 typedef void control_write_cb(struct client *c, void *user_data);
-static int windows_changed;
+
+struct window_change {
+    u_int window_id;
+    enum { WINDOW_CREATED, WINDOW_CLOSED } action;
+    TAILQ_ENTRY(window_change) entry;
+};
+TAILQ_HEAD(, window_change) window_changes;
+
+static int num_window_changes;
 static struct window **layouts_changed;
 static int num_layouts_changed;
 static int spontaneous_message_allowed;
@@ -207,14 +215,6 @@ control_write_printf(struct client *c, const char *format, ...)
 }
 
 void
-control_write_window(struct client *c, struct window *w)
-{
-    u_int i = -1;
-    window_index(w, &i);
-    control_write_printf(c, "%u", i);
-}
-
-void
 control_write_window_pane(struct client *c, struct window_pane *wp)
 {
     control_write_printf(c, "%%%u", wp->id);
@@ -331,25 +331,46 @@ control_notify_layout_change(struct window *w)
 void
 control_notify_window_removed(struct window *w)
 {
+    struct window_change *change;
+
     for (int i = 0; i < num_layouts_changed; i++) {
         if (layouts_changed[i] == w) {
             layouts_changed[i] = NULL;
             break;
         }
     }
+    /* If there is a WINDOW_ADDED change, remove it and return. */
+    TAILQ_FOREACH(change, &window_changes, entry) {
+        if (change->window_id == w->id) {
+            TAILQ_REMOVE(&window_changes, change, entry);
+            xfree(change);
+            return;
+        }
+    }
+
+    /* Add a WINDOW_CLOSED change. */
+    change = xmalloc(sizeof(struct window_change));
+    change->window_id = w->id;
+    change->action = WINDOW_CLOSED;
+    TAILQ_INSERT_TAIL(&window_changes, change, entry);
+
     control_notify_windows_changed();
 }
 
 void
-control_notify_window_added(void)
+control_notify_window_added(u_int id)
 {
+    struct window_change *change = xmalloc(sizeof(struct window_change));
+    change->window_id = id;
+    change->action = WINDOW_CREATED;
+    TAILQ_INSERT_TAIL(&window_changes, change, entry);
+
     control_notify_windows_changed();
 }
 
 static void
 control_notify_windows_changed(void)
 {
-    windows_changed = 1;
     if (spontaneous_message_allowed) {
         control_broadcast_queue();
     }
@@ -358,6 +379,8 @@ control_notify_windows_changed(void)
 static void
 control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
+    struct window_change *change;
+
     if (!(c->flags & CLIENT_CONTROL_READY)) {
         /* Don't issue spontaneous commands until the remote client has
          * finished its initalization. It's ok because the remote client should
@@ -366,7 +389,19 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
         return;
     }
 
-    control_write_str(c, "%windows-change\n");
+    TAILQ_FOREACH(change, &window_changes, entry) {
+        switch (change->action) {
+            case WINDOW_CREATED:
+                control_write_str(c, "%window-add ");
+                control_write_printf(c, "%u\n", change->window_id);
+                break;
+
+            case WINDOW_CLOSED:
+                control_write_str(c, "%window-close ");
+                control_write_printf(c, "%u\n", change->window_id);
+                break;
+        }
+    }
 }
 
 void control_broadcast_queue(void)
@@ -377,9 +412,13 @@ void control_broadcast_queue(void)
         xfree(layouts_changed);
         layouts_changed = NULL;
     }
-    if (windows_changed) {
+    if (!TAILQ_EMPTY(&window_changes)) {
+        struct window_change *change;
         control_foreach_client(control_write_windows_change_cb, NULL);
-        windows_changed = 0;
+        while ((change = TAILQ_FIRST(&window_changes))) {
+            TAILQ_REMOVE(&window_changes, change, entry);
+            xfree(change);
+        }
     }
 }
 
@@ -414,4 +453,9 @@ void control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
         format_winlink(ft, session, wl);
         ctx->print(ctx, "%s", format_expand(ft, template));
     }
+}
+
+void control_init(void)
+{
+    TAILQ_INIT(&window_changes);
 }

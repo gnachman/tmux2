@@ -279,7 +279,7 @@ window_create1(u_int sx, u_int sy)
     if (i == ARRAY_LENGTH(&windows))
         ARRAY_ADD(&windows, w);
     w->references = 0;
-    control_notify_window_added();
+    control_notify_window_added(w->id);
 
     return (w);
 }
