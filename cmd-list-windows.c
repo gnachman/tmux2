@@ -34,7 +34,7 @@ void    cmd_list_windows_session(
 
 const struct cmd_entry cmd_list_windows_entry = {
     "list-windows", "lsw",
-    "CaF:t:", 0, 0,
+    "I:CaF:t:", 0, 0,
     "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
     0,
     NULL,
@@ -82,6 +82,8 @@ cmd_list_windows_session(
     struct format_tree  *ft;
     const char      *template;
     char            *line;
+    int             has_window_id;
+    u_int           window_id;
 
     template = args_get(args, 'F');
     if (template == NULL) {
@@ -112,8 +114,21 @@ cmd_list_windows_session(
         }
     }
 
+    if (args_has(args, 'I')) {
+        has_window_id = 1;
+        char *cause;
+        window_id = args_strtonum(args, 'I', 0, INT_MAX, &cause);
+        if (cause) {
+            xfree(cause);
+            return;
+        }
+    } else
+        has_window_id = 0;
     n = 0;
     RB_FOREACH(wl, winlinks, &s->windows) {
+        if (has_window_id && window_id != wl->window->id)
+            continue;
+
         ft = format_create();
         format_add(ft, "line", "%u", n);
         format_session(ft, s);
