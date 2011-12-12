@@ -617,7 +617,8 @@ layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
  * split. This must be followed by layout_assign_pane before much else happens!
  **/
 struct layout_cell *
-layout_split_pane(struct window_pane *wp, enum layout_type type, int size)
+layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
+                  int insert_before)
 {
     struct layout_cell     *lc, *lcparent, *lcnew;
     u_int           sx, sy, xoff, yoff, size1, size2;
@@ -652,7 +653,11 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size)
 
         /* Create the new child cell. */
         lcnew = layout_create_cell(lc->parent);
-        TAILQ_INSERT_AFTER(&lc->parent->cells, lc, lcnew, entry);
+        if (insert_before) {
+            TAILQ_INSERT_BEFORE(lc, lcnew, entry);
+        } else {
+            TAILQ_INSERT_AFTER(&lc->parent->cells, lc, lcnew, entry);
+        }
     } else {
         /*
          * Otherwise create a new parent and insert it.
@@ -673,7 +678,11 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size)
 
         /* Create the new child cell. */
         lcnew = layout_create_cell(lcparent);
-        TAILQ_INSERT_TAIL(&lcparent->cells, lcnew, entry);
+        if (insert_before) {
+            TAILQ_INSERT_HEAD(&lcparent->cells, lcnew, entry);
+        } else {
+            TAILQ_INSERT_TAIL(&lcparent->cells, lcnew, entry);
+        }
     }
 
     /* Set new cell sizes.  size is the target size or -1 for middle split,

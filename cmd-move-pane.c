@@ -1,7 +1,7 @@
 /* $Id$ */
 
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2011 George Nachman <tmux@georgester.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,40 +24,32 @@
 #include "tmux.h"
 
 /*
- * Split a window (add a new pane).
+ * Move a pane by splitting another pane and moving it into the new split.
  */
 
-void    cmd_split_window_key_binding(struct cmd *, int);
-int cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
+void    cmd_move_pane_key_binding(struct cmd *, int);
+int cmd_move_pane_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_split_window_entry = {
-    "split-window", "splitw",
-    "dl:hp:Pt:v", 0, 1,
-    "[-dhvP] [-p percentage|-l size] [-t target-pane] [command]",
+const struct cmd_entry cmd_move_pane_entry = {
+    "move-pane", "movew",
+    "bs:dl:hp:Pt:v", 0, 0,
+    "[-bdhvP] [-p percentage|-l size] [-t target-pane] [-s source-pane]",
     0,
-    cmd_split_window_key_binding,
     NULL,
-    cmd_split_window_exec
+    NULL,
+    cmd_move_pane_exec
 };
 
-void
-cmd_split_window_key_binding(struct cmd *self, int key)
-{
-    self->args = args_create(0);
-    if (key == '%')
-        args_set(self->args, 'h', NULL);
-}
-
 int
-cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_move_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
     struct args     *args = self->args;
     struct session      *s;
     struct winlink      *wl;
+    struct winlink      *src_wl;
     struct window       *w;
-    struct window_pane  *wp, *new_wp = NULL;
-    struct environ       env;
-    char            *cmd, *cwd, *cause, *new_cause;
+    struct window_pane  *src_wp, *wp, *new_wp = NULL;
+    char            *cause, *new_cause;
     const char      *shell;
     u_int            hlimit, paneidx;
     int          size, percentage;
@@ -68,22 +60,10 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
         return (-1);
     w = wl->window;
 
-    environ_init(&env);
-    environ_copy(&global_environ, &env);
-    environ_copy(&s->environ, &env);
-    server_fill_environ(s, &env);
-
-    if (args->argc == 0)
-        cmd = options_get_string(&s->options, "default-command");
-    else
-        cmd = args->argv[0];
-    cwd = options_get_string(&s->options, "default-path");
-    if (*cwd == '\0') {
-        if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
-            cwd = ctx->cmdclient->cwd;
-        else
-            cwd = s->cwd;
-    }
+    if ((src_wl = cmd_find_pane(ctx, args_get(args, 's'), &s, &src_wp)) == NULL)
+        return (-1);
+    if (args->argc > 0)
+        return (-1);
 
     type = LAYOUT_TOPBOTTOM;
     if (args_has(args, 'h'))
@@ -117,14 +97,39 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
     if (*shell == '\0' || areshell(shell))
         shell = _PATH_BSHELL;
 
-    if ((lc = layout_split_pane(wp, type, size, 0)) == NULL) {
+    if ((lc = layout_split_pane(wp, type, size, (int) args_has(args, 'b'))) == NULL) {
         cause = xstrdup("pane too small");
         goto error;
     }
-    new_wp = window_add_pane(w, hlimit);
-    if (window_pane_spawn(
-        new_wp, cmd, shell, cwd, &env, s->tio, &cause) != 0)
-        goto error;
+    /* Move an existing window pane */
+    struct window *src_w;
+
+    /* Close the source pane */
+    src_w = src_wl->window;
+    TAILQ_REMOVE(&src_w->panes, src_wp, entry);
+    if (src_wp == src_w->active) {
+        src_w->active = w->last;
+        src_w->last = NULL;
+        if (src_w->active == NULL) {
+            src_w->active = TAILQ_PREV(wp, window_panes, entry);
+            if (src_w->active == NULL)
+                src_w->active = TAILQ_NEXT(wp, entry);
+        }
+    } else if (src_wp == src_w->last)
+        src_w->last = NULL;
+    layout_close_pane(src_wp);
+
+    /* If this was the last pane in the source window, close the window. */
+    if (window_count_panes(src_w) == 0)
+        server_kill_window(src_w);
+
+    /* Add the source pane to its new window */
+    if (TAILQ_EMPTY(&w->panes))
+        TAILQ_INSERT_HEAD(&w->panes, src_wp, entry);
+    else
+        TAILQ_INSERT_AFTER(&w->panes, w->active, src_wp, entry);
+    new_wp = src_wp;
+
     layout_assign_pane(lc, new_wp);
 
     server_redraw_window(w);
@@ -136,8 +141,6 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
     } else
         server_status_session(s);
 
-    environ_free(&env);
-
     if (args_has(args, 'P')) {
         if (window_pane_index(new_wp, &paneidx) != 0)
             fatalx("index not found");
@@ -147,7 +150,6 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
     return (0);
 
 error:
-    environ_free(&env);
     if (new_wp != NULL)
         window_remove_pane(w, new_wp);
     ctx->error(ctx, "create pane failed: %s", cause);
