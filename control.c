@@ -392,13 +392,13 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
     TAILQ_FOREACH(change, &window_changes, entry) {
         switch (change->action) {
             case WINDOW_CREATED:
-                control_write_str(c, "%window-add ");
-                control_write_printf(c, "%u\n", change->window_id);
+                control_write_printf(c, "%%window-add %u\n",
+                                     change->window_id);
                 break;
 
             case WINDOW_CLOSED:
-                control_write_str(c, "%window-close ");
-                control_write_printf(c, "%u\n", change->window_id);
+                control_write_printf(c, "%%window-close %u\n",
+                                     change->window_id);
                 break;
         }
     }
