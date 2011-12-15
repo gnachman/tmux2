@@ -598,6 +598,21 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
             return (wl);
     }
 
+    /* Look up by window ID. @n gives an id. */
+    if (name[0] == '@') {
+        struct winlink *c_wl;
+        errstr = NULL;
+        u_int id = strtonum(name + 1, 0, INT_MAX, &errstr);
+        if (errstr == NULL) {
+            RB_FOREACH(c_wl, winlinks, &s->windows) {
+                if (c_wl->window->id == id) {
+                    return (c_wl);
+                    break;
+                }
+            }
+        }
+    }
+
     /* Look for exact matches, error if more than one. */
     wlfound = NULL;
     RB_FOREACH(wl, winlinks, &s->windows) {
