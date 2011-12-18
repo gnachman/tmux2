@@ -47,49 +47,87 @@ static char *
 dump_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 {
     int           o;
-    int           i;
+    unsigned int  i;
     unsigned char c;
 
     o = 0;
-    for (i = 0; i < utf8data->width; i++) {
+    size_t size = grid_utf8_size(utf8data);
+    for (i = 0; i < size; i++) {
         c = utf8data->data[i];
-        sprintf(buffer + o, "[%02x]", (int)c);
+        sprintf(buffer + o, "%02x", (int)c);
         o += 2;
     }
     return buffer;
 }
 
 static void
-dump_history_cell(struct dstring *output, struct grid_cell *celldata,
-                  struct grid_utf8 *utf8data, int *dump_context)
+dump_history_output_last_char(struct dstring *last_char, struct dstring *output,
+                              int *repeats)
 {
-    if (celldata->attr == dump_context[0] &&
-        celldata->flags == dump_context[1] &&
-        celldata->fg == dump_context[2] &&
-        celldata->bg == dump_context[3]) {
-        /* Don't repeat context if it's the same as the last character. */
-        if (celldata->flags & GRID_FLAG_UTF8) {
-            char temp[DUMP_HISTORY_UTF8_BUFFER_SIZE];
-            ds_appendf(output, "%s", dump_history_encode_utf8(utf8data, temp));
-        } else {
-            ds_appendf(output, "%x", celldata->data);
+    if (last_char->used > 0) {
+        ds_append(output, last_char->buffer);
+        if (*repeats == 2 && last_char->used <= 3) {
+            /* If an ASCII code repeats once then it's shorter to print it
+             * twice than to use the run-length encoding. */
+            ds_append(output, last_char->buffer);
+        } else if (*repeats > 1) {
+            /* Output "*<n> " to indicate that the last character repeats
+             * <n> times. For instance, "AAA" is represented as "61*3". */
+            ds_appendf(output, "*%d ", *repeats);
         }
+        ds_truncate(last_char, 0);
+    }
+}
+
+static void
+dump_history_append_char(struct grid_cell *celldata, struct grid_utf8 *utf8data,
+                         struct dstring *last_char, int *repeats,
+                         struct dstring *output)
+{
+    struct dstring ds;
+    ds_init(&ds);
+
+    if (celldata->flags & GRID_FLAG_UTF8) {
+        char temp[DUMP_HISTORY_UTF8_BUFFER_SIZE + 3];
+        dump_history_encode_utf8(utf8data, temp);
+        ds_appendf(&ds, "[%s]", dump_history_encode_utf8(utf8data, temp));
     } else {
+        ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
+    }
+    if (last_char->used > 0 && !strcmp(ds.buffer, last_char->buffer)) {
+        /* Last character repeated */
+        (*repeats)++;
+    } else {
+        /* Not a repeat */
+        dump_history_output_last_char(last_char, output, repeats);
+        ds_append(last_char, ds.buffer);
+        *repeats = 1;
+    }
+}
+
+static void
+dump_history_cell(struct dstring *output, struct grid_cell *celldata,
+                  struct grid_utf8 *utf8data, int *dump_context,
+                  struct dstring *last_char, int *repeats)
+{
+    /* Exclude the GRID_FLAG_UTF8 flag because it's wasteful to output when
+     * UTF-8 chars are already marked by being enclosed in square brackets. */
+    int flags = celldata->flags & (GRID_FLAG_FG256 | GRID_FLAG_BG256 | GRID_FLAG_PADDING);
+    if (celldata->attr != dump_context[0] ||
+        flags != dump_context[1] ||
+        celldata->fg != dump_context[2] ||
+        celldata->bg != dump_context[3]) {
+        /* Context has changed since the last character. */
         dump_context[0] = celldata->attr;
-        dump_context[1] = celldata->flags;
+        dump_context[1] = flags;
         dump_context[2] = celldata->fg;
         dump_context[3] = celldata->bg;
 
-        if (celldata->flags & GRID_FLAG_UTF8) {
-            char temp[DUMP_HISTORY_UTF8_BUFFER_SIZE];
-            ds_appendf(output, ":%x,%x,%x,%x,%s", celldata->attr,
-                       celldata->flags, celldata->fg, celldata->bg,
-                       dump_history_encode_utf8(utf8data, temp));
-        } else {
-            ds_appendf(output, ":%x,%x,%x,%x,%x", celldata->attr,
-                       celldata->flags, celldata->fg, celldata->bg, celldata->data);
-        }
+        dump_history_output_last_char(last_char, output, repeats);
+        ds_appendf(output, ":%x,%x,%x,%x,", celldata->attr,
+                   celldata->flags, celldata->fg, celldata->bg);
     }
+    dump_history_append_char(celldata, utf8data, last_char, repeats, output);
 }
 
 static void
@@ -97,12 +135,18 @@ dump_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
                   int *dump_context)
 {
     unsigned int   i;
+    struct dstring last_char;
     struct dstring output;
+
     ds_init(&output);
+    ds_init(&last_char);
+    int repeats = 0;
     for (i = 0; i < linedata->cellsize; i++) {
         dump_history_cell(&output, linedata->celldata + i,
-                          linedata->utf8data + i, dump_context);
+                          linedata->utf8data + i, dump_context, &last_char,
+                          &repeats);
     }
+    dump_history_output_last_char(&last_char, &output, &repeats);
     if (linedata->flags & GRID_LINE_WRAPPED) {
         ds_appendf(&output, "+");
     }
