@@ -25,6 +25,9 @@
 
 #include "tmux.h"
 
+// TODO(georgen): Set this to 1 when it stabilizes
+#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.1"
+
 typedef void control_write_cb(struct client *c, void *user_data);
 
 struct window_change {
@@ -432,10 +435,12 @@ void control_set_spontaneous_messages_allowed(int allowed)
 
 void control_handshake(struct client *c)
 {
-    control_write_str(c, "\033_tmux1\033\\%noop If you can see this message, "
-                      "your terminal emulator does not support tmux mode. "
-                      "Type \"detach\" and press the enter key to return to "
-                      "your shell.\n");
+    control_write_str(c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
+                      "\033\\%noop If you can see this message, "
+                      "your terminal emulator does not support tmux mode "
+                      "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
+                      "\"detach\" and press the enter key to return to your "
+                      "shell.\n");
 }
 
 /* Print one line for each window in the session with the window number and the
