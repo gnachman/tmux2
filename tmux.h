@@ -1596,7 +1596,6 @@ extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_display_message_entry;
 extern const struct cmd_entry cmd_display_panes_entry;
 extern const struct cmd_entry cmd_down_pane_entry;
-extern const struct cmd_entry cmd_dump_history_entry;
 extern const struct cmd_entry cmd_dump_state_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
@@ -1658,7 +1657,6 @@ extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
 extern const struct cmd_entry cmd_split_window_entry;
 extern const struct cmd_entry cmd_start_server_entry;
-extern const struct cmd_entry cmd_start_control_entry;
 extern const struct cmd_entry cmd_suspend_client_entry;
 extern const struct cmd_entry cmd_swap_pane_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
@@ -1702,6 +1700,8 @@ void control_broadcast_queue(void);
 void control_handshake(struct client *c);
 void control_print_session_layouts(struct session *session,
     struct cmd_ctx *ctx);
+void control_set_kvp(const char *name, const char *value);
+char *control_get_kvp_value(const char *name);
 
 /* dstring.c */
 void ds_init(struct dstring *ds);

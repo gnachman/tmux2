@@ -37,6 +37,13 @@ struct window_change {
 };
 TAILQ_HEAD(, window_change) window_changes;
 
+struct kvp {
+    char *name;
+    char *value;
+    TAILQ_ENTRY(kvp) entry;
+};
+TAILQ_HEAD(, kvp) kvps;
+
 static struct window **layouts_changed;
 static int num_layouts_changed;
 static int spontaneous_message_allowed;
@@ -404,7 +411,8 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
     }
 }
 
-void control_broadcast_queue(void)
+void
+control_broadcast_queue(void)
 {
     if (num_layouts_changed) {
         control_foreach_client(control_write_layout_change_cb, NULL);
@@ -422,7 +430,8 @@ void control_broadcast_queue(void)
     }
 }
 
-void control_set_spontaneous_messages_allowed(int allowed)
+void
+control_set_spontaneous_messages_allowed(int allowed)
 {
     if (allowed && !spontaneous_message_allowed) {
         control_broadcast_queue();
@@ -430,7 +439,8 @@ void control_set_spontaneous_messages_allowed(int allowed)
     spontaneous_message_allowed = allowed;
 }
 
-void control_handshake(struct client *c)
+void
+control_handshake(struct client *c)
 {
     control_write_str(c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
                       "\033\\%noop If you can see this message, "
@@ -442,7 +452,8 @@ void control_handshake(struct client *c)
 
 /* Print one line for each window in the session with the window number and the
  * layout. */
-void control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
+void
+control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
 {
     struct format_tree  *ft;
     struct winlink      *wl;
@@ -457,7 +468,44 @@ void control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
     }
 }
 
+void
+control_set_kvp(const char *name, const char *value)
+{
+    struct kvp *new_kvp;
+    struct kvp *old_kvp;
+
+    /* Search for an existing kvp with this name and replace the value if
+     * found. */
+    TAILQ_FOREACH(old_kvp, &kvps, entry) {
+        if (!strcmp(old_kvp->name, name)) {
+            xfree(old_kvp->value);
+            old_kvp->value = xstrdup(value);
+            return;
+        }
+    }
+
+    /* Add a new kvp. */
+    new_kvp = xmalloc(sizeof(struct kvp));
+    new_kvp->name = xstrdup(name);
+    new_kvp->value = xstrdup(value);
+    TAILQ_INSERT_TAIL(&kvps, new_kvp, entry);
+}
+
+char *
+control_get_kvp_value(const char *name)
+{
+    struct kvp *current;
+
+    TAILQ_FOREACH(current, &kvps, entry) {
+        if (!strcmp(current->name, name)) {
+            return current->value;
+        }
+    }
+    return NULL;
+}
+
 void control_init(void)
 {
     TAILQ_INIT(&window_changes);
+    TAILQ_INIT(&kvps);
 }

@@ -78,7 +78,6 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
-	cmd-dump-history.c \
 	cmd-dump-state.c \
 	cmd-find-window.c \
 	cmd-has-session.c \
@@ -130,7 +129,6 @@ dist_tmux_SOURCES = \
 	cmd-show-options.c \
 	cmd-source-file.c \
 	cmd-split-window.c \
-	cmd-start-control.c \
 	cmd-start-server.c \
 	cmd-string.c \
 	cmd-suspend-client.c \

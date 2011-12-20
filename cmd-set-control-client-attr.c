@@ -31,7 +31,7 @@ int cmd_set_control_client_attr_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_control_client_attr_entry = {
     "set-control-client-attr", "setctlattr",
-    "", 2, 2,
+    "", 1, 2,
     "name value",
     0,
     NULL,
@@ -73,6 +73,8 @@ cmd_set_control_client_attr_exec(struct cmd *self, struct cmd_ctx *ctx)
     struct args     *args = self->args;
     const char      *name, *value;
     struct client   *c;
+    char            *temp;
+    char            *eq;
 
     c = cmd_find_client(ctx, NULL);
     if (!c)
@@ -83,14 +85,40 @@ cmd_set_control_client_attr_exec(struct cmd *self, struct cmd_ctx *ctx)
         ctx->error(ctx, "empty variable name");
         return (-1);
     }
-    value = args->argv[1];
+    if (args->argc < 2)
+        value = NULL;
+    else
+        value = args->argv[1];
 
     if (!strcmp(name, "client-size")) {
+        if (!value) {
+            ctx->error(ctx, "no value given");
+            return (-1);
+        }
         u_int w, h;
         if (parse_size(value, &w, &h))
             return (-1);
 
         set_client_size(c, w, h, ctx);
+    } else if (!strcmp(name, "ready")) {
+        c = cmd_find_client(ctx, NULL);
+        if (c)
+            c->flags |= CLIENT_CONTROL_READY;
+    } else if (!strcmp(name, "set")) {
+        if (!value) {
+            ctx->error(ctx, "no value given");
+            return (-1);
+        }
+        temp = xstrdup(value);
+        eq = strchr(temp, '=');
+        if (!eq) {
+            ctx->error(ctx, "no '=' found");
+            xfree(temp);
+            return (-1);
+        }
+        *eq = 0;
+        control_set_kvp(temp, eq + 1);
+        xfree(temp);
     } else
         return (-1);
 
