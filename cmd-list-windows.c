@@ -26,107 +26,107 @@
  * List windows on given session.
  */
 
-int cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
-void    cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
-void    cmd_list_windows_session(
-        struct cmd *, struct session *, struct cmd_ctx *, int);
+void	cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
+void	cmd_list_windows_session(
+		struct cmd *, struct session *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
-    "list-windows", "lsw",
-    "I:aF:t:", 0, 0,
-    "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
-    0,
-    NULL,
-    NULL,
-    cmd_list_windows_exec
+	"list-windows", "lsw",
+	"I:aF:t:", 0, 0,
+	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_list_windows_exec
 };
 
 int
 cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-    struct args *args = self->args;
-    struct session  *s;
+	struct args	*args = self->args;
+	struct session	*s;
 
-    if (args_has(args, 'a'))
-        cmd_list_windows_server(self, ctx);
-    else {
-        s = cmd_find_session(ctx, args_get(args, 't'), 0);
-        if (s == NULL)
-            return (-1);
-        cmd_list_windows_session(self, s, ctx, 0);
-    }
+	if (args_has(args, 'a'))
+		cmd_list_windows_server(self, ctx);
+	else {
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
+		if (s == NULL)
+			return (-1);
+		cmd_list_windows_session(self, s, ctx, 0);
+	}
 
-    return (0);
+	return (0);
 }
 
 void
 cmd_list_windows_server(struct cmd *self, struct cmd_ctx *ctx)
 {
-    struct session  *s;
+	struct session	*s;
 
-    RB_FOREACH(s, sessions, &sessions)
-        cmd_list_windows_session(self, s, ctx, 1);
+	RB_FOREACH(s, sessions, &sessions)
+		cmd_list_windows_session(self, s, ctx, 1);
 }
 
 void
 cmd_list_windows_session(
-    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
+	struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
 {
-    struct args     *args = self->args;
-    struct winlink      *wl;
-    u_int           n;
-    struct format_tree  *ft;
-    const char      *template;
-    char            *line;
-    int             has_window_id;
-    u_int           window_id;
+	struct args		*args = self->args;
+	struct winlink		*wl;
+	u_int			n;
+	struct format_tree	*ft;
+	const char		*template;
+	char			*line;
+	int			 has_window_id;
+	u_int		  	 window_id;
 
-    template = args_get(args, 'F');
-    if (template == NULL) {
-        switch (type) {
-        case 0:
-            template = "#{window_index}: "
-                "#{window_name} "
-                "[#{window_width}x#{window_height}] "
-                "[layout #{window_layout}]"
-                "#{?window_active, (active),}";
-            break;
-        case 1:
-            template = "#{session_name}:#{window_index}: "
-                "#{window_name} "
-                "[#{window_width}x#{window_height}] "
-                "[layout #{window_layout}]"
-                "#{?window_active, (active),}";
-            break;
-        }
-    }
+	template = args_get(args, 'F');
+	if (template == NULL) {
+		switch (type) {
+		case 0:
+			template = "#{window_index}: "
+				"#{window_name} "
+				"[#{window_width}x#{window_height}] "
+				"[layout #{window_layout}]"
+				"#{?window_active, (active),}";
+			break;
+		case 1:
+			template = "#{session_name}:#{window_index}: "
+				"#{window_name} "
+				"[#{window_width}x#{window_height}] "
+				"[layout #{window_layout}]"
+				"#{?window_active, (active),}";
+			break;
+		}
+	}
 
-    if (args_has(args, 'I')) {
-        has_window_id = 1;
-        char *cause;
-        window_id = args_strtonum(args, 'I', 0, INT_MAX, &cause);
-        if (cause) {
-            xfree(cause);
-            return;
-        }
-    } else
-        has_window_id = 0;
-    n = 0;
-    RB_FOREACH(wl, winlinks, &s->windows) {
-        if (has_window_id && window_id != wl->window->id)
-            continue;
+	if (args_has(args, 'I')) {
+		has_window_id = 1;
+		char *cause;
+		window_id = args_strtonum(args, 'I', 0, INT_MAX, &cause);
+		if (cause) {
+			xfree(cause);
+			return;
+		}
+	} else
+		has_window_id = 0;
+	n = 0;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (has_window_id && window_id != wl->window->id)
+			continue;
 
-        ft = format_create();
-        format_add(ft, "line", "%u", n);
-        format_session(ft, s);
-        format_winlink(ft, s, wl);
+		ft = format_create();
+		format_add(ft, "line", "%u", n);
+		format_session(ft, s);
+		format_winlink(ft, s, wl);
 
-        line = format_expand(ft, template);
-        ctx->print(ctx, "%s", line);
-        xfree(line);
+		line = format_expand(ft, template);
+		ctx->print(ctx, "%s", line);
+		xfree(line);
 
-        format_free(ft);
-        n++;
-    }
+		format_free(ft);
+		n++;
+	}
 }

@@ -28,21 +28,21 @@
  * like join-pane but without the different-windows requirement.
  */
 
-void    cmd_move_pane_key_binding(struct cmd *, int);
-int cmd_move_pane_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_move_pane_key_binding(struct cmd *, int);
+int	cmd_move_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_move_pane_entry = {
-    "move-pane", "movew",
-    "bdhvp:l:s:t:", 0, 0,
-    "[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
-    0,
-    NULL,
-    NULL,
-    cmd_move_pane_exec
+	"move-pane", "movew",
+	"bdhvp:l:s:t:", 0, 0,
+	"[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
+	0,
+	NULL,
+	NULL,
+	cmd_move_pane_exec
 };
 
 int
 cmd_move_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-    return join_pane(self, ctx, 0);
+	return join_pane(self, ctx, 0);
 }
