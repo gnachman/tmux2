@@ -34,7 +34,7 @@ void    cmd_list_windows_session(
 
 const struct cmd_entry cmd_list_windows_entry = {
     "list-windows", "lsw",
-    "I:CaF:t:", 0, 0,
+    "I:aF:t:", 0, 0,
     "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
     0,
     NULL,
@@ -54,10 +54,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
         s = cmd_find_session(ctx, args_get(args, 't'), 0);
         if (s == NULL)
             return (-1);
-        int type = 0;
-        if (args_has(args, 'C'))
-            type = 2;
-        cmd_list_windows_session(self, s, ctx, type);
+        cmd_list_windows_session(self, s, ctx, 0);
     }
 
     return (0);
@@ -101,15 +98,6 @@ cmd_list_windows_session(
                 "[#{window_width}x#{window_height}] "
                 "[layout #{window_layout}]"
                 "#{?window_active, (active),}";
-            break;
-        case 2:
-            ctx->print(ctx, "session_name\twindow_id\twindow_name\twindow_width\t"
-                       "window_height\twindow_layout\twindow_active");
-            template = "#{session_name}\t#{window_id}\t"
-                "#{window_name}\t"
-                "#{window_width}\t#{window_height}\t"
-                "#{window_layout_ex}\t"
-                "#{?window_active,1,0}";
             break;
         }
     }
