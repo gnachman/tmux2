@@ -35,7 +35,7 @@ int	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"Tdn:s:t:x:y:", 0, 1,
+	"dn:s:t:x:y:", 0, 1,
 	"[-d] [-n window-name] [-s session-name] [-t target-session] "
 	"[-x width] [-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
@@ -112,7 +112,12 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	/* Control clients don't have a tty, so avoid doing tty-ish things in that
 	 * case. */
-	hastty = !args_has(args, 'T');
+	if ((ctx->cmdclient && (ctx->cmdclient->flags & CLIENT_CONTROL)) ||
+		(ctx->curclient && (ctx->curclient->flags & CLIENT_CONTROL))) {
+		hastty = 0;
+	} else {
+		hastty = 1;
+	}
 
 	/*
 	 * Save the termios settings, part of which is used for new windows in
@@ -138,7 +143,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		overrides =
-		    options_get_string(&global_s_options, "terminal-overrides");
+			options_get_string(&global_s_options, "terminal-overrides");
 		if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
 			xfree(cause);
@@ -171,7 +176,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (detached) {
 		if (args_has(args, 'x')) {
 			sx = strtonum(
-			    args_get(args, 'x'), 1, USHRT_MAX, &errstr);
+				args_get(args, 'x'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "width %s", errstr);
 				return (-1);
@@ -179,7 +184,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		if (args_has(args, 'y')) {
 			sy = strtonum(
-			    args_get(args, 'y'), 1, USHRT_MAX, &errstr);
+				args_get(args, 'y'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "height %s", errstr);
 				return (-1);

@@ -26,6 +26,9 @@
 #include "tmux.h"
 
 // TODO(georgen): Set this to 1 when it stabilizes
+/*
+ * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
+ */
 #define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.1"
 
 typedef void control_write_cb(struct client *c, void *user_data);
@@ -104,8 +107,8 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 {
 	struct client		*c = data;
 	struct bufferevent	*out = c->stdout_event;
-	char		 	*line;
-	struct cmd_ctx	  	 ctx;
+	char			*line;
+	struct cmd_ctx		 ctx;
 	struct cmd_list		*cmdlist;
 	char			*cause;
 
@@ -225,7 +228,7 @@ control_write_window_pane(struct client *c, struct window_pane *wp)
 
 void
 control_write_input(struct client *c, struct window_pane *wp,
-		    const u_char *buf, int len)
+			const u_char *buf, int len)
 {
 	control_write_str(c, "%output ");
 	control_write_window_pane(c, wp);
@@ -260,8 +263,8 @@ control_write_input_cb(struct client *c, void *user_data)
 			if (ctx->wp->ictx.input_since_ground.used) {
 				/* There's a partial escape code in waiting. */
 				control_write_input(c, ctx->wp,
-				    ctx->wp->ictx.input_since_ground.buffer,
-				    ctx->wp->ictx.input_since_ground.used);
+					ctx->wp->ictx.input_since_ground.buffer,
+					ctx->wp->ictx.input_since_ground.used);
 			}
 		}
 		control_write_input(c, ctx->wp, ctx->buf, ctx->len);
@@ -299,7 +302,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 		 * window will go away soon. */
 		if (w && w->layout_root) {
 			const char *template = "%layout-change #{window_id} "
-			    "#{window_layout_ex}\n";
+				"#{window_layout_ex}\n";
 			ft = format_create();
 			wl = winlink_find_by_window(&c->session->windows, w);
 			format_winlink(ft, c->session, wl);
@@ -397,12 +400,12 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		switch (change->action) {
 			case WINDOW_CREATED:
 				control_write_printf(c, "%%window-add %u\n",
-						      change->window_id);
+							  change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
 				control_write_printf(c, "%%window-close %u\n",
-						     change->window_id);
+							 change->window_id);
 				break;
 		}
 	}
