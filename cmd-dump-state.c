@@ -106,7 +106,7 @@ dump_state_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 
 static void
 dump_state_history_output_last_char(struct dstring *last_char, struct dstring *output,
-				    int *repeats)
+					int *repeats)
 {
 	if (last_char->used > 0) {
 		ds_append(output, last_char->buffer);
@@ -125,8 +125,8 @@ dump_state_history_output_last_char(struct dstring *last_char, struct dstring *o
 
 static void
 dump_state_history_append_char(struct grid_cell *celldata, struct grid_utf8 *utf8data,
-			       struct dstring *last_char, int *repeats,
-			       struct dstring *output)
+				   struct dstring *last_char, int *repeats,
+				   struct dstring *output)
 {
 	struct dstring	ds;
 	ds_init(&ds);
@@ -160,9 +160,9 @@ dump_state_history_cell(struct dstring *output, struct grid_cell *celldata,
 	 * UTF-8 chars are already marked by being enclosed in square brackets. */
 	flags  = celldata->flags & (GRID_FLAG_FG256 | GRID_FLAG_BG256 | GRID_FLAG_PADDING);
 	if (celldata->attr != dump_context[0] ||
-	    flags != dump_context[1] ||
-	    celldata->fg != dump_context[2] ||
-	    celldata->bg != dump_context[3]) {
+		flags != dump_context[1] ||
+		celldata->fg != dump_context[2] ||
+		celldata->bg != dump_context[3]) {
 		/* Context has changed since the last character. */
 		dump_context[0] = celldata->attr;
 		dump_context[1] = flags;
@@ -212,8 +212,8 @@ dump_state_history(struct cmd *self, struct cmd_ctx *ctx)
 	unsigned int		 i;
 	unsigned int		 start, limit;
 	struct grid		*grid;
-	int 			 dump_context[DUMP_STATE_HISTORY_CONTEXT_SIZE] =
-	    { -1, -1, -1, -1 };
+	int				 dump_context[DUMP_STATE_HISTORY_CONTEXT_SIZE] =
+		{ -1, -1, -1, -1 };
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
@@ -275,7 +275,7 @@ static int
 dump_state_kvp(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
-	char		*name;
+	const char	*name;
 	char		*value;
 
 	name = args_get(args, 'k');
@@ -286,7 +286,7 @@ dump_state_kvp(struct cmd *self, struct cmd_ctx *ctx)
 	if (value)
 		ctx->print(ctx, "%s", value);
 	else
-		ctx->print(ctx, "", value);
+		ctx->print(ctx, "");
 
 	return (0);
 }

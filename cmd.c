@@ -123,7 +123,7 @@ struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 struct window_pane *cmd_lookup_paneid(const char *);
 struct session	*cmd_pane_session(struct cmd_ctx *,
-		    struct window_pane *, struct winlink **);
+			struct window_pane *, struct winlink **);
 struct winlink	*cmd_find_window_offset(const char *, struct session *, int *);
 int		 cmd_find_index_offset(const char *, struct session *, int *);
 struct window_pane *cmd_find_pane_offset(const char *, struct winlink *);
@@ -220,7 +220,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if ((*entryp)->alias != NULL &&
-		    strcmp((*entryp)->alias, argv[0]) == 0) {
+			strcmp((*entryp)->alias, argv[0]) == 0) {
 			ambiguous = 0;
 			entry = *entryp;
 			break;
@@ -384,9 +384,9 @@ cmd_choose_session(int prefer_unattached)
 	sbest = NULL;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (tv == NULL || timercmp(&s->activity_time, tv, >) ||
-		    (prefer_unattached &&
-		    !(sbest->flags & SESSION_UNATTACHED) &&
-		    (s->flags & SESSION_UNATTACHED))) {
+			(prefer_unattached &&
+			!(sbest->flags & SESSION_UNATTACHED) &&
+			(s->flags & SESSION_UNATTACHED))) {
 			sbest = s;
 			tv = &s->activity_time;
 		}
@@ -563,7 +563,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	sfound = NULL;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (strncmp(name, s->name, strlen(name)) == 0 ||
-		    fnmatch(name, s->name, 0) == 0) {
+			fnmatch(name, s->name, 0) == 0) {
 			if (sfound != NULL) {
 				*ambiguous = 1;
 				return (NULL);
@@ -605,7 +605,6 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 			RB_FOREACH(c_wl, winlinks, &s->windows) {
 				if (c_wl->window->id == id) {
 					return (c_wl);
-					break;
 				}
 			}
 		}
@@ -629,7 +628,7 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 	wlfound = NULL;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (strncmp(name, wl->window->name, strlen(name)) == 0 ||
-		    fnmatch(name, wl->window->name, 0) == 0) {
+			fnmatch(name, wl->window->name, 0) == 0) {
 			if (wlfound != NULL) {
 				*ambiguous = 1;
 				return (NULL);

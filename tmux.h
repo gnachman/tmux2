@@ -982,6 +982,7 @@ struct session {
 	struct options	 options;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+#define SESSION_RENAMED		0x2	/* notify control clients */
 	int		 flags;
 
 	struct termios	*tio;
@@ -1186,7 +1187,9 @@ struct client {
 #define CLIENT_REDRAWWINDOW 0x2000
 #define CLIENT_CONTROL 0x4000		/* is a control client */
 #define CLIENT_CONTROL_READY 0x8000	/* control client ready for messages */
-#define CLIENT_CONTROL_UPTODATE 0x10000	/* input-since-ground state was sent */
+#define CLIENT_CONTROL_UPTODATE 0x10000	/* input-since-ground state was sent */  // TODO(georgen): This flag should be on the winlink, not the client.
+#define CLIENT_SESSION_CHANGED 0x20000  /* needs session-changed notification */
+#define CLIENT_SESSION_HANDSHAKE 0x40000  /* has performed handshake */
 	int		flags;
 
 	struct event	 identify_timer;
@@ -1683,25 +1686,29 @@ int	join_pane(struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows);
 /* control.c */
 void	control_init(void);
 void	control_start(struct client *);
-void	control_write(struct client *c, const char *buf, int len);
-void	control_write_str(struct client* c, const char* str);
-void	control_write_printf(struct client* c, const char* format, ...);
-void	control_write_window(struct client *c, struct window *w);
-void	control_write_window_pane(struct client *c, struct window_pane *wp);
-void	control_write_input(struct client *c, struct window_pane *wp,
-	    const u_char *buf, int len);
-void	control_broadcast_input(struct window_pane *wp, const u_char *buf,
-    	   size_t len);
-void	control_set_spontaneous_messages_allowed(int allowed);
-void	control_notify_layout_change(struct window *w);
-void	control_notify_window_added(u_int id);
-void	control_notify_window_removed(struct window *w);
+void	control_write(struct client *, const char *, int);
+void	control_write_str(struct client*, const char*);
+void	control_write_printf(struct client*, const char*, ...);
+void	control_write_window(struct client *, struct window *);
+void	control_write_window_pane(struct client *, struct window_pane *);
+void	control_write_input(struct client *, struct window_pane *,
+	    const u_char *, int);
+void	control_broadcast_input(struct window_pane *, const u_char *,
+    	   size_t);
+void	control_set_spontaneous_messages_allowed(int);
+void	control_notify_layout_change(struct window *);
+void	control_notify_window_added(u_int);
+void	control_notify_window_removed(struct window *);
 void	control_broadcast_queue(void);
-void	control_handshake(struct client *c);
+void	control_handshake(struct client *);
 void	control_print_session_layouts(struct session *session,
-	    struct cmd_ctx *ctx);
-void	control_set_kvp(const char *name, const char *value);
-char	*control_get_kvp_value(const char *name);
+	    struct cmd_ctx *);
+void	control_set_kvp(const char *, const char *);
+char	*control_get_kvp_value(const char *);
+void	control_notify_attached_session_changed(struct client *);
+void	control_notify_session_closed(struct session *);
+void	control_notify_session_created(struct session *);
+void	control_notify_session_renamed(struct session *);
 
 /* dstring.c */
 void	ds_init(struct dstring *ds);
@@ -1958,6 +1965,7 @@ int		 window_pane_cmp(struct window_pane *, struct window_pane *);
 RB_PROTOTYPE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink	*winlink_find_by_window(struct winlinks *, struct window *);
+struct winlink	*winlink_find_by_window_id(struct winlinks *, u_int);
 int		 winlink_next_index(struct winlinks *, int);
 u_int		 winlink_count(struct winlinks *);
 struct winlink	*winlink_add(struct winlinks *, int);

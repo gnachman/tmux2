@@ -28,8 +28,9 @@
 // TODO(georgen): Set this to 1 when it stabilizes
 /*
  * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
+ * 0.2: Adds session notifications.
  */
-#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.1"
+#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.2"
 
 typedef void control_write_cb(struct client *c, void *user_data);
 
@@ -55,11 +56,16 @@ struct control_input_ctx {
 	size_t len;
 };
 
+
 static void	control_notify_windows_changed(void);
 
 static struct window	**layouts_changed;
-static int		  num_layouts_changed;
-static int		  spontaneous_message_allowed;
+static int				  num_layouts_changed;
+static int				  spontaneous_message_allowed;
+#define SESSION_CHANGE_ADDREMOVE	0x1
+#define SESSION_CHANGE_ATTACHMENT	0x2
+#define SESSION_CHANGE_RENAME		0x4
+static int				  session_changed_flags;
 
 void	control_read_callback(struct bufferevent *, void *);
 void	control_error_callback(struct bufferevent *, short, void *);
@@ -230,11 +236,15 @@ void
 control_write_input(struct client *c, struct window_pane *wp,
 			const u_char *buf, int len)
 {
-	control_write_str(c, "%output ");
-	control_write_window_pane(c, wp);
-	control_write_str(c, " ");
-	control_write_hex(c, buf, len);
-	control_write_str(c, "\n");
+	// Only write input if the window pane is linked to a window belonging to
+	// the client's session.
+	if (winlink_find_by_window(&c->session->windows, wp->window)) {
+		control_write_str(c, "%output ");
+		control_write_window_pane(c, wp);
+		control_write_str(c, " ");
+		control_write_hex(c, buf, len);
+		control_write_str(c, "\n");
+	}
 }
 
 static void
@@ -282,6 +292,27 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
 }
 
 static void
+control_write_attached_session_change_cb(struct client *c, unused void *user_data)
+{
+	if (c->flags & CLIENT_SESSION_CHANGED) {
+		struct dstring ds;
+		ds_init(&ds);
+		ds_appendf(&ds, "%%session-changed %s\n", c->session->name);
+		control_write_str(c, ds.buffer);
+		ds_free(&ds);
+		c->flags &= ~CLIENT_SESSION_CHANGED;
+	}
+	if (session_changed_flags & (SESSION_CHANGE_ADDREMOVE |
+								 SESSION_CHANGE_RENAME)) {
+		control_write_str(c, "%sessions-changed\n");
+	}
+	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
+		(c->session->flags & SESSION_RENAMED)) {
+		control_write_printf(c, "%%session-renamed %s\n", c->session->name);
+	}
+}
+
+static void
 control_write_layout_change_cb(struct client *c, unused void *user_data)
 {
 	struct format_tree	*ft;
@@ -296,17 +327,21 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 	}
 
 	for (int i = 0; i < num_layouts_changed; i++) {
-		struct window *w = layouts_changed[i];
-		/* When the last pane in a window is closed it won't have a layout root and
-		 * we don't need to inform the client about its layout change because the whole
-		 * window will go away soon. */
-		if (w && w->layout_root) {
-			const char *template = "%layout-change #{window_id} "
-				"#{window_layout_ex}\n";
-			ft = format_create();
-			wl = winlink_find_by_window(&c->session->windows, w);
-			format_winlink(ft, c->session, wl);
-			control_write_str(c, format_expand(ft, template));
+		struct window	*w = layouts_changed[i];
+		if (winlink_find_by_window_id(&c->session->windows, w->id)) {
+			/* When the last pane in a window is closed it won't have a layout
+			 * root and we don't need to inform the client about its layout
+			 * change because the whole window will go away soon. */
+			if (w && w->layout_root) {
+				const char *template = "%layout-change #{window_id} "
+					"#{window_layout_ex}\n";
+				ft = format_create();
+				wl = winlink_find_by_window(&c->session->windows, w);
+				if (wl) {
+					format_winlink(ft, c->session, wl);
+					control_write_str(c, format_expand(ft, template));
+				}
+			}
 		}
 	}
 }
@@ -375,6 +410,47 @@ control_notify_window_added(u_int id)
 	control_notify_windows_changed();
 }
 
+void
+control_notify_attached_session_changed(struct client *c)
+{
+	if (c->flags & CLIENT_SESSION_CHANGED) {
+		return;
+	}
+	c->flags |= CLIENT_SESSION_CHANGED;
+	session_changed_flags |= SESSION_CHANGE_ATTACHMENT;
+	if (spontaneous_message_allowed) {
+		control_broadcast_queue();
+	}
+}
+
+void
+control_notify_session_renamed(struct session *s)
+{
+	session_changed_flags |= SESSION_CHANGE_RENAME;
+	s->flags |= SESSION_RENAMED;
+	if (spontaneous_message_allowed) {
+		control_broadcast_queue();
+	}
+}
+
+void
+control_notify_session_created(unused struct session *s)
+{
+	session_changed_flags |= SESSION_CHANGE_ADDREMOVE;
+	if (spontaneous_message_allowed) {
+		control_broadcast_queue();
+	}
+}
+
+void
+control_notify_session_closed(unused struct session *s)
+{
+	session_changed_flags |= SESSION_CHANGE_ADDREMOVE;
+	if (spontaneous_message_allowed) {
+		control_broadcast_queue();
+	}
+}
+
 static void
 control_notify_windows_changed(void)
 {
@@ -387,6 +463,7 @@ static void
 control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
 	struct window_change	*change;
+	const char				*prefix;
 
 	if (!(c->flags & CLIENT_CONTROL_READY)) {
 		/* Don't issue spontaneous commands until the remote client has
@@ -395,17 +472,24 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		 * ready. */
 		return;
 	}
+	if (!c->session)
+		return;
 
 	TAILQ_FOREACH(change, &window_changes, entry) {
+		if (winlink_find_by_window_id(&c->session->windows, change->window_id)) {
+			prefix = "";
+		} else {
+			prefix = "unlinked-";
+		}
 		switch (change->action) {
 			case WINDOW_CREATED:
-				control_write_printf(c, "%%window-add %u\n",
-							  change->window_id);
+				control_write_printf(c, "%%%swindow-add %u\n",
+									 prefix, change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
-				control_write_printf(c, "%%window-close %u\n",
-							 change->window_id);
+				control_write_printf(c, "%%%swindow-close %u\n",
+									 prefix, change->window_id);
 				break;
 		}
 	}
@@ -414,6 +498,15 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 void
 control_broadcast_queue(void)
 {
+	struct session	*s;
+
+	if (session_changed_flags) {
+		control_foreach_client(control_write_attached_session_change_cb, NULL);
+		session_changed_flags = 0;
+		RB_FOREACH(s, sessions, &sessions) {
+			s->flags &= ~SESSION_RENAMED;
+		}
+	}
 	if (num_layouts_changed) {
 		control_foreach_client(control_write_layout_change_cb, NULL);
 		num_layouts_changed = 0;
@@ -442,12 +535,15 @@ control_set_spontaneous_messages_allowed(int allowed)
 void
 control_handshake(struct client *c)
 {
-	control_write_str(c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
-			  "\033\\%noop If you can see this message, "
-			  "your terminal emulator does not support tmux mode "
-			  "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
-			  "\"detach\" and press the enter key to return to your "
-			  "shell.\n");
+	if (!(c->flags & CLIENT_SESSION_HANDSHAKE)) {
+		control_write_str(c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
+				  "\033\\%noop If you can see this message, "
+				  "your terminal emulator does not support tmux mode "
+				  "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
+				  "\"detach\" and press the enter key to return to your "
+				  "shell.\n");
+		c->flags |= CLIENT_SESSION_HANDSHAKE;
+	}
 }
 
 /* Print one line for each window in the session with the window number and the

@@ -396,7 +396,7 @@ server_next_session(struct session *s)
 		if (s_loop == s)
 			continue;
 		if (s_out == NULL ||
-		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+			timercmp(&s_loop->activity_time, &s_out->activity_time, <))
 			s_out = s_loop;
 	}
 	return (s_out);
@@ -424,6 +424,9 @@ server_destroy_session(struct session *s)
 		} else {
 			c->last_session = NULL;
 			c->session = s_new;
+			if (c->flags & CLIENT_CONTROL) {
+				control_notify_attached_session_changed(c);
+			}
 			session_update_activity(s_new);
 			server_redraw_client(c);
 		}
