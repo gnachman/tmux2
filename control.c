@@ -488,8 +488,8 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 				break;
 
 			case WINDOW_CLOSED:
-				control_write_printf(c, "%%%swindow-close %u\n",
-									 prefix, change->window_id);
+				control_write_printf(c, "%%window-close %u\n",
+									 change->window_id);
 				break;
 		}
 	}
