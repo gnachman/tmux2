@@ -58,22 +58,22 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct job				*job;
 	struct grid				*gd;
 	struct grid_line			*gl;
-	u_int		 			 i, j, k;
+	u_int					 i, j, k;
 	char					 out[80];
 	char					*tim;
-	time_t		 			 t;
+	time_t					 t;
 	u_int					 lines, ulines;
 	size_t					 size, usize;
 
 	tim = ctime(&start_time);
 	*strchr(tim, '\n') = '\0';
 	ctx->print(ctx,
-	    "tmux " VERSION ", pid %ld, started %s", (long) getpid(), tim);
+		"tmux " VERSION ", pid %ld, started %s", (long) getpid(), tim);
 	ctx->print(
-	    ctx, "socket path %s, debug level %d", socket_path, debug_level);
+		ctx, "socket path %s, debug level %d", socket_path, debug_level);
 	if (uname(&un) >= 0) {
 		ctx->print(ctx, "system is %s %s %s %s",
-		    un.sysname, un.release, un.version, un.machine);
+			un.sysname, un.release, un.version, un.machine);
 	}
 	if (cfg_file != NULL)
 		ctx->print(ctx, "configuration file is %s", cfg_file);
@@ -89,30 +89,30 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			continue;
 
 		ctx->print(ctx,"%2d: %s (%d, %d): %s [%ux%u %s bs=%hho] "
-		    "[flags=0x%x/0x%x, references=%u]", i, c->tty.path,
-		    c->ibuf.fd, c->tty.fd, c->session->name,
-		    c->tty.sx, c->tty.sy, c->tty.termname,
-		    c->tty.tio.c_cc[VERASE], c->flags,
-		    c->tty.flags, c->references);
+			"[flags=0x%x/0x%x, references=%u]", i, c->tty.path,
+			c->ibuf.fd, c->tty.fd, c->session->name,
+			c->tty.sx, c->tty.sy, c->tty.termname,
+			c->tty.tio.c_cc[VERASE], c->flags,
+			c->tty.flags, c->references);
 	}
 	ctx->print(ctx, "%s", "");
 
 	ctx->print(ctx, "Sessions: [%zu/%zu]",
-	    sizeof (struct grid_cell), sizeof (struct grid_utf8));
+		sizeof (struct grid_cell), sizeof (struct grid_utf8));
 	RB_FOREACH(s, sessions, &sessions) {
 		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
 		ctx->print(ctx, "%2u: %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x]", s->idx, s->name,
-		    winlink_count(&s->windows), tim, s->sx, s->sy, s->flags);
+			"[flags=0x%x]", s->idx, s->name,
+			winlink_count(&s->windows), tim, s->sx, s->sy, s->flags);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %s [%ux%u] [flags=0x%x, "
-			    "references=%u, last layout=%d]", wl->idx, w->name,
-			    w->sx, w->sy, w->flags, w->references,
-			    w->lastlayout);
+				"references=%u, last layout=%d]", wl->idx, w->name,
+				w->sx, w->sy, w->flags, w->references,
+				w->lastlayout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				lines = ulines = size = usize = 0;
@@ -122,19 +122,19 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 					if (gl->celldata != NULL) {
 						lines++;
 						size += gl->cellsize *
-						    sizeof *gl->celldata;
+							sizeof *gl->celldata;
 					}
 					if (gl->utf8data != NULL) {
 						ulines++;
 						usize += gl->utf8size *
-						    sizeof *gl->utf8data;
+							sizeof *gl->utf8data;
 					}
 				}
 				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "
-				    "bytes; UTF-8 %u/%u, %zu bytes", j,
-				    wp->tty, (u_long) wp->pid, wp->fd, lines,
-				    gd->hsize + gd->sy, size, ulines,
-				    gd->hsize + gd->sy, usize);
+					"bytes; UTF-8 %u/%u, %zu bytes", j,
+					wp->tty, (u_long) wp->pid, wp->fd, lines,
+					gd->hsize + gd->sy, size, ulines,
+					gd->hsize + gd->sy, usize);
 				j++;
 			}
 		}
@@ -144,29 +144,29 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	ctx->print(ctx, "Terminals:");
 	LIST_FOREACH(term, &tty_terms, entry) {
 		ctx->print(ctx, "%s [references=%u, flags=0x%x]:",
-		    term->name, term->references, term->flags);
+			term->name, term->references, term->flags);
 		for (i = 0; i < NTTYCODE; i++) {
 			ent = &tty_term_codes[i];
 			code = &term->codes[ent->code];
 			switch (code->type) {
 			case TTYCODE_NONE:
 				ctx->print(ctx, "%2u: %s: [missing]",
-				    ent->code, ent->name);
+					ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
 				strnvis(out, code->value.string, sizeof out,
-				    VIS_OCTAL|VIS_TAB|VIS_NL);
+					VIS_OCTAL|VIS_TAB|VIS_NL);
 				ctx->print(ctx, "%2u: %s: (string) %s",
-				    ent->code, ent->name, out);
+					ent->code, ent->name, out);
 				break;
 			case TTYCODE_NUMBER:
 				ctx->print(ctx, "%2u: %s: (number) %d",
-				    ent->code, ent->name, code->value.number);
+					ent->code, ent->name, code->value.number);
 				break;
 			case TTYCODE_FLAG:
 				ctx->print(ctx, "%2u: %s: (flag) %s",
-				    ent->code, ent->name,
-				    code->value.flag ? "true" : "false");
+					ent->code, ent->name,
+					code->value.flag ? "true" : "false");
 				break;
 			}
 		}
@@ -176,7 +176,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	ctx->print(ctx, "Jobs:");
 	LIST_FOREACH(job, &all_jobs, lentry) {
 		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d]",
-		    job->cmd, job->fd, job->pid, job->status);
+			job->cmd, job->fd, job->pid, job->status);
 	}
 
 	return (0);

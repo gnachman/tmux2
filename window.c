@@ -347,6 +347,15 @@ window_destroy(struct window *w)
 }
 
 void
+window_set_name(struct window *w, const char *new_name)
+{
+	if (w->name)
+		xfree(w->name);
+	w->name = xstrdup(new_name);
+	control_notify_window_renamed(w);
+}
+
+void
 window_resize(struct window *w, u_int sx, u_int sy)
 {
 	w->sx = sx;

@@ -36,7 +36,9 @@ typedef void control_write_cb(struct client *c, void *user_data);
 
 struct window_change {
 	u_int window_id;
-	enum { WINDOW_CREATED, WINDOW_CLOSED } action;
+	enum {
+		WINDOW_CREATED, WINDOW_RENAMED, WINDOW_CLOSED
+	} action;
 	TAILQ_ENTRY(window_change) entry;
 };
 TAILQ_HEAD(, window_change) window_changes;
@@ -374,6 +376,7 @@ void
 control_notify_window_removed(struct window *w)
 {
 	struct window_change	*change;
+	int						 found;
 
 	for (int i = 0; i < num_layouts_changed; i++) {
 		if (layouts_changed[i] == w) {
@@ -381,13 +384,25 @@ control_notify_window_removed(struct window *w)
 			break;
 		}
 	}
-	/* If there is a WINDOW_ADDED change, remove it and return. */
-	TAILQ_FOREACH(change, &window_changes, entry) {
-		if (change->window_id == w->id) {
-			TAILQ_REMOVE(&window_changes, change, entry);
-			xfree(change);
-			return;
+	/* If there is an existing change, remove it and return. */
+	found = 0;
+	do {
+		found &= 2;
+		TAILQ_FOREACH(change, &window_changes, entry) {
+			if (change->window_id == w->id) {
+				TAILQ_REMOVE(&window_changes, change, entry);
+				found |= 1;
+				if (change->action == WINDOW_CREATED) {
+					found |= 2;
+				}
+				xfree(change);
+				break;
+			}
 		}
+	} while (found & 1);
+	if (found & 2) {
+		// A WIDNOW_CREATED was found.
+		return;
 	}
 
 	/* Add a WINDOW_CLOSED change. */
@@ -405,6 +420,18 @@ control_notify_window_added(u_int id)
 	struct window_change	*change = xmalloc(sizeof(struct window_change));
 	change->window_id = id;
 	change->action = WINDOW_CREATED;
+	TAILQ_INSERT_TAIL(&window_changes, change, entry);
+
+	control_notify_windows_changed();
+}
+
+void
+control_notify_window_renamed(struct window *w)
+{
+	struct window_change	*change;
+	change = xmalloc(sizeof(struct window_change));
+	change->window_id = w->id;
+	change->action = WINDOW_RENAMED;
 	TAILQ_INSERT_TAIL(&window_changes, change, entry);
 
 	control_notify_windows_changed();
@@ -464,6 +491,8 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
 	struct window_change	*change;
 	const char				*prefix;
+	struct window			*w;
+	struct winlink			*wl;
 
 	if (!(c->flags & CLIENT_CONTROL_READY)) {
 		/* Don't issue spontaneous commands until the remote client has
@@ -491,6 +520,18 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 				control_write_printf(c, "%%window-close %u\n",
 									 change->window_id);
 				break;
+
+			case WINDOW_RENAMED:
+				wl = winlink_find_by_window_id(&c->session->windows,
+											   change->window_id);
+				if (wl) {
+					w = wl->window;
+					control_write_printf(c, "%%window-renamed %u %s\n",
+										 change->window_id,
+										 w->name);
+				}
+				break;
+
 		}
 	}
 }

@@ -65,7 +65,7 @@ window_name_callback(unused int fd, unused short events, void *data)
 		 * present. Ick.
 		 */
 		if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
-		    name != NULL && name[0] == '-' && name[1] != '\0')
+			name != NULL && name[0] == '-' && name[1] != '\0')
 			wname = parse_window_name(name + 1);
 		else
 				wname = parse_window_name(name);
@@ -78,13 +78,11 @@ window_name_callback(unused int fd, unused short events, void *data)
 		wname = name;
 	}
 
-	if (strcmp(wname, w->name) == 0)
-		xfree(wname);
-	else {
-		xfree(w->name);
-		w->name = wname;
+	if (strcmp(wname, w->name)) {
+		window_set_name(w, wname);
 		server_status_window(w);
 	}
+	xfree(wname);
 }
 
 char *
