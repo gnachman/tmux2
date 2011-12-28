@@ -164,8 +164,11 @@ session_destroy(struct session *s)
 
 	while (!TAILQ_EMPTY(&s->lastw))
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
-	while (!RB_EMPTY(&s->windows))
-		winlink_remove(&s->windows, RB_ROOT(&s->windows));
+	while (!RB_EMPTY(&s->windows)) {
+		struct winlink	*wl = RB_ROOT(&s->windows);
+		control_notify_window_removed(wl->window);
+		winlink_remove(&s->windows, wl);
+	}
 
 	xfree(s->cwd);
 
@@ -255,6 +258,7 @@ session_new(struct session *s,
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
+	control_notify_window_added(w->id);
 	environ_free(&env);
 
 	if (options_get_number(&s->options, "set-remain-on-exit"))
@@ -275,6 +279,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
+	control_notify_window_added(w->id);
 
 	session_group_synchronize_from(s);
 	return (wl);
@@ -289,6 +294,7 @@ session_detach(struct session *s, struct winlink *wl)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
+	control_notify_window_removed(wl->window);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
 	session_group_synchronize_from(s);
@@ -556,6 +562,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	RB_FOREACH(wl, winlinks, ww) {
 		wl2 = winlink_add(&s->windows, wl->idx);
 		winlink_set_window(wl2, wl->window);
+		control_notify_window_added(wl2->window->id);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
 	}
 
@@ -577,6 +584,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
+		control_notify_window_removed(wl->window);
 		winlink_remove(&old_windows, wl);
 	}
 }

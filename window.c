@@ -291,7 +291,6 @@ window_create1(u_int sx, u_int sy)
 	if (i == ARRAY_LENGTH(&windows))
 		ARRAY_ADD(&windows, w);
 	w->references = 0;
-	control_notify_window_added(w->id);
 
 	return (w);
 }
@@ -340,7 +339,6 @@ window_destroy(struct window *w)
 
 	window_destroy_panes(w);
 
-	control_notify_window_removed(w);
 	if (w->name != NULL)
 		xfree(w->name);
 	xfree(w);
