@@ -965,7 +965,7 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	u_int		 idx;
-
+	u_int		 id;
 	char		*name;
 	char		*cwd;
 

@@ -299,7 +299,8 @@ control_write_attached_session_change_cb(struct client *c, unused void *user_dat
 	if (c->flags & CLIENT_SESSION_CHANGED) {
 		struct dstring ds;
 		ds_init(&ds);
-		ds_appendf(&ds, "%%session-changed %s\n", c->session->name);
+		ds_appendf(&ds, "%%session-changed %d %s\n",
+				   c->session->id, c->session->name);
 		control_write_str(c, ds.buffer);
 		ds_free(&ds);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
@@ -330,7 +331,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 
 	for (int i = 0; i < num_layouts_changed; i++) {
 		struct window	*w = layouts_changed[i];
-		if (winlink_find_by_window_id(&c->session->windows, w->id)) {
+		if (w && winlink_find_by_window_id(&c->session->windows, w->id)) {
 			/* When the last pane in a window is closed it won't have a layout
 			 * root and we don't need to inform the client about its layout
 			 * change because the whole window will go away soon. */
