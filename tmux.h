@@ -1187,9 +1187,8 @@ struct client {
 #define CLIENT_REDRAWWINDOW 0x2000
 #define CLIENT_CONTROL 0x4000		/* is a control client */
 #define CLIENT_CONTROL_READY 0x8000	/* control client ready for messages */
-#define CLIENT_CONTROL_UPTODATE 0x10000	/* input-since-ground state was sent */  // TODO(georgen): This flag should be on the winlink, not the client.
-#define CLIENT_SESSION_CHANGED 0x20000  /* needs session-changed notification */
-#define CLIENT_SESSION_HANDSHAKE 0x40000  /* has performed handshake */
+#define CLIENT_SESSION_CHANGED 0x10000  /* needs session-changed notification */
+#define CLIENT_SESSION_HANDSHAKE 0x20000  /* has performed handshake */
 	int		flags;
 
 	struct event	 identify_timer;

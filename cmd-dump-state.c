@@ -86,6 +86,20 @@ dump_state_string(struct cmd_ctx *ctx, char *str, const char *name)
 	ds_free(&ds);
 }
 
+static void
+dump_state_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
+		   const char *name)
+{
+	struct dstring	ds;
+	ds_init(&ds);
+	for (int i = 0; i < length; i++) {
+		ds_appendf(&ds, "%02x", ((int) bytes[i]) % 0xff);
+	}
+
+	ctx->print(ctx, "%s=%s", name, ds.buffer);
+	ds_free(&ds);
+}
+
 /* Return a hex encoded version of utf8data. */
 static char *
 dump_state_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
@@ -212,7 +226,7 @@ dump_state_history(struct cmd *self, struct cmd_ctx *ctx)
 	unsigned int		 i;
 	unsigned int		 start, limit;
 	struct grid		*grid;
-	int				 dump_context[DUMP_STATE_HISTORY_CONTEXT_SIZE] =
+	int			 dump_context[DUMP_STATE_HISTORY_CONTEXT_SIZE] =
 		{ -1, -1, -1, -1 };
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
@@ -267,7 +281,12 @@ dump_state_emulator(struct cmd *self, struct cmd_ctx *ctx)
 	/* This is the saved cursor position from CSI DECSC. */
 	dump_state_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
 	dump_state_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
-
+	if (wp->ictx.input_since_ground.used) {
+		dump_state_hex(ctx,
+			wp->ictx.input_since_ground.buffer,
+			wp->ictx.input_since_ground.used,
+			"pending_output");
+	}
 	return (0);
 }
 

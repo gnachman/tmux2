@@ -268,17 +268,6 @@ control_write_input_cb(struct client *c, void *user_data)
 {
 	struct control_input_ctx	*ctx = user_data;
 	if (c->flags & CLIENT_CONTROL_READY) {
-		/* The client has sent start-control and may receive output. */
-		if (!(c->flags & CLIENT_CONTROL_UPTODATE)) {
-			/* This is the first output the client has received. */
-			c->flags |= CLIENT_CONTROL_UPTODATE;
-			if (ctx->wp->ictx.input_since_ground.used) {
-				/* There's a partial escape code in waiting. */
-				control_write_input(c, ctx->wp,
-					ctx->wp->ictx.input_since_ground.buffer,
-					ctx->wp->ictx.input_since_ground.used);
-			}
-		}
 		control_write_input(c, ctx->wp, ctx->buf, ctx->len);
 	}
 }
