@@ -40,7 +40,7 @@ void	server_client_err_callback(struct bufferevent *, short, void *);
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct msg_command_data *);
 void	server_client_msg_identify(
-	    struct client *, struct msg_identify_data *, int);
+		struct client *, struct msg_identify_data *, int);
 void	server_client_msg_shell(struct client *);
 
 void printflike2 server_client_msg_error(struct cmd_ctx *, const char *, ...);
@@ -273,7 +273,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	struct timeval		 tv;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
-	int		      	 xtimeout, isprefix;
+	int				 xtimeout, isprefix;
 	u_int			 i;
 
 	/* Check the client is good to accept input. */
@@ -319,8 +319,8 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		if (c->flags & CLIENT_READONLY)
 			return;
 		if (options_get_number(oo, "mouse-select-pane") &&
-		    ((!(mouse->b & MOUSE_DRAG) && mouse->b != MOUSE_UP) ||
-		    wp->mode != &window_copy_mode)) {
+			((!(mouse->b & MOUSE_DRAG) && mouse->b != MOUSE_UP) ||
+			wp->mode != &window_copy_mode)) {
 			/*
 			 * Allow pane switching in copy mode only by mouse down
 			 * (click).
@@ -330,10 +330,10 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			wp = w->active;
 		}
 		if (mouse->y + 1 == c->tty.sy &&
-		    options_get_number(oo, "mouse-select-window") &&
-		    options_get_number(oo, "status")) {
+			options_get_number(oo, "mouse-select-window") &&
+			options_get_number(oo, "status")) {
 			if (mouse->b == MOUSE_UP &&
-			    c->last_mouse.b != MOUSE_UP) {
+				c->last_mouse.b != MOUSE_UP) {
 				status_set_window_at(c, mouse->x);
 				return;
 			}
@@ -427,7 +427,7 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i;
+	u_int			 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -495,7 +495,7 @@ server_client_reset_state(struct client *c)
 	 */
 	mode = s->mode;
 	if ((c->last_mouse.b & MOUSE_RESIZE_PANE) &&
-	    !(mode & (MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)))
+		!(mode & (MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)))
 		mode |= MODE_MOUSE_BUTTON;
 
 	/*
@@ -504,7 +504,7 @@ server_client_reset_state(struct client *c)
 	 */
 	if ((mode & ALL_MOUSE_MODES) == 0) {
 		if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
-		    options_get_number(oo, "mouse-select-pane"))
+			options_get_number(oo, "mouse-select-pane"))
 			mode |= MODE_MOUSE_STANDARD;
 		else if (options_get_number(oo, "mouse-resize-pane"))
 			mode |= MODE_MOUSE_STANDARD;
@@ -522,7 +522,7 @@ server_client_reset_state(struct client *c)
 	 * input_mouse.
 	 */
 	if ((c->tty.flags & TTY_UTF8) &&
-	    (mode & ALL_MOUSE_MODES) && options_get_number(oo, "mouse-utf8"))
+		(mode & ALL_MOUSE_MODES) && options_get_number(oo, "mouse-utf8"))
 		mode |= MODE_MOUSE_UTF8;
 	else
 		mode &= ~MODE_MOUSE_UTF8;
@@ -553,10 +553,10 @@ server_client_check_exit(struct client *c)
 		return;
 
 	if (c->stdout_fd != -1 && c->stdout_event != NULL &&
-	    EVBUFFER_LENGTH(c->stdout_event->output) != 0)
+		EVBUFFER_LENGTH(c->stdout_event->output) != 0)
 		return;
 	if (c->stderr_fd != -1 && c->stderr_event != NULL &&
-	    EVBUFFER_LENGTH(c->stderr_event->output) != 0)
+		EVBUFFER_LENGTH(c->stderr_event->output) != 0)
 		return;
 
 	exitdata.retcode = c->retcode;
@@ -615,7 +615,7 @@ server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct window_pane	*wp;
-	int		 	 flags, redraw;
+	int			 flags, redraw;
 
 	if (c->flags & CLIENT_CONTROL)
 		return;
@@ -776,7 +776,7 @@ server_client_msg_dispatch(struct client *c)
 
 			c->stdin_fd = imsg.fd;
 			c->stdin_event = bufferevent_new(c->stdin_fd,
-			    NULL, NULL, server_client_in_callback, c);
+				NULL, NULL, server_client_in_callback, c);
 			if (c->stdin_event == NULL)
 				fatalx("failed to create stdin event");
 			setblocking(c->stdin_fd, 0);
@@ -791,7 +791,7 @@ server_client_msg_dispatch(struct client *c)
 
 			c->stdout_fd = imsg.fd;
 			c->stdout_event = bufferevent_new(c->stdout_fd,
-			    NULL, NULL, server_client_out_callback, c);
+				NULL, NULL, server_client_out_callback, c);
 			if (c->stdout_event == NULL)
 				fatalx("failed to create stdout event");
 			setblocking(c->stdout_fd, 0);
@@ -805,7 +805,7 @@ server_client_msg_dispatch(struct client *c)
 
 			c->stderr_fd = imsg.fd;
 			c->stderr_event = bufferevent_new(c->stderr_fd,
-			    NULL, NULL, server_client_err_callback, c);
+				NULL, NULL, server_client_err_callback, c);
 			if (c->stderr_event == NULL)
 				fatalx("failed to create stderr event");
 			setblocking(c->stderr_fd, 0);
@@ -919,7 +919,7 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	struct cmd_ctx	 ctx;
 	struct cmd_list	*cmdlist = NULL;
 	int		 argc;
-	char	       **argv, *cause;
+	char		   **argv, *cause;
 
 	ctx.error = server_client_msg_error;
 	ctx.print = server_client_msg_print;
@@ -983,7 +983,7 @@ server_client_msg_identify(
 	}
 
 	if (!isatty(fd))
-	    return;
+		return;
 	if ((tty_fd = dup(fd)) == -1)
 		fatal("dup failed");
 	data->term[(sizeof data->term) - 1] = '\0';
