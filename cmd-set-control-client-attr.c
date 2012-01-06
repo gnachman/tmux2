@@ -23,6 +23,9 @@
 
 #include "tmux.h"
 
+#define MAX_CONTROL_CLIENT_HEIGHT 20000
+#define MAX_CONTROL_CLIENT_WIDTH 20000
+
 /*
  * Set a control client attribute.
  */
@@ -99,7 +102,11 @@ cmd_set_control_client_attr_exec(struct cmd *self, struct cmd_ctx *ctx)
 		u_int	w, h;
 		if (parse_size(value, &w, &h))
 			return (-1);
-
+		/* Prevent a broken client from making us use crazy amounts of
+		 * memory */
+		if (w > MAX_CONTROL_CLIENT_WIDTH ||
+			h > MAX_CONTROL_CLIENT_HEIGHT)
+			return (-1);
 		set_client_size(c, w, h, ctx);
 	} else if (!strcmp(name, "ready")) {
 		c = cmd_find_client(ctx, NULL);
