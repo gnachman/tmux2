@@ -92,7 +92,7 @@ dump_state_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
 {
 	struct dstring	ds;
 	ds_init(&ds);
-	for (int i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++) {
 		ds_appendf(&ds, "%02x", ((int) bytes[i]) % 0xff);
 	}
 
@@ -305,7 +305,7 @@ dump_state_kvp(struct cmd *self, struct cmd_ctx *ctx)
 	if (value)
 		ctx->print(ctx, "%s", value);
 	else
-		ctx->print(ctx, "");
+		ctx->print(ctx, "%s", "");
 
 	return (0);
 }
