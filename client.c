@@ -156,6 +156,17 @@ client_main(int argc, char **argv, int flags)
 		log_warn("failed to connect to server");
 		return (1);
 	}
+	if (flags & IDENTIFY_CONTROL) {
+		if (!isatty(fileno(stdout))) {
+			/* This test must be performed earlier for control clients because
+			 * the CLIENT_TERMINAL flag is used for more than detecting the presence
+			 * of a terminal and control mode is completely useless without a tty
+			 * because echo can't be disabled. */
+			log_fatalx("not a terminal");
+			return (1);
+		}
+		is_control_client = 1;
+	}
 
 	/* Set process title, log and signals now this is the client. */
 #ifdef HAVE_SETPROCTITLE
@@ -175,13 +186,12 @@ client_main(int argc, char **argv, int flags)
 		client_send_environ();
 	client_send_identify(flags);
 
-	if (flags & IDENTIFY_CONTROL) {
-		/* Turn off echo in control mode. */
-		is_control_client = 1;
+	if (is_control_client) {
+		/* Turn off echo in control mode (we only get here if stdout is a tty). */
 		struct termios termios;
-		tcgetattr(1, &termios);
+		tcgetattr(fileno(stdout), &termios);
 		termios.c_lflag &= ~ECHO;
-		tcsetattr(1, TCSANOW, &termios);
+		tcsetattr(fileno(stdout), TCSANOW, &termios);
 	}
 
 	/* Send first command. */
