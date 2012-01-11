@@ -173,8 +173,8 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct grid_cell	 active_gc, other_gc;
-	u_int		 	 i, j, type;
-	int		 	 status, fg, bg;
+	u_int			 i, j, type;
+	int			 status, fg, bg;
 
 	/* Suspended clients should not be updated. */
 	if (c->flags & CLIENT_SUSPENDED)

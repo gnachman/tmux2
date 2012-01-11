@@ -51,7 +51,7 @@ struct window_choose_mode_item {
 };
 
 struct window_choose_mode_data {
-	struct screen	        screen;
+	struct screen		screen;
 
 	struct mode_key_data	mdata;
 
@@ -59,7 +59,7 @@ struct window_choose_mode_data {
 	u_int			top;
 	u_int			selected;
 
-	void 			(*callbackfn)(void *, int);
+	void			(*callbackfn)(void *, int);
 	void			(*freefn)(void *);
 	void		       *data;
 };
@@ -177,7 +177,7 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 	struct window_choose_mode_item	*item;
-	u_int		       		 items;
+	u_int				 items;
 	int				 idx;
 
 	items = ARRAY_LENGTH(&data->list);
@@ -408,7 +408,7 @@ window_choose_redraw_screen(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct screen_write_ctx	 	 ctx;
+	struct screen_write_ctx		 ctx;
 	u_int				 i;
 
 	screen_write_start(&ctx, wp, NULL);

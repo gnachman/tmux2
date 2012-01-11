@@ -119,6 +119,8 @@ const struct input_table_entry input_esc_table[] = {
 /* Control (CSI) commands. */
 enum input_csi_type {
 	INPUT_CSI_CBT,
+	INPUT_CSI_CNL,
+	INPUT_CSI_CPL,
 	INPUT_CSI_CUB,
 	INPUT_CSI_CUD,
 	INPUT_CSI_CUF,
@@ -135,8 +137,10 @@ enum input_csi_type {
 	INPUT_CSI_HPA,
 	INPUT_CSI_ICH,
 	INPUT_CSI_IL,
+	INPUT_CSI_RCP,
 	INPUT_CSI_RM,
 	INPUT_CSI_RM_PRIVATE,
+	INPUT_CSI_SCP,
 	INPUT_CSI_SGR,
 	INPUT_CSI_SM,
 	INPUT_CSI_SM_PRIVATE,
@@ -151,6 +155,8 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'B', "",  INPUT_CSI_CUD },
 	{ 'C', "",  INPUT_CSI_CUF },
 	{ 'D', "",  INPUT_CSI_CUB },
+	{ 'E', "",  INPUT_CSI_CNL },
+	{ 'F', "",  INPUT_CSI_CPL },
 	{ 'G', "",  INPUT_CSI_HPA },
 	{ 'H', "",  INPUT_CSI_CUP },
 	{ 'J', "",  INPUT_CSI_ED },
@@ -171,6 +177,8 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'n', "",  INPUT_CSI_DSR },
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'r', "",  INPUT_CSI_DECSTBM },
+	{ 's', "",  INPUT_CSI_SCP },
+	{ 'u', "",  INPUT_CSI_RCP },
 };
 
 /* Input transition. */
@@ -1097,6 +1105,14 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_CUU:
 		screen_write_cursorup(sctx, input_get(ictx, 0, 1, 1));
 		break;
+	case INPUT_CSI_CNL:
+		screen_write_carriagereturn(sctx);
+		screen_write_cursordown(sctx, input_get(ictx, 0, 1, 1));
+		break;
+	case INPUT_CSI_CPL:
+		screen_write_carriagereturn(sctx);
+		screen_write_cursorup(sctx, input_get(ictx, 0, 1, 1));
+		break;
 	case INPUT_CSI_DA:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case 0:
@@ -1184,6 +1200,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_IL:
 		screen_write_insertline(sctx, input_get(ictx, 0, 1, 1));
 		break;
+	case INPUT_CSI_RCP:
+		memcpy(&ictx->cell, &ictx->old_cell, sizeof ictx->cell);
+		screen_write_cursormove(sctx, ictx->old_cx, ictx->old_cy);
+		break;
 	case INPUT_CSI_RM:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 4:		/* IRM */
@@ -1222,6 +1242,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
 		}
+		break;
+	case INPUT_CSI_SCP:
+		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
+		ictx->old_cx = s->cx;
+		ictx->old_cy = s->cy;
 		break;
 	case INPUT_CSI_SGR:
 		input_csi_dispatch_sgr(ictx);

@@ -57,7 +57,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		 env;
-	char		 	*cmd, *cwd, *cause, *new_cause;
+	char			*cmd, *cwd, *cause, *new_cause;
 	const char		*shell;
 	u_int			 hlimit, paneidx;
 	int			 size, percentage;
@@ -77,13 +77,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = options_get_string(&s->options, "default-path");
-	if (*cwd == '\0') {
-		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
-			cwd = ctx->cmdclient->cwd;
-		else
-			cwd = s->cwd;
-	}
+	cwd = cmd_get_default_path(ctx);
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
