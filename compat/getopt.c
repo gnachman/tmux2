@@ -108,7 +108,7 @@ BSDgetopt(nargc, nargv, ostr)
 				    __progname, BSDoptopt);
 			return (BADCH);
 		}
-	 	else				/* white space */
+		else				/* white space */
 			BSDoptarg = nargv[BSDoptind];
 		place = EMSG;
 		++BSDoptind;

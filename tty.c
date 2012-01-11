@@ -498,7 +498,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i;
+	u_int			 i;
 
 	/*
 	 * If region is >= 50% of the screen, just schedule a window redraw. In
@@ -590,7 +590,7 @@ tty_write(void (*cmdfn)(
 {
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
-	u_int		 	 i;
+	u_int			 i;
 
 	/* wp can be NULL if updating the screen but not the terminal. */
 	if (wp == NULL)
@@ -716,7 +716,7 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i;
+	u_int			 i;
 
 	tty_reset(tty);
 
@@ -736,7 +736,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i;
+	u_int			 i;
 
 	tty_reset(tty);
 
@@ -755,7 +755,7 @@ void
 tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	u_int		 	 i;
+	u_int			 i;
 
 	tty_reset(tty);
 
@@ -829,7 +829,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i, j;
+	u_int			 i, j;
 
 	tty_reset(tty);
 
@@ -865,7 +865,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i, j;
+	u_int			 i, j;
 
 	tty_reset(tty);
 
@@ -895,7 +895,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int		 	 i, j;
+	u_int			 i, j;
 
 	tty_reset(tty);
 

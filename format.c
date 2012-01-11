@@ -71,7 +71,7 @@ const char *format_aliases[26] = {
 	"window_name",	/* W */
 	NULL,		/* X */
 	NULL,		/* Y */
-	NULL 		/* Z */
+	NULL		/* Z */
 };
 
 /* Create a new tree. */
@@ -210,7 +210,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	char		*buf, *ptr;
 	const char	*s;
 	size_t		 off, len, n;
-	int     	 ch;
+	int		 ch;
 
 	len = 64;
 	buf = xmalloc(len);

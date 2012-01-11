@@ -26,7 +26,7 @@ int	tty_acs_cmp(const void *, const void *);
 
 /* Table mapping ACS entries to UTF-8. */
 struct tty_acs_entry {
-	u_char	 	 key;
+	u_char		 key;
 	const char	*string;
 };
 const struct tty_acs_entry tty_acs_table[] = {

@@ -728,7 +728,7 @@ void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
 	struct window_pane     *wp = data;
-	char   		       *new_data;
+	char		       *new_data;
 	size_t			new_size;
 
 	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
@@ -960,7 +960,7 @@ window_pane_search(struct window_pane *wp, const char *searchstr, u_int *lineno)
 {
 	struct screen	*s = &wp->base;
 	char		*newsearchstr, *line, *msg;
-	u_int	 	 i;
+	u_int		 i;
 
 	msg = NULL;
 	xasprintf(&newsearchstr, "*%s*", searchstr);

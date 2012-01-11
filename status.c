@@ -519,7 +519,7 @@ char *
 status_find_job(struct client *c, char **iptr)
 {
 	struct status_out	*so, so_find;
-	char   			*cmd;
+	char			*cmd;
 	int			 lastesc;
 	size_t			 len;
 
@@ -658,7 +658,7 @@ status_print(
 	struct options	*oo = &wl->window->options;
 	struct session	*s = c->session;
 	const char	*fmt;
-	char   		*text;
+	char		*text;
 	u_char		 fg, bg, attr;
 
 	fg = options_get_number(oo, "window-status-fg");
@@ -780,8 +780,8 @@ status_message_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
-	struct screen		        old_status;
-	size_t			        len;
+	struct screen			old_status;
+	size_t				len;
 	struct grid_cell		gc;
 	int				utf8flag;
 
@@ -904,8 +904,8 @@ status_prompt_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
-	struct screen		        old_status;
-	size_t			        i, size, left, len, off;
+	struct screen			old_status;
+	size_t				i, size, left, len, off;
 	struct grid_cell		gc, *gcp;
 	int				utf8flag;
 
@@ -1156,11 +1156,8 @@ status_prompt_key(struct client *c, int key)
 		/* Find the separator at the end of the word. */
 		while (c->prompt_index != size) {
 			c->prompt_index++;
-			if (strchr(wsep, c->prompt_buffer[c->prompt_index])) {
-				/* Go back to the word. */
-				c->prompt_index--;
+			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
 				break;
-			}
 		}
 
 		c->flags |= CLIENT_STATUS;
@@ -1335,12 +1332,12 @@ status_prompt_add_history(const char *line)
 char *
 status_prompt_complete(const char *s)
 {
-	const struct cmd_entry 	  	       **cmdent;
+	const struct cmd_entry		       **cmdent;
 	const struct options_table_entry	*oe;
 	ARRAY_DECL(, const char *)		 list;
 	char					*prefix, *s2;
 	u_int					 i;
-	size_t				 	 j;
+	size_t					 j;
 
 	if (*s == '\0')
 		return (NULL);

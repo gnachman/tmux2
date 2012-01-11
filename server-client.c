@@ -273,7 +273,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	struct timeval		 tv;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
-	int		      	 xtimeout, isprefix;
+	int			 xtimeout, isprefix;
 	u_int			 i;
 
 	/* Check the client is good to accept input. */
@@ -319,6 +319,8 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		if (c->flags & CLIENT_READONLY)
 			return;
 		if (options_get_number(oo, "mouse-select-pane") &&
+		    (!(options_get_number(oo, "status") &&
+		       mouse->y + 1 == c->tty.sy)) &&
 		    ((!(mouse->b & MOUSE_DRAG) && mouse->b != MOUSE_UP) ||
 		    wp->mode != &window_copy_mode)) {
 			/*
@@ -427,7 +429,7 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i;
+	u_int			 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -612,7 +614,7 @@ server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct window_pane	*wp;
-	int		 	 flags, redraw;
+	int			 flags, redraw;
 
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;

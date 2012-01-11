@@ -38,11 +38,11 @@
 const struct grid_cell grid_default_cell = { 0, 0, 8, 8, ' ' };
 
 #define grid_put_cell(gd, px, py, gc) do {			\
-	memcpy(&gd->linedata[py].celldata[px], 			\
+	memcpy(&gd->linedata[py].celldata[px],			\
 	    gc, sizeof gd->linedata[py].celldata[px]);		\
 } while (0)
 #define grid_put_utf8(gd, px, py, gc) do {			\
-	memcpy(&gd->linedata[py].utf8data[px], 			\
+	memcpy(&gd->linedata[py].utf8data[px],			\
 	    gc, sizeof gd->linedata[py].utf8data[px]);		\
 } while (0)
 

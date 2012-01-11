@@ -51,8 +51,8 @@ pid_t		 environ_pid = -1;
 int		 environ_idx = -1;
 
 __dead void	 usage(void);
-void	 	 parseenvironment(void);
-char 		*makesocketpath(const char *);
+void		 parseenvironment(void);
+char		*makesocketpath(const char *);
 
 #ifndef HAVE___PROGNAME
 char      *__progname = (char *) "tmux";
@@ -237,7 +237,7 @@ main(int argc, char **argv)
 	struct passwd	*pw;
 	struct keylist	*keylist;
 	char		*s, *path, *label, *home, **var;
-	int	 	 opt, flags, quiet, keys;
+	int		 opt, flags, quiet, keys;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";

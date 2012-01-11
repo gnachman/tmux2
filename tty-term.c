@@ -266,6 +266,8 @@ tty_term_override(struct tty_term *term, const char *overrides)
 			} else
 				val = xstrdup("");
 
+			log_debug("%s override: %s %s",
+			    term->name, entstr, removeflag ? "@" : val);
 			for (i = 0; i < NTTYCODE; i++) {
 				ent = &tty_term_codes[i];
 				if (strcmp(entstr, ent->name) != 0)
@@ -314,7 +316,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
 	u_int					 i;
-	int		 			 n, error;
+	int					 n, error;
 	char					*s;
 	const char				*acs;
 

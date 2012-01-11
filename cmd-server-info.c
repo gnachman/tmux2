@@ -58,10 +58,10 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct job				*job;
 	struct grid				*gd;
 	struct grid_line			*gl;
-	u_int		 			 i, j, k;
+	u_int					 i, j, k;
 	char					 out[80];
 	char					*tim;
-	time_t		 			 t;
+	time_t					 t;
 	u_int					 lines, ulines;
 	size_t					 size, usize;
 

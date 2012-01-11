@@ -44,7 +44,7 @@ const struct cmd_entry cmd_choose_window_entry = {
 struct cmd_choose_window_data {
 	struct client	*client;
 	struct session	*session;
-	char   		*template;
+	char		*template;
 };
 
 int
@@ -55,7 +55,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct winlink			*wl, *wm;
 	struct window			*w;
-	u_int			 	 idx, cur;
+	u_int				 idx, cur;
 	char				*flags, *title;
 	const char			*left, *right;
 
