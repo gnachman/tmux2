@@ -51,8 +51,8 @@ pid_t		 environ_pid = -1;
 int		 environ_idx = -1;
 
 __dead void	 usage(void);
-void	 	 parseenvironment(void);
-char 		*makesocketpath(const char *);
+void		 parseenvironment(void);
+char		*makesocketpath(const char *);
 
 #ifndef HAVE___PROGNAME
 char      *__progname = (char *) "tmux";
@@ -62,7 +62,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-            "usage: %s [-28lquvVC] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28lquvVC] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -231,15 +231,13 @@ shell_exec(const char *shell, const char *shellcmd)
 	fatal("execl failed");
 }
 
-// TODO(georgen): Remove this hack.
-int server_only = 0;
 int
 main(int argc, char **argv)
 {
 	struct passwd	*pw;
 	struct keylist	*keylist;
 	char		*s, *path, *label, *home, **var;
-	int	 	 opt, flags, quiet, keys;
+	int		 opt, flags, quiet, keys;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";
@@ -248,8 +246,7 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	// TODO(georgen): remove 'x'
-	while ((opt = getopt(argc, argv, "28Cc:df:lL:qS:uUvVx")) != -1) {
+	while ((opt = getopt(argc, argv, "28Cc:df:lL:qS:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -296,11 +293,6 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			debug_level++;
-			break;
-
-		// TODO(georgen): Remove this hack
-		case 'x':
-			server_only = 1;
 			break;
 		default:
 			usage();

@@ -68,7 +68,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	const char		*str;
 	int			 i, key;
-	int		  hex_code;
+	int		  	 hex_code;
 
 	hex_code = args_has(args, 'h');
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)

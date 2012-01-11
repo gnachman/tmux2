@@ -67,7 +67,7 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows)
 	struct session		*dst_s;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
-	struct window_pane 	*src_wp, *dst_wp;
+	struct window_pane	*src_wp, *dst_wp;
 	char			*cause;
 	int			 size, percentage, dst_idx;
 	enum layout_type	 type;
@@ -113,8 +113,8 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows)
 		else
 			size = (dst_wp->sx * percentage) / 100;
 	}
-
-	if ((lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'))) == NULL) {
+	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'));
+	if (lc == NULL) {
 		ctx->error(ctx, "create pane failed: pane too small");
 		return (-1);
 	}

@@ -30,16 +30,16 @@
 #include "tmux.h"
 
 char   *status_redraw_get_left(
-		struct client *, time_t, int, struct grid_cell *, size_t *);
+	    struct client *, time_t, int, struct grid_cell *, size_t *);
 char   *status_redraw_get_right(
-		struct client *, time_t, int, struct grid_cell *, size_t *);
+	    struct client *, time_t, int, struct grid_cell *, size_t *);
 char   *status_find_job(struct client *, char **);
 void	status_job_free(void *);
 void	status_job_callback(struct job *);
 char   *status_print(
-		struct client *, struct winlink *, time_t, struct grid_cell *);
+	    struct client *, struct winlink *, time_t, struct grid_cell *);
 void	status_replace1(struct client *, struct session *, struct winlink *,
-		struct window_pane *, char **, char **, char *, size_t, int);
+	    struct window_pane *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -81,7 +81,7 @@ status_redraw_get_left(struct client *c,
 		gc->attr = attr;
 
 	left = status_replace(c, NULL,
-		NULL, NULL, options_get_string(&s->options, "status-left"), t, 1);
+	    NULL, NULL, options_get_string(&s->options, "status-left"), t, 1);
 
 	*size = options_get_number(&s->options, "status-left-length");
 	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
@@ -111,7 +111,7 @@ status_redraw_get_right(struct client *c,
 		gc->attr = attr;
 
 	right = status_replace(c, NULL,
-		NULL, NULL, options_get_string(&s->options, "status-right"), t, 1);
+	    NULL, NULL, options_get_string(&s->options, "status-right"), t, 1);
 
 	*size = options_get_number(&s->options, "status-right-length");
 	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
@@ -142,12 +142,12 @@ int
 status_redraw(struct client *c)
 {
 	struct screen_write_ctx	ctx;
-	struct session		   *s = c->session;
-	struct winlink		   *wl;
+	struct session	       *s = c->session;
+	struct winlink	       *wl;
 	struct screen		old_status, window_list;
 	struct grid_cell	stdgc, lgc, rgc, gc;
 	time_t			t;
-	char			   *left, *right;
+	char		       *left, *right;
 	u_int			offset, needed;
 	u_int			wlstart, wlwidth, wlavailable, wloffset, wlsize;
 	size_t			llen, rlen;
@@ -212,7 +212,7 @@ status_redraw(struct client *c)
 		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
 		wl->status_text = status_print(c, wl, t, &wl->status_cell);
 		wl->status_width =
-			screen_write_cstrlen(utf8flag, "%s", wl->status_text);
+		    screen_write_cstrlen(utf8flag, "%s", wl->status_text);
 
 		if (wl == s->curw)
 			wloffset = wlwidth;
@@ -226,7 +226,7 @@ status_redraw(struct client *c)
 	screen_write_start(&ctx, NULL, &window_list);
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		screen_write_cnputs(&ctx,
-			-1, &wl->status_cell, utf8flag, "%s", wl->status_text);
+		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
 		screen_write_putc(&ctx, &stdgc, ' ');
 	}
 	screen_write_stop(&ctx);
@@ -282,13 +282,13 @@ status_redraw(struct client *c)
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (wl->flags & WINLINK_ALERTFLAGS &&
-			larrow == 1 && offset < wlstart)
+		    larrow == 1 && offset < wlstart)
 			larrow = -1;
 
 		offset += wl->status_width;
 
 		if (wl->flags & WINLINK_ALERTFLAGS &&
-			rarrow == 1 && offset > wlstart + wlwidth)
+		    rarrow == 1 && offset > wlstart + wlwidth)
 			rarrow = -1;
 	}
 
@@ -384,9 +384,9 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
 	if ((limit == 0 && errno != EINVAL) ||
-		(limit == LONG_MIN && errno != ERANGE) ||
-		(limit == LONG_MAX && errno != ERANGE) ||
-		limit != 0)
+	    (limit == LONG_MIN && errno != ERANGE) ||
+	    (limit == LONG_MAX && errno != ERANGE) ||
+	    limit != 0)
 		*iptr = endptr;
 	if (limit <= 0)
 		limit = LONG_MAX;
@@ -426,7 +426,7 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
 		xsnprintf(
-			tmp, sizeof tmp, "%u", idx);
+		    tmp, sizeof tmp, "%u", idx);
 		ptr = tmp;
 		goto do_replace;
 	case 'S':
@@ -507,7 +507,7 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 			continue;
 		}
 		status_replace1(
-			c, s, wl, wp, &iptr, &optr, out, sizeof out, jobsflag);
+		    c, s, wl, wp, &iptr, &optr, out, sizeof out, jobsflag);
 	}
 	*optr = '\0';
 
@@ -779,9 +779,9 @@ int
 status_message_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
-	struct session			   *s = c->session;
-	struct screen				old_status;
-	size_t					len;
+	struct session		       *s = c->session;
+	struct screen			old_status;
+	size_t				len;
 	struct grid_cell		gc;
 	int				utf8flag;
 
@@ -830,12 +830,12 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	status_prompt_clear(c);
 
 	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
-		time(NULL), 0);
+	    time(NULL), 0);
 
 	if (input == NULL)
 		input = "";
 	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
-		time(NULL), 0);
+	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
@@ -884,13 +884,13 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 {
 	xfree(c->prompt_string);
 	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
-		time(NULL), 0);
+	    time(NULL), 0);
 
 	xfree(c->prompt_buffer);
 	if (input == NULL)
 		input = "";
 	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
-		time(NULL), 0);
+	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;
@@ -903,9 +903,9 @@ int
 status_prompt_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
-	struct session			   *s = c->session;
-	struct screen				old_status;
-	size_t					i, size, left, len, off;
+	struct session		       *s = c->session;
+	struct screen			old_status;
+	size_t				i, size, left, len, off;
 	struct grid_cell		gc, *gcp;
 	int				utf8flag;
 
@@ -948,7 +948,7 @@ status_prompt_redraw(struct client *c)
 			size = left;
 		}
 		screen_write_nputs(
-			&ctx, left, &gc, utf8flag, "%s", c->prompt_buffer + off);
+		    &ctx, left, &gc, utf8flag, "%s", c->prompt_buffer + off);
 
 		for (i = len + size; i < c->tty.sx; i++)
 			screen_write_putc(&ctx, &gc, ' ');
@@ -1036,7 +1036,7 @@ status_prompt_key(struct client *c, int key)
 		if (*last != '\0')
 			last++;
 		if (last <= first ||
-			((size_t) (last - first)) > (sizeof word) - 1)
+		    ((size_t) (last - first)) > (sizeof word) - 1)
 			break;
 		memcpy(word, first, last - first);
 		word[last - first] = '\0';
@@ -1069,8 +1069,8 @@ status_prompt_key(struct client *c, int key)
 				c->prompt_buffer[--c->prompt_index] = '\0';
 			else {
 				memmove(c->prompt_buffer + c->prompt_index - 1,
-					c->prompt_buffer + c->prompt_index,
-					size + 1 - c->prompt_index);
+				    c->prompt_buffer + c->prompt_index,
+				    size + 1 - c->prompt_index);
 				c->prompt_index--;
 			}
 			c->flags |= CLIENT_STATUS;
@@ -1079,8 +1079,8 @@ status_prompt_key(struct client *c, int key)
 	case MODEKEYEDIT_DELETE:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
-				c->prompt_buffer + c->prompt_index + 1,
-				size + 1 - c->prompt_index);
+			    c->prompt_buffer + c->prompt_index + 1,
+			    size + 1 - c->prompt_index);
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
@@ -1117,10 +1117,10 @@ status_prompt_key(struct client *c, int key)
 		}
 
 		memmove(c->prompt_buffer + idx,
-			c->prompt_buffer + c->prompt_index,
-			size + 1 - c->prompt_index);
+		    c->prompt_buffer + c->prompt_index,
+		    size + 1 - c->prompt_index);
 		memset(c->prompt_buffer + size - (c->prompt_index - idx),
-			'\0', c->prompt_index - idx);
+		    '\0', c->prompt_index - idx);
 		c->prompt_index = idx;
 		c->flags |= CLIENT_STATUS;
 		break;
@@ -1221,8 +1221,8 @@ status_prompt_key(struct client *c, int key)
 			c->prompt_buffer[c->prompt_index] = '\0';
 		} else {
 			memmove(c->prompt_buffer + c->prompt_index + n,
-				c->prompt_buffer + c->prompt_index,
-				size + 1 - c->prompt_index);
+			    c->prompt_buffer + c->prompt_index,
+			    size + 1 - c->prompt_index);
 			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
 			c->prompt_index += n;
 		}
@@ -1261,14 +1261,14 @@ status_prompt_key(struct client *c, int key)
 			c->prompt_buffer[c->prompt_index] = '\0';
 		} else {
 			memmove(c->prompt_buffer + c->prompt_index + 1,
-				c->prompt_buffer + c->prompt_index,
-				size + 1 - c->prompt_index);
+			    c->prompt_buffer + c->prompt_index,
+			    size + 1 - c->prompt_index);
 			c->prompt_buffer[c->prompt_index++] = key;
 		}
 
 		if (c->prompt_flags & PROMPT_SINGLE) {
 			if (c->prompt_callbackfn(
-				c->prompt_data, c->prompt_buffer) == 0)
+			    c->prompt_data, c->prompt_buffer) == 0)
 				status_prompt_clear(c);
 		}
 
@@ -1335,7 +1335,7 @@ status_prompt_add_history(const char *line)
 char *
 status_prompt_complete(const char *s)
 {
-	const struct cmd_entry			   **cmdent;
+	const struct cmd_entry		       **cmdent;
 	const struct options_table_entry	*oe;
 	ARRAY_DECL(, const char *)		 list;
 	char					*prefix, *s2;

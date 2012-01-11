@@ -740,7 +740,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	setblocking(wp->fd, 0);
 
 	wp->event = bufferevent_new(wp->fd,
-		window_pane_read_callback, NULL, window_pane_error_callback, wp);
+	    window_pane_read_callback, NULL, window_pane_error_callback, wp);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	return (0);
@@ -751,7 +751,7 @@ void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
 	struct window_pane     *wp = data;
-	char			   *new_data;
+	char		       *new_data;
 	size_t			new_size;
 
 	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
@@ -960,7 +960,7 @@ window_pane_mouse(
 
 	if (wp->mode != NULL) {
 		if (wp->mode->mouse != NULL &&
-			options_get_number(&wp->window->options, "mode-mouse"))
+		    options_get_number(&wp->window->options, "mode-mouse"))
 			wp->mode->mouse(wp, sess, m);
 	} else if (wp->fd != -1)
 		input_mouse(wp, m);

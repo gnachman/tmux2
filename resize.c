@@ -49,8 +49,8 @@ recalculate_sizes(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i, j, ssx, ssy, has, limit;
-	int		 	 flag;
+	u_int			 i, j, ssx, ssy, has, limit;
+	int			 flag;
 	int			 session_has_status;
 	u_int			 ssy_ex_status;
 
@@ -64,8 +64,9 @@ recalculate_sizes(void)
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
 					ssx = c->tty.sx;
-				/* Reserve one line for status if the session wants it, the
-				 * client supports it, and there is room. */
+				/* Reserve one line for status if the session
+				 * wants it, the client supports it, and there
+				 * is room. */
 				ssy_ex_status = c->tty.sy;
 				if (session_has_status &&
 					!(c->flags & CLIENT_CONTROL) &&

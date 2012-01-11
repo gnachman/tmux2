@@ -65,7 +65,7 @@ window_name_callback(unused int fd, unused short events, void *data)
 		 * present. Ick.
 		 */
 		if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
-			name != NULL && name[0] == '-' && name[1] != '\0')
+		    name != NULL && name[0] == '-' && name[1] != '\0')
 			wname = parse_window_name(name + 1);
 		else
 				wname = parse_window_name(name);

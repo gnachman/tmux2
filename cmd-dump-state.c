@@ -56,7 +56,8 @@ dump_state_int(struct cmd_ctx *ctx, unsigned int value, const char *name)
 }
 
 static void
-dump_state_bits(struct cmd_ctx *ctx, bitstr_t *value, int length, const char *name)
+dump_state_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
+		const char *name)
 {
 	struct dstring	ds;
 	int		separator = 0;
@@ -88,7 +89,7 @@ dump_state_string(struct cmd_ctx *ctx, char *str, const char *name)
 
 static void
 dump_state_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
-		   const char *name)
+	       const char *name)
 {
 	struct dstring	ds;
 	ds_init(&ds);
@@ -119,18 +120,20 @@ dump_state_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 }
 
 static void
-dump_state_history_output_last_char(struct dstring *last_char, struct dstring *output,
-					int *repeats)
+dump_state_history_output_last_char(struct dstring *last_char,
+				    struct dstring *output, int *repeats)
 {
 	if (last_char->used > 0) {
 		ds_append(output, last_char->buffer);
 		if (*repeats == 2 && last_char->used <= 3) {
-			/* If an ASCII code repeats once then it's shorter to print it
-			 * twice than to use the run-length encoding. */
+			/* If an ASCII code repeats once then it's shorter to
+			 * print it twice than to use the run-length encoding.
+			 * */
 			ds_append(output, last_char->buffer);
 		} else if (*repeats > 1) {
-			/* Output "*<n> " to indicate that the last character repeats
-			 * <n> times. For instance, "AAA" is represented as "61*3". */
+			/* Output "*<n> " to indicate that the last character
+			 * repeats <n> times. For instance, "AAA" is
+			 * represented as "61*3". */
 			ds_appendf(output, "*%d ", *repeats);
 		}
 		ds_truncate(last_char, 0);
@@ -138,9 +141,10 @@ dump_state_history_output_last_char(struct dstring *last_char, struct dstring *o
 }
 
 static void
-dump_state_history_append_char(struct grid_cell *celldata, struct grid_utf8 *utf8data,
-				   struct dstring *last_char, int *repeats,
-				   struct dstring *output)
+dump_state_history_append_char(struct grid_cell *celldata,
+			       struct grid_utf8 *utf8data,
+			       struct dstring *last_char, int *repeats,
+			       struct dstring *output)
 {
 	struct dstring	ds;
 	ds_init(&ds);
@@ -148,7 +152,8 @@ dump_state_history_append_char(struct grid_cell *celldata, struct grid_utf8 *utf
 	if (celldata->flags & GRID_FLAG_UTF8) {
 		char temp[DUMP_STATE_HISTORY_UTF8_BUFFER_SIZE + 3];
 		dump_state_history_encode_utf8(utf8data, temp);
-		ds_appendf(&ds, "[%s]", dump_state_history_encode_utf8(utf8data, temp));
+		ds_appendf(&ds, "[%s]",
+			   dump_state_history_encode_utf8(utf8data, temp));
 	} else {
 		ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
 	}
@@ -171,12 +176,14 @@ dump_state_history_cell(struct dstring *output, struct grid_cell *celldata,
 	int	flags;
 
 	/* Exclude the GRID_FLAG_UTF8 flag because it's wasteful to output when
-	 * UTF-8 chars are already marked by being enclosed in square brackets. */
-	flags  = celldata->flags & (GRID_FLAG_FG256 | GRID_FLAG_BG256 | GRID_FLAG_PADDING);
+	 * UTF-8 chars are already marked by being enclosed in square brackets.
+	 */
+	flags  = celldata->flags & (GRID_FLAG_FG256 | GRID_FLAG_BG256 |
+				    GRID_FLAG_PADDING);
 	if (celldata->attr != dump_context[0] ||
-		flags != dump_context[1] ||
-		celldata->fg != dump_context[2] ||
-		celldata->bg != dump_context[3]) {
+	    flags != dump_context[1] ||
+	    celldata->fg != dump_context[2] ||
+	    celldata->bg != dump_context[3]) {
 		/* Context has changed since the last character. */
 		dump_context[0] = celldata->attr;
 		dump_context[1] = flags;
@@ -187,12 +194,13 @@ dump_state_history_cell(struct dstring *output, struct grid_cell *celldata,
 		ds_appendf(output, ":%x,%x,%x,%x,", celldata->attr,
 			   celldata->flags, celldata->fg, celldata->bg);
 	}
-	dump_state_history_append_char(celldata, utf8data, last_char, repeats, output);
+	dump_state_history_append_char(celldata, utf8data, last_char, repeats,
+				       output);
 }
 
 static void
 dump_state_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
-				  int *dump_context)
+			int *dump_context)
 {
 	unsigned int	i;
 	struct dstring	last_char;

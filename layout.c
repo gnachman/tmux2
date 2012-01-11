@@ -92,7 +92,7 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
 		TAILQ_FOREACH(lcchild, &lc->cells, entry)
-		    	layout_print_cell(lcchild, hdr, n + 1);
+			layout_print_cell(lcchild, hdr, n + 1);
 		break;
 	case LAYOUT_WINDOWPANE:
 		break;
@@ -491,7 +491,7 @@ layout_resize_pane_mouse(struct client *c, struct mouse_event *mouse)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	int		      	 pane_border;
+	int			 pane_border;
 
 	w = c->session->curw->window;
 
@@ -617,8 +617,8 @@ layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
  * split. This must be followed by layout_assign_pane before much else happens!
  **/
 struct layout_cell *
-layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
-				  int insert_before)
+layout_split_pane(struct window_pane *wp, enum layout_type type,
+    int size, int insert_before)
 {
 	struct layout_cell     *lc, *lcparent, *lcnew;
 	u_int			sx, sy, xoff, yoff, size1, size2;
@@ -656,7 +656,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
 		if (insert_before)
 			TAILQ_INSERT_BEFORE(lc, lcnew, entry);
 		else
-			TAILQ_INSERT_AFTER(&lc->parent->cells, lc, lcnew, entry);
+			TAILQ_INSERT_AFTER(
+			    &lc->parent->cells, lc, lcnew, entry);
 	} else {
 		/*
 		 * Otherwise create a new parent and insert it.

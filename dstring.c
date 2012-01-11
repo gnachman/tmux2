@@ -87,9 +87,9 @@ ds_truncate(struct dstring *ds, int new_length)
 	ds->buffer[new_length] = '\0';
 
 	/* We're a little conservative about freeing memory to avoid repeated
-	 * realloc calls at the cost of using a bit more memory. We'll also never
-	 * realloc below the static buffer's size because the cost of fragmentation
-	 * exceeds the benefit of saving a few bytes. */
+	 * realloc calls at the cost of using a bit more memory. We'll also
+	 * never realloc below the static buffer's size because the cost of
+	 * fragmentation exceeds the benefit of saving a few bytes. */
 	if (ds->buffer != ds->staticbuffer &&
 	    new_length > (DSTRING_STATIC_BUFFER_SIZE / 2) &&
 	    new_length < ds->available / 4) {

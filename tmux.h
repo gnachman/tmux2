@@ -981,7 +981,7 @@ struct session {
 
 	struct options	 options;
 
-#define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+#define SESSION_UNATTACHED	0x1	/* not attached to any clients */
 #define SESSION_RENAMED		0x2	/* notify control clients */
 	int		 flags;
 
@@ -1477,7 +1477,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, int, char *);
 int	tty_resize(struct tty *);
-int	 tty_set_size(struct tty *tty, u_int sx, u_int sy);
+int	tty_set_size(struct tty *tty, u_int sx, u_int sy);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
@@ -1680,7 +1680,8 @@ int	cmd_string_parse(const char *, struct cmd_list **, char **);
 int	client_main(int, char **, int);
 
 /* cmd-join-pane.c */
-int	join_pane(struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows);
+int	join_pane(
+    struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows);
 
 /* control.c */
 void	control_init(void);
@@ -1994,9 +1995,9 @@ void		 window_resize(struct window *, u_int, u_int);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 struct window_pane *window_pane_next_by_number(struct window *,
-		    struct window_pane *, u_int);
+		        struct window_pane *, u_int);
 struct window_pane *window_pane_previous_by_number(struct window *,
-		    struct window_pane *, u_int);
+		        struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
@@ -2053,7 +2054,8 @@ void		 layout_resize_pane_mouse(
 		     struct client *c, struct mouse_event *mouse);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
-		     struct window_pane *, enum layout_type, int, int);
+		     struct window_pane *, enum layout_type, int,
+		     int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */

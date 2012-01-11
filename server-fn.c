@@ -397,7 +397,7 @@ server_next_session(struct session *s)
 		if (s_loop == s)
 			continue;
 		if (s_out == NULL ||
-			timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
 			s_out = s_loop;
 	}
 	return (s_out);

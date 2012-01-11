@@ -32,7 +32,7 @@
  */
 
 int	format_replace(struct format_tree *,
-		const char *, size_t, char **, size_t *, size_t *);
+	    const char *, size_t, char **, size_t *, size_t *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -210,7 +210,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	char		*buf, *ptr;
 	const char	*s;
 	size_t		 off, len, n;
-	int			 ch;
+	int		 ch;
 
 	len = 64;
 	buf = xmalloc(len);
@@ -245,7 +245,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 				if (s != NULL) {
 					n = strlen(s);
 					if (format_replace (
-						ft, s, n, &buf, &len, &off) != 0)
+					    ft, s, n, &buf, &len, &off) != 0)
 						break;
 					continue;
 				}

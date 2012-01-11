@@ -28,7 +28,7 @@
 // TODO(georgen): Set this to 1 when it stabilizes
 /*
  * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
- * 0.2: Adds session notifications.
+ * 0.2: Adds session notifications. Goes with iTerm2 1.0.0.20120108.
  */
 #define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.2"
 
@@ -61,7 +61,7 @@ struct control_input_ctx {
 
 static void	control_notify_windows_changed(void);
 
-static struct window	**layouts_changed;
+static struct window			**layouts_changed;
 static int				  num_layouts_changed;
 static int				  spontaneous_message_allowed;
 #define SESSION_CHANGE_ADDREMOVE	0x1
@@ -71,8 +71,10 @@ static int				  session_changed_flags;
 
 void	control_read_callback(struct bufferevent *, void *);
 void	control_error_callback(struct bufferevent *, short, void *);
-void printflike2	control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...);
-void printflike2	control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...);
+void printflike2	control_msg_error(struct cmd_ctx *ctx, const char *fmt,
+					  ...);
+void printflike2	control_msg_print(struct cmd_ctx *ctx, const char *fmt,
+					  ...);
 void printflike2	control_msg_info(unused struct cmd_ctx *ctx,
 				unused const char *fmt, ...);
 void	control_read_callback(unused struct bufferevent *bufev, void *data);
@@ -153,7 +155,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 
 void
 control_error_callback(
-	unused struct bufferevent *bufev, unused short what, unused void *data)
+    unused struct bufferevent *bufev, unused short what, unused void *data)
 {
 	struct client	*c = data;
 
@@ -209,10 +211,10 @@ void
 control_write(struct client *c, const char *buf, int len)
 {
 	if (c->session) {
-		// Only write to control clients that have an attached session. This
-		// indicates that the initial setup performed by the local client is
-		// complete and the remote client is expecting to send and receive
-		// commands.
+		/* Only write to control clients that have an attached session.
+		 * This indicates that the initial setup performed by the local
+		 * client is complete and the remote client is expecting to
+		 * send and receive commands. */
 		evbuffer_add(c->stdout_event->output, buf, len);
 	}
 }
@@ -238,8 +240,8 @@ void
 control_write_input(struct client *c, struct window_pane *wp,
 			const u_char *buf, int len)
 {
-	// Only write input if the window pane is linked to a window belonging to
-	// the client's session.
+	/* Only write input if the window pane is linked to a window belonging
+	 * to the client's session. */
 	if (winlink_find_by_window(&c->session->windows, wp->window)) {
 		control_write_str(c, "%output ");
 		control_write_window_pane(c, wp);
@@ -283,7 +285,8 @@ control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
 }
 
 static void
-control_write_attached_session_change_cb(struct client *c, unused void *user_data)
+control_write_attached_session_change_cb(
+    struct client *c, unused void *user_data)
 {
 	if (c->flags & CLIENT_SESSION_CHANGED) {
 		struct dstring ds;
@@ -294,13 +297,14 @@ control_write_attached_session_change_cb(struct client *c, unused void *user_dat
 		ds_free(&ds);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
-	if (session_changed_flags & (SESSION_CHANGE_ADDREMOVE |
-								 SESSION_CHANGE_RENAME)) {
+	if (session_changed_flags &
+	    (SESSION_CHANGE_ADDREMOVE | SESSION_CHANGE_RENAME)) {
 		control_write_str(c, "%sessions-changed\n");
 	}
 	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
 		(c->session->flags & SESSION_RENAMED)) {
-		control_write_printf(c, "%%session-renamed %s\n", c->session->name);
+		control_write_printf(c, "%%session-renamed %s\n",
+				     c->session->name);
 	}
 }
 
@@ -312,26 +316,31 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 
 	if (!(c->flags & CLIENT_CONTROL_READY)) {
 		/* Don't issue spontaneous commands until the remote client has
-		 * finished its initalization. It's ok because the remote client should
-		 * fetch all window and layout info at the same time as it's marked
-		 * ready. */
+		 * finished its initalization. It's ok because the remote
+		 * client should fetch all window and layout info at the same
+		 * time as it's marked ready. */
 		return;
 	}
 
 	for (int i = 0; i < num_layouts_changed; i++) {
 		struct window	*w = layouts_changed[i];
-		if (w && winlink_find_by_window_id(&c->session->windows, w->id)) {
-			/* When the last pane in a window is closed it won't have a layout
-			 * root and we don't need to inform the client about its layout
-			 * change because the whole window will go away soon. */
+		if (w &&
+		    winlink_find_by_window_id(&c->session->windows, w->id)) {
+			/* When the last pane in a window is closed it won't
+			 * have a layout root and we don't need to inform the
+			 * client about its layout change because the whole
+			 * window will go away soon. */
 			if (w && w->layout_root) {
-				const char *template = "%layout-change #{window_id} "
-					"#{window_layout_ex}\n";
+				const char *template =
+				    "%layout-change #{window_id} "
+				    "#{window_layout_ex}\n";
 				ft = format_create();
-				wl = winlink_find_by_window(&c->session->windows, w);
+				wl = winlink_find_by_window(
+				    &c->session->windows, w);
 				if (wl) {
 					format_winlink(ft, c->session, wl);
-					control_write_str(c, format_expand(ft, template));
+					control_write_str(
+					    c, format_expand(ft, template));
 				}
 			}
 		}
@@ -366,7 +375,7 @@ void
 control_notify_window_removed(struct window *w)
 {
 	struct window_change	*change;
-	int						 found;
+	int			 found;
 
 	for (int i = 0; i < num_layouts_changed; i++) {
 		if (layouts_changed[i] == w) {
@@ -480,22 +489,23 @@ static void
 control_write_windows_change_cb(struct client *c, unused void *user_data)
 {
 	struct window_change	*change;
-	const char				*prefix;
-	struct window			*w;
-	struct winlink			*wl;
+	const char		*prefix;
+	struct window		*w;
+	struct winlink		*wl;
 
 	if (!(c->flags & CLIENT_CONTROL_READY)) {
 		/* Don't issue spontaneous commands until the remote client has
-		 * finished its initalization. It's ok because the remote client should
-		 * fetch all window and layout info at the same time as it's marked
-		 * ready. */
+		 * finished its initalization. It's ok because the remote
+		 * client should fetch all window and layout info at the same
+		 * time as it's marked ready. */
 		return;
 	}
 	if (!c->session)
 		return;
 
 	TAILQ_FOREACH(change, &window_changes, entry) {
-		if (winlink_find_by_window_id(&c->session->windows, change->window_id)) {
+		if (winlink_find_by_window_id(&c->session->windows,
+					      change->window_id)) {
 			prefix = "";
 		} else {
 			prefix = "unlinked-";
@@ -503,22 +513,22 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		switch (change->action) {
 			case WINDOW_CREATED:
 				control_write_printf(c, "%%%swindow-add %u\n",
-									 prefix, change->window_id);
+						     prefix, change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
 				control_write_printf(c, "%%window-close %u\n",
-									 change->window_id);
+						     change->window_id);
 				break;
 
 			case WINDOW_RENAMED:
-				wl = winlink_find_by_window_id(&c->session->windows,
-											   change->window_id);
+				wl = winlink_find_by_window_id(
+				    &c->session->windows, change->window_id);
 				if (wl) {
 					w = wl->window;
-					control_write_printf(c, "%%window-renamed %u %s\n",
-										 change->window_id,
-										 w->name);
+					control_write_printf(
+					     c, "%%window-renamed %u %s\n",
+					     change->window_id, w->name);
 				}
 				break;
 
@@ -532,7 +542,8 @@ control_broadcast_queue(void)
 	struct session	*s;
 
 	if (session_changed_flags) {
-		control_foreach_client(control_write_attached_session_change_cb, NULL);
+		control_foreach_client(control_write_attached_session_change_cb,
+				       NULL);
 		session_changed_flags = 0;
 		RB_FOREACH(s, sessions, &sessions) {
 			s->flags &= ~SESSION_RENAMED;
@@ -567,12 +578,13 @@ void
 control_handshake(struct client *c)
 {
 	if (!(c->flags & CLIENT_SESSION_HANDSHAKE)) {
-		control_write_str(c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
-				  "\033\\%noop If you can see this message, "
-				  "your terminal emulator does not support tmux mode "
-				  "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
-				  "\"detach\" and press the enter key to return to your "
-				  "shell.\n");
+		control_write_str(
+		    c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
+		    "\033\\%noop If you can see this message, "
+		    "your terminal emulator does not support tmux mode "
+		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
+		    "\"detach\" and press the enter key to return to your "
+		    "shell.\n");
 		c->flags |= CLIENT_SESSION_HANDSHAKE;
 	}
 }

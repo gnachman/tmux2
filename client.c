@@ -144,9 +144,9 @@ client_main(int argc, char **argv, int flags)
 	 * if the socket path matches $TMUX, this is probably the same server.
 	 */
 	if (shell_cmd == NULL && environ_path != NULL &&
-		cmdflags & CMD_CANTNEST && strcmp(socket_path, environ_path) == 0) {
+	    cmdflags & CMD_CANTNEST && strcmp(socket_path, environ_path) == 0) {
 		log_warnx("sessions should be nested with care. "
-			"unset $TMUX to force.");
+		    "unset $TMUX to force.");
 		return (1);
 	}
 
@@ -187,7 +187,8 @@ client_main(int argc, char **argv, int flags)
 	client_send_identify(flags);
 
 	if (is_control_client) {
-		/* Turn off echo in control mode (we only get here if stdout is a tty). */
+		/* Turn off echo in control mode (we only get here if stdout is
+		 * a tty). */
 		struct termios termios;
 		tcgetattr(fileno(stdout), &termios);
 		termios.c_lflag &= ~ECHO;
@@ -208,7 +209,7 @@ client_main(int argc, char **argv, int flags)
 		/* Prepare command for server. */
 		cmddata.argc = argc;
 		if (cmd_pack_argv(
-			argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
 			log_warnx("command too long");
 			return (1);
 		}
@@ -243,7 +244,7 @@ void
 client_send_identify(int flags)
 {
 	struct msg_identify_data	data;
-	char				   *term;
+	char			       *term;
 	int				fd;
 
 	data.flags = flags;
@@ -253,24 +254,24 @@ client_send_identify(int flags)
 
 	term = getenv("TERM");
 	if (term == NULL ||
-		strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
+	    strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
 		*data.term = '\0';
 
 	if ((fd = dup(STDOUT_FILENO)) == -1)
 		fatal("dup failed");
 	imsg_compose(&client_ibuf,
-		MSG_STDOUT, PROTOCOL_VERSION, -1, fd, NULL, 0);
+	    MSG_STDOUT, PROTOCOL_VERSION, -1, fd, NULL, 0);
 
 	if ((fd = dup(STDERR_FILENO)) == -1)
 		fatal("dup failed");
 	imsg_compose(&client_ibuf,
-		MSG_STDERR, PROTOCOL_VERSION, -1, fd, NULL, 0);
+	    MSG_STDERR, PROTOCOL_VERSION, -1, fd, NULL, 0);
 
-	// For control clients, this has to be the last message.
+	/* For control clients, this has to be the last message. */
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
 	imsg_compose(&client_ibuf,
-		MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
+	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
 }
 
 /* Forward entire environment to server. */
@@ -278,7 +279,7 @@ void
 client_send_environ(void)
 {
 	struct msg_environ_data	data;
-	char			  **var;
+	char		      **var;
 
 	for (var = environ; *var != NULL; var++) {
 		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
@@ -305,7 +306,7 @@ client_update_event(void)
 	if (client_ibuf.w.queued > 0)
 		events |= EV_WRITE;
 	event_set(
-		&client_event, client_ibuf.fd, events, client_callback, shell_cmd);
+	    &client_event, client_ibuf.fd, events, client_callback, shell_cmd);
 	event_add(&client_event, NULL);
 }
 
@@ -434,7 +435,7 @@ client_dispatch_wait(void *data)
 				fatalx("bad MSG_VERSION size");
 
 			log_warnx("protocol version mismatch (client %u, "
-				"server %u)", PROTOCOL_VERSION, imsg.hdr.peerid);
+			    "server %u)", PROTOCOL_VERSION, imsg.hdr.peerid);
 			client_exitval = 1;
 
 			imsg_free(&imsg);
@@ -490,7 +491,7 @@ client_dispatch_attached(void)
 			break;
 		case MSG_EXIT:
 			if (datalen != 0 &&
-				datalen != sizeof (struct msg_exit_data))
+			    datalen != sizeof (struct msg_exit_data))
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);

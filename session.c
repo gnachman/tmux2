@@ -34,7 +34,7 @@ struct session_groups session_groups;
 
 struct winlink *session_next_alert(struct winlink *);
 struct winlink *session_previous_alert(struct winlink *);
-u_int			next_session_id = 0;
+u_int		next_session_id = 0;
 
 RB_GENERATE(sessions, session, entry, session_cmp);
 
@@ -152,6 +152,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 void
 session_destroy(struct session *s)
 {
+	struct winlink	*wl;
 	log_debug("session %s destroyed", s->name);
 
 	RB_REMOVE(sessions, &sessions, s);
@@ -167,7 +168,7 @@ session_destroy(struct session *s)
 	while (!TAILQ_EMPTY(&s->lastw))
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
 	while (!RB_EMPTY(&s->windows)) {
-		struct winlink	*wl = RB_ROOT(&s->windows);
+		wl = RB_ROOT(&s->windows);
 		control_notify_window_removed(wl->window);
 		winlink_remove(&s->windows, wl);
 	}
@@ -253,7 +254,7 @@ session_new(struct session *s,
 
 	hlimit = options_get_number(&s->options, "history-limit");
 	w = window_create(
-		name, cmd, shell, cwd, &env, s->tio, s->sx, s->sy, hlimit, cause);
+	    name, cmd, shell, cwd, &env, s->tio, s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(&env);
@@ -292,7 +293,7 @@ int
 session_detach(struct session *s, struct winlink *wl)
 {
 	if (s->curw == wl &&
-		session_last(s) != 0 && session_previous(s, 0) != 0)
+	    session_last(s) != 0 && session_previous(s, 0) != 0)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
@@ -552,8 +553,8 @@ session_group_synchronize1(struct session *target, struct session *s)
 
 	/* If the current window has vanished, move to the next now. */
 	if (s->curw != NULL &&
-		winlink_find_by_index(ww, s->curw->idx) == NULL &&
-		session_last(s) != 0 && session_previous(s, 0) != 0)
+	    winlink_find_by_index(ww, s->curw->idx) == NULL &&
+	    session_last(s) != 0 && session_previous(s, 0) != 0)
 		session_next(s, 0);
 
 	/* Save the old pointer and reset it. */

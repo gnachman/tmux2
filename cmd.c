@@ -123,7 +123,7 @@ struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 struct window_pane *cmd_lookup_paneid(const char *);
 struct session	*cmd_pane_session(struct cmd_ctx *,
-			struct window_pane *, struct winlink **);
+		    struct window_pane *, struct winlink **);
 struct winlink	*cmd_find_window_offset(const char *, struct session *, int *);
 int		 cmd_find_index_offset(const char *, struct session *, int *);
 struct window_pane *cmd_find_pane_offset(const char *, struct winlink *);
@@ -220,7 +220,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if ((*entryp)->alias != NULL &&
-			strcmp((*entryp)->alias, argv[0]) == 0) {
+		    strcmp((*entryp)->alias, argv[0]) == 0) {
 			ambiguous = 0;
 			entry = *entryp;
 			break;
@@ -384,9 +384,9 @@ cmd_choose_session(int prefer_unattached)
 	sbest = NULL;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (tv == NULL || timercmp(&s->activity_time, tv, >) ||
-			(prefer_unattached &&
-			!(sbest->flags & SESSION_UNATTACHED) &&
-			(s->flags & SESSION_UNATTACHED))) {
+		    (prefer_unattached &&
+		    !(sbest->flags & SESSION_UNATTACHED) &&
+		    (s->flags & SESSION_UNATTACHED))) {
 			sbest = s;
 			tv = &s->activity_time;
 		}
@@ -401,7 +401,7 @@ cmd_choose_session_list(struct sessionslist *ss)
 {
 	struct session	*s, *sbest;
 	struct timeval	*tv = NULL;
-	u_int		i;
+	u_int		 i;
 
 	sbest = NULL;
 	for (i = 0; i < ARRAY_LENGTH(ss); i++) {
@@ -428,7 +428,7 @@ cmd_current_client(struct cmd_ctx *ctx)
 	struct session		*s;
 	struct client		*c;
 	struct clients		 cc;
-	u_int			i;
+	u_int			 i;
 
 	if (ctx->curclient != NULL)
 		return (ctx->curclient);
@@ -462,7 +462,7 @@ cmd_choose_client(struct clients *cc)
 {
 	struct client	*c, *cbest;
 	struct timeval	*tv = NULL;
-	u_int		i;
+	u_int		 i;
 
 	cbest = NULL;
 	for (i = 0; i < ARRAY_LENGTH(cc); i++) {
@@ -518,7 +518,7 @@ cmd_lookup_client(const char *name)
 {
 	struct client	*c;
 	const char	*path;
-	u_int		i;
+	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -563,7 +563,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	sfound = NULL;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (strncmp(name, s->name, strlen(name)) == 0 ||
-			fnmatch(name, s->name, 0) == 0) {
+		    fnmatch(name, s->name, 0) == 0) {
 			if (sfound != NULL) {
 				*ambiguous = 1;
 				return (NULL);
@@ -628,7 +628,7 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 	wlfound = NULL;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (strncmp(name, wl->window->name, strlen(name)) == 0 ||
-			fnmatch(name, wl->window->name, 0) == 0) {
+		    fnmatch(name, wl->window->name, 0) == 0) {
 			if (wlfound != NULL) {
 				*ambiguous = 1;
 				return (NULL);

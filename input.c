@@ -538,7 +538,7 @@ const struct input_transition input_state_dcs_handler_table[] = {
 	/* No INPUT_STATE_ANYWHERE */
 
 	{ 0x00, 0x1a, input_input,  NULL },
-	{ 0x1b, 0x1b, NULL,		&input_state_dcs_escape },
+	{ 0x1b, 0x1b, NULL,	    &input_state_dcs_escape },
 	{ 0x1c, 0xff, input_input,  NULL },
 
 	{ -1, -1, NULL, NULL }
@@ -559,10 +559,10 @@ const struct input_transition input_state_dcs_escape_table[] = {
 const struct input_transition input_state_dcs_ignore_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x17, NULL,		NULL },
-	{ 0x19, 0x19, NULL,		NULL },
-	{ 0x1c, 0x1f, NULL,		NULL },
-	{ 0x20, 0xff, NULL,		NULL },
+	{ 0x00, 0x17, NULL,	    NULL },
+	{ 0x19, 0x19, NULL,	    NULL },
+	{ 0x1c, 0x1f, NULL,	    NULL },
+	{ 0x20, 0xff, NULL,	    NULL },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -571,11 +571,11 @@ const struct input_transition input_state_dcs_ignore_table[] = {
 const struct input_transition input_state_osc_string_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x06, NULL,		NULL },
-	{ 0x07, 0x07, NULL,		&input_state_ground },
-	{ 0x08, 0x17, NULL,		NULL },
-	{ 0x19, 0x19, NULL,		NULL },
-	{ 0x1c, 0x1f, NULL,		NULL },
+	{ 0x00, 0x06, NULL,	    NULL },
+	{ 0x07, 0x07, NULL,	    &input_state_ground },
+	{ 0x08, 0x17, NULL,	    NULL },
+	{ 0x19, 0x19, NULL,	    NULL },
+	{ 0x1c, 0x1f, NULL,	    NULL },
 	{ 0x20, 0xff, input_input,  NULL },
 
 	{ -1, -1, NULL, NULL }
@@ -585,9 +585,9 @@ const struct input_transition input_state_osc_string_table[] = {
 const struct input_transition input_state_apc_string_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x17, NULL,		NULL },
-	{ 0x19, 0x19, NULL,		NULL },
-	{ 0x1c, 0x1f, NULL,		NULL },
+	{ 0x00, 0x17, NULL,	    NULL },
+	{ 0x19, 0x19, NULL,	    NULL },
+	{ 0x1c, 0x1f, NULL,	    NULL },
 	{ 0x20, 0xff, input_input,  NULL },
 
 	{ -1, -1, NULL, NULL }
@@ -597,9 +597,9 @@ const struct input_transition input_state_apc_string_table[] = {
 const struct input_transition input_state_rename_string_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x17, NULL,		NULL },
-	{ 0x19, 0x19, NULL,		NULL },
-	{ 0x1c, 0x1f, NULL,		NULL },
+	{ 0x00, 0x17, NULL,	    NULL },
+	{ 0x19, 0x19, NULL,	    NULL },
+	{ 0x1c, 0x1f, NULL,	    NULL },
 	{ 0x20, 0xff, input_input,  NULL },
 
 	{ -1, -1, NULL, NULL }
@@ -609,10 +609,10 @@ const struct input_transition input_state_rename_string_table[] = {
 const struct input_transition input_state_consume_st_table[] = {
 	INPUT_STATE_ANYWHERE,
 
-	{ 0x00, 0x17, NULL,		NULL },
-	{ 0x19, 0x19, NULL,		NULL },
-	{ 0x1c, 0x1f, NULL,		NULL },
-	{ 0x20, 0xff, NULL,		NULL },
+	{ 0x00, 0x17, NULL,	    NULL },
+	{ 0x19, 0x19, NULL,	    NULL },
+	{ 0x1c, 0x1f, NULL,	    NULL },
+	{ 0x20, 0xff, NULL,	    NULL },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -632,9 +632,9 @@ const struct input_transition input_state_utf8_three_table[] = {
 const struct input_transition input_state_utf8_two_table[] = {
 	/* No INPUT_STATE_ANYWHERE */
 
-	{ 0x00, 0x7f, NULL,		  &input_state_ground },
+	{ 0x00, 0x7f, NULL,	      &input_state_ground },
 	{ 0x80, 0xbf, input_utf8_add, &input_state_utf8_one },
-	{ 0xc0, 0xff, NULL,		  &input_state_ground },
+	{ 0xc0, 0xff, NULL,	      &input_state_ground },
 
 	{ -1, -1, NULL, NULL }
 };
@@ -814,7 +814,7 @@ input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 	int	retval;
 
 	if (validx >= ictx->param_list_len)
-		return (defval);
+	    return (defval);
 
 	retval = ictx->param_list[validx];
 	if (retval == -1)
@@ -973,7 +973,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 	log_debug("%s: '%c', %s", __func__, ictx->ch, ictx->interm_buf);
 
 	entry = bsearch(ictx, input_esc_table, nitems(input_esc_table),
-		sizeof input_esc_table[0], input_table_compare);
+	    sizeof input_esc_table[0], input_table_compare);
 	if (entry == NULL) {
 		log_debug("%s: unknown '%c'", __func__, ictx->ch);
 		return (0);
@@ -1050,9 +1050,9 @@ input_esc_dispatch(struct input_ctx *ictx)
 int
 input_csi_dispatch(struct input_ctx *ictx)
 {
-	struct screen_write_ctx		   *sctx = &ictx->ctx;
-	struct window_pane		   *wp = ictx->wp;
-	struct screen			   *s = sctx->s;
+	struct screen_write_ctx	       *sctx = &ictx->ctx;
+	struct window_pane	       *wp = ictx->wp;
+	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
 	int				n, m;
 
@@ -1061,10 +1061,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 	if (input_split(ictx) != 0)
 		return (0);
 	log_debug("%s: '%c' \"%s\" \"%s\"",
-		__func__, ictx->ch, ictx->interm_buf, ictx->param_buf);
+	    __func__, ictx->ch, ictx->interm_buf, ictx->param_buf);
 
 	entry = bsearch(ictx, input_csi_table, nitems(input_csi_table),
-		sizeof input_csi_table[0], input_table_compare);
+	    sizeof input_csi_table[0], input_table_compare);
 	if (entry == NULL) {
 		log_debug("%s: unknown '%c'", __func__, ictx->ch);
 		return (0);
@@ -1250,11 +1250,11 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		case 1000:
 			screen_write_mousemode_on(
-				&ictx->ctx, MODE_MOUSE_STANDARD);
+			    &ictx->ctx, MODE_MOUSE_STANDARD);
 			break;
 		case 1002:
 			screen_write_mousemode_on(
-				&ictx->ctx, MODE_MOUSE_BUTTON);
+			    &ictx->ctx, MODE_MOUSE_BUTTON);
 			break;
 		case 1003:
 			screen_write_mousemode_on(&ictx->ctx, MODE_MOUSE_ANY);
@@ -1457,9 +1457,9 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 	/* Check for tmux prefix. */
 	if (ictx->input_len >= prefix_len &&
-		strncmp(ictx->input_buf, prefix, prefix_len) == 0) {
+	    strncmp(ictx->input_buf, prefix, prefix_len) == 0) {
 		screen_write_rawstring(&ictx->ctx,
-			ictx->input_buf + prefix_len, ictx->input_len - prefix_len);
+		    ictx->input_buf + prefix_len, ictx->input_len - prefix_len);
 	}
 
 	return (0);

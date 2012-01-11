@@ -101,14 +101,12 @@ server_create_socket(void)
 	return (fd);
 }
 
-// TODO(georgen): Remove this hack
-extern int server_only;
 /* Fork new server. */
 int
 server_start(void)
 {
 	struct window_pane	*wp;
-	int	 		 pair[2];
+	int			 pair[2];
 	char			*cause;
 	struct timeval		 tv;
 	u_int			 i;
@@ -117,27 +115,23 @@ server_start(void)
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
 
-
-	// TODO(georgen): Remove this hack
-	if (!server_only) {
-		switch (fork()) {
-		case -1:
-			fatal("fork failed");
-		case 0:
-			break;
-		default:
-			close(pair[1]);
-			return (pair[0]);
-		}
-		close(pair[0]);
-
-		/*
-		 * Must daemonise before loading configuration as the PID changes so
-		 * $TMUX would be wrong for sessions created in the config file.
-		 */
-		if (daemon(1, 0) != 0)
-			fatal("daemon failed");
+	switch (fork()) {
+	case -1:
+		fatal("fork failed");
+	case 0:
+		break;
+	default:
+		close(pair[1]);
+		return (pair[0]);
 	}
+	close(pair[0]);
+
+	/*
+	 * Must daemonise before loading configuration as the PID changes so
+	 * $TMUX would be wrong for sessions created in the config file.
+	 */
+	if (daemon(1, 0) != 0)
+		fatal("daemon failed");
 
 	/* event_init() was called in our parent, need to reinit. */
 	if (event_reinit(ev_base) != 0)
@@ -411,7 +405,7 @@ server_child_exited(pid_t pid, int status)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct job		*job;
-	u_int		 	 i;
+	u_int			 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
@@ -463,7 +457,7 @@ server_second_callback(unused int fd, unused short events, unused void *arg)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct timeval		 tv;
-	u_int		 	 i;
+	u_int			 i;
 
 	if (options_get_number(&global_s_options, "lock-server"))
 		server_lock_server();

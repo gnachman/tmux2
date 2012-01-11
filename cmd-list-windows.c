@@ -30,7 +30,7 @@ int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
 void	cmd_list_windows_session(
-		struct cmd *, struct session *, struct cmd_ctx *, int);
+	    struct cmd *, struct session *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -71,7 +71,7 @@ cmd_list_windows_server(struct cmd *self, struct cmd_ctx *ctx)
 
 void
 cmd_list_windows_session(
-	struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
+    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -80,24 +80,24 @@ cmd_list_windows_session(
 	const char		*template;
 	char			*line;
 	int			 has_window_id;
-	u_int		  	 window_id;
+	u_int			 window_id;
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
 		switch (type) {
 		case 0:
 			template = "#{window_index}: "
-				"#{window_name} "
-				"[#{window_width}x#{window_height}] "
-				"[layout #{window_layout}]"
-				"#{?window_active, (active),}";
+			    "#{window_name} "
+			    "[#{window_width}x#{window_height}] "
+			    "[layout #{window_layout}]"
+			    "#{?window_active, (active),}";
 			break;
 		case 1:
 			template = "#{session_name}:#{window_index}: "
-				"#{window_name} "
-				"[#{window_width}x#{window_height}] "
-				"[layout #{window_layout}]"
-				"#{?window_active, (active),}";
+			    "#{window_name} "
+			    "[#{window_width}x#{window_height}] "
+			    "[layout #{window_layout}]"
+			    "#{?window_active, (active),}";
 			break;
 		}
 	}

@@ -110,8 +110,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
 		detached = 1;
 
-	/* Control clients don't have a tty, so avoid doing tty-ish things in that
-	 * case. */
+	/* Control clients don't have a tty, so avoid doing tty-ish things in
+	 * that case. */
 	if ((ctx->cmdclient && (ctx->cmdclient->flags & CLIENT_CONTROL)) ||
 		(ctx->curclient && (ctx->curclient->flags & CLIENT_CONTROL))) {
 		hastty = 0;
@@ -143,7 +143,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		overrides =
-			options_get_string(&global_s_options, "terminal-overrides");
+		    options_get_string(&global_s_options, "terminal-overrides");
 		if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
 			xfree(cause);
@@ -176,7 +176,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (detached) {
 		if (args_has(args, 'x')) {
 			sx = strtonum(
-				args_get(args, 'x'), 1, USHRT_MAX, &errstr);
+			    args_get(args, 'x'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "width %s", errstr);
 				return (-1);
@@ -184,7 +184,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		if (args_has(args, 'y')) {
 			sy = strtonum(
-				args_get(args, 'y'), 1, USHRT_MAX, &errstr);
+			    args_get(args, 'y'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "height %s", errstr);
 				return (-1);

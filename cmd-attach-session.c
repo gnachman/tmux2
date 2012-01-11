@@ -90,7 +90,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		if (!(ctx->cmdclient->flags & CLIENT_CONTROL)) {
 			overrides =
-				options_get_string(&s->options, "terminal-overrides");
+			    options_get_string(&s->options, "terminal-overrides");
 			if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
 				ctx->error(ctx, "terminal open failed: %s", cause);
 				xfree(cause);
