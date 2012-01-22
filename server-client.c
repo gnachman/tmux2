@@ -977,8 +977,8 @@ server_client_msg_identify(
 		c->cwd = xstrdup(data->cwd);
 
 	/*
-	 * If this is a control client, mark the client, and initiate the control
-	 * events.
+	 * If this is a control client, mark the client, and initiate the
+	 * control events.
 	 */
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->flags |= CLIENT_CONTROL;

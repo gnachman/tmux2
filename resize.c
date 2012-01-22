@@ -69,8 +69,8 @@ recalculate_sizes(void)
 				 * is room. */
 				ssy_ex_status = c->tty.sy;
 				if (session_has_status &&
-					!(c->flags & CLIENT_CONTROL) &&
-					ssy_ex_status > 1)
+				    !(c->flags & CLIENT_CONTROL) &&
+				    ssy_ex_status > 1)
 					--ssy_ex_status;
 				if (ssy_ex_status < ssy)
 					ssy = ssy_ex_status;

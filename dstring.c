@@ -16,6 +16,17 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/*
+ * Example usage:
+ *
+ * struct dstring mystring;
+ * ds_init(&mystring);
+ * ds_appendf(&mystring, "Hello %s", name);
+ * ds_append(&mystring, "\n");
+ * printf("The string value is: %s", mystring.buffer);
+ * ds_free(&mystring);
+ */
+
 #include <sys/types.h>
 
 #include <stdlib.h>

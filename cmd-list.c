@@ -87,12 +87,12 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	int		 print_guards;
 
 	c = ctx->curclient;
-	/* print %begin...%end guards around command output only if the client is a
-	 * control client that has an attached session. The requirement for an
-	 * attached session exists because the local client may issue an
-	 * attach-session or new-session command on startup that the remote client
-	 * is unaware of. Only after attaching to a session does the remote client
-	 * take charge.*/
+	/* print %begin...%end guards around command output only if the client
+	 * is a control client that has an attached session. The requirement
+	 * for an attached session exists because the local client may issue an
+	 * attach-session or new-session command on startup that the remote
+	 * client is unaware of. Only after attaching to a session does the
+	 * remote client take charge.*/
 	print_guards = c && (c->flags & CLIENT_CONTROL) && c->session;
 	retval = 0;
 	control_set_spontaneous_messages_allowed(0);

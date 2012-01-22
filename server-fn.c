@@ -226,8 +226,8 @@ server_lock_client(struct client *c)
 	size_t			 cmdlen;
 	struct msg_lock_data	 lockdata;
 
-	/* Control clients aren't able to lock, but just in case the comand gets
-	 * sent, do nothing because it doesn't have a tty. */
+	/* Control clients aren't able to lock, but just in case the command
+	 * gets sent, do nothing because it doesn't have a tty. */
 	if (!(c->flags & CLIENT_CONTROL))
 		return;
 

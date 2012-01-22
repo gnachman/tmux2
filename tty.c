@@ -93,7 +93,8 @@ tty_resize(struct tty *tty)
 		sx = 80;
 		sy = 24;
 	}
-	tty_set_size(tty, sx, sy);
+	if (!tty_set_size(tty, sx, sy))
+		return (0);
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
