@@ -1228,6 +1228,26 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
+.It Xo Ic move-pane
+.Op Fl bdhv
+.Oo Fl l
+.Ar size |
+.Fl p Ar percentage Oc
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
+.Xc
+.D1 (alias: Ic movep )
+Like
+.Ic join-pane ,
+but for the case where
+.Ar dst-pane
+and
+.Ar src-pane
+are in the same window.
+.Ar dst-pane
+will be split and
+.Ar src-pane
+will be moved into the new location.
 .It Xo Ic move-window
 .Op Fl dk
 .Op Fl s Ar src-window
