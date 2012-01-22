@@ -41,7 +41,6 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct session	*s;
-	struct session	*prev_session;
 	struct client	*c;
 	const char	*update;
 	char		*overrides, *cause;
@@ -104,7 +103,6 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (args_has(self->args, 'd'))
 			server_write_session(s, MSG_DETACH, NULL, 0);
 
-		prev_session = ctx->cmdclient->session;
 		ctx->cmdclient->session = s;
 		if (ctx->cmdclient->flags & CLIENT_CONTROL) {
 			control_handshake(ctx->cmdclient);
