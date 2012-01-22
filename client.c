@@ -221,11 +221,6 @@ client_main(int argc, char **argv, int flags)
 	}
 
 	/* Send first command. */
-	if ((flags & IDENTIFY_CONTROL) && msg == MSG_COMMAND && argc == 0) {
-		static char *new_session_argv[1] = { (char *)"new-session" };
-		argc = 1;
-		argv = new_session_argv;
-	}
 	if (msg == MSG_COMMAND) {
 		/* Fill in command line arguments. */
 		cmddata.pid = environ_pid;
