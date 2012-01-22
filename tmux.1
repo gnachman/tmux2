@@ -1677,6 +1677,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
+.Op Fl h
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -1691,6 +1692,15 @@ or
 ) to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 All arguments are sent sequentially from first to last.
+.Pp
+If
+.Fl h
+is present, the
+.Ar key
+arguments should each be formatted as a string of two-digit
+hexadecimal values. They must encode a valid sequence of bytes for the character
+encoding used by
+.Ar target-pane .
 .It Ic send-prefix Op Fl t Ar target-pane
 Send the prefix key to a window as if it was pressed.
 If multiple prefix keys are configured, only the first is sent.
