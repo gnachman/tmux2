@@ -1112,7 +1112,7 @@ choice list is shown.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
-.Op Fl dhv
+.Op Fl bdhv
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc
@@ -1129,6 +1129,12 @@ and creating a new pane, split it and move
 into the space.
 This can be used to reverse
 .Ic break-pane .
+The
+.Fl b
+option causes
+.Ar src-pane
+to be inserted before (above or to the left of) the
+.Ar dst-pane .
 .It Xo Ic kill-pane
 .Op Fl a
 .Op Fl t Ar target-pane
