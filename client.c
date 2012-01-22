@@ -95,6 +95,29 @@ failed:
 	return (-1);
 }
 
+/* Sleep and then read any pending input. This tries to handle a problem
+ * in control mode where the client is unexpectedly detached while commands it
+ * has sent are on the wire. We'd like to read those commands and throw them
+ * away rather than have them sent to the shell after tmux quits.
+ */
+static void
+read_stray_input(int fd)
+{
+	int	 saved_flags;
+	int	 n;
+	char	 buffer[100];
+
+	sleep(2);
+	saved_flags = fcntl(fd, F_GETFL);
+	fcntl(fd, F_SETFL, saved_flags | O_NONBLOCK);
+	do {
+	    n = read(fd, buffer, sizeof(buffer));
+	    if (n == -1 && errno != EINTR) {
+		break;
+	    }
+	} while (n > 0);
+}
+
 /* Client main loop. */
 int
 client_main(int argc, char **argv, int flags)
@@ -106,6 +129,7 @@ client_main(int argc, char **argv, int flags)
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
+	int			 inputcopy;
 
 	/* Set up the initial command. */
 	cmdflags = 0;
@@ -166,6 +190,7 @@ client_main(int argc, char **argv, int flags)
 			return (1);
 		}
 		is_control_client = 1;
+		inputcopy = dup(fileno(stdin));
 	}
 
 	/* Set process title, log and signals now this is the client. */
@@ -227,6 +252,10 @@ client_main(int argc, char **argv, int flags)
 		if (client_exitmsg != NULL && !login_shell) {
 			if (flags & IDENTIFY_CONTROL) {
 				printf("%%exit %s\n", client_exitmsg);
+				/* Exit messages other than "detached" are
+				 * not client-initiated. */
+				if (strcmp("detached", client_exitmsg))
+					read_stray_input(inputcopy);
 			} else {
 				printf("[%s]\n", client_exitmsg);
 			}
