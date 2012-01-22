@@ -23,40 +23,50 @@
 
 #include "tmux.h"
 
-#define DUMP_STATE_HISTORY_UTF8_BUFFER_SIZE ((UTF8_SIZE) * 2 + 1)
-#define DUMP_STATE_HISTORY_CONTEXT_SIZE 4
+#define CONTROL_HISTORY_UTF8_BUFFER_SIZE ((UTF8_SIZE) * 2 + 1)
+#define CONTROL_HISTORY_CONTEXT_SIZE 4
+#define MAX_CONTROL_CLIENT_HEIGHT 20000
+#define MAX_CONTROL_CLIENT_WIDTH 20000
 
 /*
  * Output information needed by control clients, including history, cursor
  * position, and miscellaneous VT100 state.
  */
 
-int cmd_dump_state_exec(struct cmd *, struct cmd_ctx *);
+int cmd_control_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_dump_state_entry = {
-	"dump-state", "dumpstate",
-	"hael:t:k:", 0, 0,
-	"[-hae] [-l lines] [-t target-pane] [-k key]",
+/*
+ * -e: Output emulator state. -t gives pane.
+ * -h: Output history. -t gives pnae. -l gives lines. -a means alternate screen.
+ * -k: Output value from key-value store. -k gives key.
+ * -s client-size: Set client size to set-value, of form "80x25".
+ * -s ready: Mark client ready for spontaneous messages.
+ * -s set key=value: Set "key" to "value" in key-value store.
+ */
+const struct cmd_entry cmd_control_entry = {
+	"control", "control",
+	"s:hael:t:k:", 0, 1,
+	"[-hae] [-l lines] [-t target-pane] [-k key] [-s set-name] [set-value]",
 	0,
 	NULL,
 	NULL,
-	cmd_dump_state_exec
+	cmd_control_exec
 };
 
 static void
-dump_state_uint(struct cmd_ctx *ctx, unsigned int value, const char *name)
+control_uint(struct cmd_ctx *ctx, unsigned int value, const char *name)
 {
 	ctx->print(ctx, "%s=%u", name, value);
 }
 
 static void
-dump_state_int(struct cmd_ctx *ctx, unsigned int value, const char *name)
+control_int(struct cmd_ctx *ctx, unsigned int value, const char *name)
 {
 	ctx->print(ctx, "%s=%d", name, value);
 }
 
 static void
-dump_state_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
+control_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
 		const char *name)
 {
 	struct dstring	ds;
@@ -78,7 +88,7 @@ dump_state_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
 }
 
 static void
-dump_state_string(struct cmd_ctx *ctx, char *str, const char *name)
+control_string(struct cmd_ctx *ctx, char *str, const char *name)
 {
 	struct dstring	ds;
 	ds_init(&ds);
@@ -88,7 +98,7 @@ dump_state_string(struct cmd_ctx *ctx, char *str, const char *name)
 }
 
 static void
-dump_state_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
+control_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
 	       const char *name)
 {
 	struct dstring	ds;
@@ -103,7 +113,7 @@ dump_state_hex(struct cmd_ctx *ctx, const char *bytes, size_t length,
 
 /* Return a hex encoded version of utf8data. */
 static char *
-dump_state_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
+control_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 {
 	int		o;
 	unsigned int	i;
@@ -120,7 +130,7 @@ dump_state_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 }
 
 static void
-dump_state_history_output_last_char(struct dstring *last_char,
+control_history_output_last_char(struct dstring *last_char,
 				    struct dstring *output, int *repeats)
 {
 	if (last_char->used > 0) {
@@ -141,7 +151,7 @@ dump_state_history_output_last_char(struct dstring *last_char,
 }
 
 static void
-dump_state_history_append_char(struct grid_cell *celldata,
+control_history_append_char(struct grid_cell *celldata,
 			       struct grid_utf8 *utf8data,
 			       struct dstring *last_char, int *repeats,
 			       struct dstring *output)
@@ -150,10 +160,10 @@ dump_state_history_append_char(struct grid_cell *celldata,
 	ds_init(&ds);
 
 	if (celldata->flags & GRID_FLAG_UTF8) {
-		char temp[DUMP_STATE_HISTORY_UTF8_BUFFER_SIZE + 3];
-		dump_state_history_encode_utf8(utf8data, temp);
+		char temp[CONTROL_HISTORY_UTF8_BUFFER_SIZE + 3];
+		control_history_encode_utf8(utf8data, temp);
 		ds_appendf(&ds, "[%s]",
-			   dump_state_history_encode_utf8(utf8data, temp));
+			   control_history_encode_utf8(utf8data, temp));
 	} else {
 		ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
 	}
@@ -162,14 +172,14 @@ dump_state_history_append_char(struct grid_cell *celldata,
 		(*repeats)++;
 	} else {
 		/* Not a repeat */
-		dump_state_history_output_last_char(last_char, output, repeats);
+		control_history_output_last_char(last_char, output, repeats);
 		ds_append(last_char, ds.buffer);
 		*repeats = 1;
 	}
 }
 
 static void
-dump_state_history_cell(struct dstring *output, struct grid_cell *celldata,
+control_history_cell(struct dstring *output, struct grid_cell *celldata,
 			struct grid_utf8 *utf8data, int *dump_context,
 			struct dstring *last_char, int *repeats)
 {
@@ -190,16 +200,16 @@ dump_state_history_cell(struct dstring *output, struct grid_cell *celldata,
 		dump_context[2] = celldata->fg;
 		dump_context[3] = celldata->bg;
 
-		dump_state_history_output_last_char(last_char, output, repeats);
+		control_history_output_last_char(last_char, output, repeats);
 		ds_appendf(output, ":%x,%x,%x,%x,", celldata->attr,
 			   celldata->flags, celldata->fg, celldata->bg);
 	}
-	dump_state_history_append_char(celldata, utf8data, last_char, repeats,
+	control_history_append_char(celldata, utf8data, last_char, repeats,
 				       output);
 }
 
 static void
-dump_state_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
+control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 			int *dump_context)
 {
 	unsigned int	i;
@@ -210,11 +220,11 @@ dump_state_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 	ds_init(&last_char);
 	int repeats = 0;
 	for (i = 0; i < linedata->cellsize; i++) {
-		dump_state_history_cell(&output, linedata->celldata + i,
+		control_history_cell(&output, linedata->celldata + i,
 					linedata->utf8data + i, dump_context, &last_char,
 					&repeats);
 	}
-	dump_state_history_output_last_char(&last_char, &output, &repeats);
+	control_history_output_last_char(&last_char, &output, &repeats);
 	if (linedata->flags & GRID_LINE_WRAPPED) {
 		ds_appendf(&output, "+");
 	}
@@ -223,7 +233,7 @@ dump_state_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 }
 
 static int
-dump_state_history(struct cmd *self, struct cmd_ctx *ctx)
+control_history_command(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
@@ -234,7 +244,7 @@ dump_state_history(struct cmd *self, struct cmd_ctx *ctx)
 	unsigned int		 i;
 	unsigned int		 start, limit;
 	struct grid		*grid;
-	int			 dump_context[DUMP_STATE_HISTORY_CONTEXT_SIZE] =
+	int			 dump_context[CONTROL_HISTORY_CONTEXT_SIZE] =
 		{ -1, -1, -1, -1 };
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
@@ -260,12 +270,12 @@ dump_state_history(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		start = 0;
 	for (i = start; i < limit; i++)
-		dump_state_history_line(ctx, grid->linedata + i, dump_context);
+		control_history_line(ctx, grid->linedata + i, dump_context);
 	return (0);
 }
 
 static int
-dump_state_emulator(struct cmd *self, struct cmd_ctx *ctx)
+control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
@@ -274,23 +284,23 @@ dump_state_emulator(struct cmd *self, struct cmd_ctx *ctx)
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
 
-	dump_state_int(ctx, wp->saved_grid ? 1 : 0, "in_alternate_screen");
+	control_int(ctx, wp->saved_grid ? 1 : 0, "in_alternate_screen");
 	/* This is the saved cursor position from when the alternate screen was
 	 * entered. */
-	dump_state_uint(ctx, wp->saved_cx, "base_cursor_x");
-	dump_state_uint(ctx, wp->saved_cy, "base_cursor_y");
-	dump_state_uint(ctx, wp->base.cx, "cursor_x");
-	dump_state_uint(ctx, wp->base.cy, "cursor_y");
-	dump_state_uint(ctx, wp->base.rupper, "scroll_region_upper");
-	dump_state_uint(ctx, wp->base.rlower, "scroll_region_lower");
-	dump_state_bits(ctx, wp->base.tabs, wp->base.grid->sx, "tabstops");
-	dump_state_string(ctx, wp->base.title, "title");
+	control_uint(ctx, wp->saved_cx, "base_cursor_x");
+	control_uint(ctx, wp->saved_cy, "base_cursor_y");
+	control_uint(ctx, wp->base.cx, "cursor_x");
+	control_uint(ctx, wp->base.cy, "cursor_y");
+	control_uint(ctx, wp->base.rupper, "scroll_region_upper");
+	control_uint(ctx, wp->base.rlower, "scroll_region_lower");
+	control_bits(ctx, wp->base.tabs, wp->base.grid->sx, "tabstops");
+	control_string(ctx, wp->base.title, "title");
 
 	/* This is the saved cursor position from CSI DECSC. */
-	dump_state_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
-	dump_state_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
+	control_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
+	control_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
 	if (wp->ictx.input_since_ground.used) {
-		dump_state_hex(ctx,
+		control_hex(ctx,
 			wp->ictx.input_since_ground.buffer,
 			wp->ictx.input_since_ground.used,
 			"pending_output");
@@ -299,7 +309,7 @@ dump_state_emulator(struct cmd *self, struct cmd_ctx *ctx)
 }
 
 static int
-dump_state_kvp(struct cmd *self, struct cmd_ctx *ctx)
+control_kvp_command(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	const char	*name;
@@ -318,17 +328,121 @@ dump_state_kvp(struct cmd *self, struct cmd_ctx *ctx)
 	return (0);
 }
 
+/* "size" should be formatted as "int,int". If it is well formed, then *w and
+ * *h will be populated with the first and second ints, respectively and 0 is
+ * returned. If an error is encountered, -1 is returned. */
+static int
+parse_size(const char *size, u_int *w, u_int *h)
+{
+	char	*endptr, *temp;
+
+	*w = strtoul(size, &endptr, 10);
+	if (*endptr != ',')
+		return (-1);
+	temp = endptr + 1;
+	*h = strtoul(temp, &endptr, 10);
+	if (*endptr != '\0' || temp == endptr)
+		return (-1);
+	return (0);
+}
+
+/* Change the size of the client. If any change was made, outputs a list of
+ * lines of window indexes and their layouts. */
+static void
+set_client_size(struct client *c, u_int w, u_int h, struct cmd_ctx *ctx)
+{
+	if (tty_set_size(&c->tty, w, h) > 0) {
+		recalculate_sizes();
+	}
+	control_print_session_layouts(c->session, ctx);
+}
+
+static int
+control_set_client_size_command(struct cmd_ctx *ctx, const char *value)
+{
+	struct client   *c;
+
+	if (!value) {
+		ctx->error(ctx, "no value given");
+		return (-1);
+	}
+	c = cmd_find_client(ctx, NULL);
+	if (!c)
+		return (-1);
+	u_int	w, h;
+	if (parse_size(value, &w, &h))
+		return (-1);
+	/* Prevent a broken client from making us use crazy amounts of
+	 * memory */
+	if (w > MAX_CONTROL_CLIENT_WIDTH ||
+	    h > MAX_CONTROL_CLIENT_HEIGHT)
+		return (-1);
+	set_client_size(c, w, h, ctx);
+	return (0);
+}
+
+static int
+control_set_ready_command(struct cmd_ctx *ctx)
+{
+	struct client   *c;
+
+	c = cmd_find_client(ctx, NULL);
+	if (c)
+		c->flags |= CLIENT_CONTROL_READY;
+	return (0);
+}
+
+static int
+control_set_kvp_command(struct cmd_ctx *ctx, const char *value)
+{
+	char		*temp;
+	char		*eq;
+
+	if (!value) {
+		ctx->error(ctx, "no value given");
+		return (-1);
+	}
+	temp = xstrdup(value);
+	eq = strchr(temp, '=');
+	if (!eq) {
+		ctx->error(ctx, "no '=' found");
+		xfree(temp);
+		return (-1);
+	}
+	*eq = 0;
+	control_set_kvp(temp, eq + 1);
+	xfree(temp);
+	return (0);
+}
+
 int
-cmd_dump_state_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_control_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
+	const char	*set_value;
+	const char	*set_name;
 
 	if (args_has(args, 'e'))
-		return dump_state_emulator(self, ctx);
+		return control_emulator_command(self, ctx);
 	else if (args_has(args, 'h'))
-		return dump_state_history(self, ctx);
+		return control_history_command(self, ctx);
 	else if (args_has(args, 'k'))
-		return dump_state_kvp(self, ctx);
-	else
+		return control_kvp_command(self, ctx);
+	else if (args_has(args, 's')) {
+		set_name = args_get(args, 's');
+		if (args->argc < 1)
+			set_value = NULL;
+		else
+			set_value = args->argv[0];
+
+		if (!strcmp(set_name, "client-size"))
+			return control_set_client_size_command(ctx, set_value);
+		else if (!strcmp(set_name, "ready"))
+			return control_set_ready_command(ctx);
+		else if (!strcmp(set_name, "set"))
+			return control_set_kvp_command(ctx, set_value);
+		else
+		    return (-1);
+	} else
 		return (-1);
 }
