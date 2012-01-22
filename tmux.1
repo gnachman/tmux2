@@ -1211,6 +1211,7 @@ section.
 .Op Fl a
 .Op Fl F Ar format
 .Op Fl t Ar target-session
+.Op Fl I Ar window-id
 .Xc
 .D1 (alias: Ic lsw )
 If
@@ -1218,6 +1219,10 @@ If
 is given, list all windows on the server.
 Otherwise, list windows in the current session or in
 .Ar target-session .
+If
+.Fl I
+is given, list only the window with the window ID
+.Ar window-id .
 For the meaning of the
 .Fl F
 flag, see the
