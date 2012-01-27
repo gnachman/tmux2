@@ -49,6 +49,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*name;
 	char			*cause;
 	int			 base_idx;
+	struct client		*c;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
 		return (-1);
@@ -87,6 +88,12 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	server_redraw_session(s);
 	server_status_session_group(s);
+
+	/* Output the window ID for control clients. */
+	c = cmd_find_client(ctx, NULL);
+	if (c->flags & CLIENT_CONTROL) {
+	    ctx->print(ctx, "%d", w->id);
+	}
 
 	return (0);
 }
