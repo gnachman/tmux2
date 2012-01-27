@@ -136,9 +136,11 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
 		    /* Error */
 		    if (cause) {
-			    /* cause should always be set if there's an error. */
-			    evbuffer_add_printf(out->output, "%%error %s",
-						cause);
+			    /* cause should always be set if there's an
+			     * error.  */
+			    evbuffer_add_printf(out->output,
+						"%%error in line \"%s\": %s",
+						line, cause);
 			    bufferevent_write(out, "\n", 1);
 			    xfree(cause);
 		    }
