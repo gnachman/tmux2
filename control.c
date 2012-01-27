@@ -51,8 +51,6 @@ struct kvp {
 };
 TAILQ_HEAD(, kvp) kvps;
 
-static void control_notify_windows_changed(void);
-
 struct control_input_ctx {
 	struct window_pane *wp;
 	const u_char *buf;
@@ -123,35 +121,38 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	struct cmd_list		*cmdlist;
 	char			*cause;
 
-	/* Read input line. */
-	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_CRLF);
-	if (line == NULL)
-		return;
+	/* Read all available input lines. */
+	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_ANY);
+	while (line) {
+	    /* Parse command. */
+	    ctx.msgdata = NULL;
+	    ctx.cmdclient = NULL;
+	    ctx.curclient = c;
 
-	/* Parse command. */
-	ctx.msgdata = NULL;
-	ctx.cmdclient = NULL;
-	ctx.curclient = c;
+	    ctx.error = control_msg_error;
+	    ctx.print = control_msg_print;
+	    ctx.info = control_msg_info;
 
-	ctx.error = control_msg_error;
-	ctx.print = control_msg_print;
-	ctx.info = control_msg_info;
+	    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
+		    /* Error */
+		    if (cause) {
+			    /* cause should always be set if there's an error. */
+			    evbuffer_add_printf(out->output, "%%error %s",
+						cause);
+			    bufferevent_write(out, "\n", 1);
+			    xfree(cause);
+		    }
+	    } else {
+		    /* Parsed ok. Run command. */
+		    cmd_list_exec(cmdlist, &ctx);
+		    cmd_list_free(cmdlist);
+	    }
 
-	if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
-		/* Error */
-		if (cause) {
-			/* cause should always be set if there's an error. */
-			evbuffer_add_printf(out->output, "%%error %s", cause);
-			bufferevent_write(out, "\n", 1);
-			xfree(cause);
-		}
-	} else {
-		/* Parsed ok. Run command. */
-		cmd_list_exec(cmdlist, &ctx);
-		cmd_list_free(cmdlist);
+	    xfree(line);
+	    /* Read input line. */
+	    line = evbuffer_readln(c->stdin_event->input, NULL,
+				   EVBUFFER_EOL_ANY);
 	}
-
-	xfree(line);
 }
 
 void
