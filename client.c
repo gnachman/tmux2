@@ -122,6 +122,7 @@ read_stray_input(int fd)
 int
 client_main(int argc, char **argv, int flags)
 {
+	struct termios		 saved_termios;
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
 	struct msg_command_data	 cmddata;
@@ -129,7 +130,6 @@ client_main(int argc, char **argv, int flags)
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
-	int			 inputcopy;
 
 	/* Set up the initial command. */
 	cmdflags = 0;
@@ -190,7 +190,6 @@ client_main(int argc, char **argv, int flags)
 			return (1);
 		}
 		is_control_client = 1;
-		inputcopy = dup(fileno(stdin));
 	}
 
 	/* Set process title, log and signals now this is the client. */
@@ -212,12 +211,11 @@ client_main(int argc, char **argv, int flags)
 	client_send_identify(flags);
 
 	if (is_control_client) {
-		/* Turn off echo in control mode (we only get here if stdout is
-		 * a tty). */
-		struct termios termios;
-		tcgetattr(fileno(stdout), &termios);
-		termios.c_lflag &= ~ECHO;
-		tcsetattr(fileno(stdout), TCSANOW, &termios);
+		/* Save termios and restore it on exit. Can't count on the
+		 * server to do that because it might crash. */
+		struct termios tio;
+		tcgetattr(fileno(stdout), &tio);
+		saved_termios = tio;
 	}
 
 	/* Send first command. */
@@ -250,7 +248,7 @@ client_main(int argc, char **argv, int flags)
 				/* Exit messages other than "detached" are
 				 * not client-initiated. */
 				if (strcmp("detached", client_exitmsg))
-					read_stray_input(inputcopy);
+					read_stray_input(fileno(stdin));
 			} else {
 				printf("[%s]\n", client_exitmsg);
 			}
@@ -259,6 +257,11 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
+	}
+	if (is_control_client) {
+		/* Turn off echo in control mode (we only get here if stdout is
+		 * a tty so it's ok to do). */
+		tcsetattr(fileno(stdout), TCSANOW, &saved_termios);
 	}
 	return (client_exitval);
 }

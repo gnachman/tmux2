@@ -969,7 +969,8 @@ void
 server_client_msg_identify(
     struct client *c, struct msg_identify_data *data, int fd)
 {
-	int	tty_fd;
+	int		tty_fd;
+	struct termios	dummy_termios;
 
 	c->cwd = NULL;
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
@@ -982,6 +983,7 @@ server_client_msg_identify(
 	 */
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->flags |= CLIENT_CONTROL;
+		tty_init_termios(fd, &dummy_termios, NULL);
 		control_start(c);
 	}
 
