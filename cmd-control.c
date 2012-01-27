@@ -36,17 +36,19 @@
 int cmd_control_exec(struct cmd *, struct cmd_ctx *);
 
 /*
- * -e: Output emulator state. -t gives pane.
- * -h: Output history. -t gives pane. -l gives lines. -a means alternate screen.
- * -k: Output value from key-value store. -k gives key.
- * -s client-size: Set client size to set-value, of form "80x25".
- * -s ready: Mark client ready for spontaneous messages.
- * -s set key=value: Set "key" to "value" in key-value store.
+ * get-emulator: Output emulator state. -t gives pane.
+ * get-history: Output history. -t gives pane. -l gives lines. -a means alternate screen.
+ * get-value key: Output value from key-value store.
+ * set-value key=value: Set "key" to "value" in key-value store.
+ * set-client-size client-size: Set client size, value is like "80x25".
+ * set-ready: Mark client ready for spontaneous messages.
  */
 const struct cmd_entry cmd_control_entry = {
 	"control", "control",
-	"s:hael:t:k:", 0, 1,
-	"[-hae] [-l lines] [-t target-pane] [-k key] [-s set-name] [set-value]",
+	"at:l:", 1, 2,
+	"[-a] [-t target-pane] [-l lines]"
+	    "get-emulator|get-history|get-value|"
+	    "set-value|set-client-size|set-ready [client-size|key|key=value]",
 	0,
 	NULL,
 	NULL,
@@ -309,15 +311,9 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 }
 
 static int
-control_kvp_command(struct cmd *self, struct cmd_ctx *ctx)
+control_kvp_command(unused struct cmd *self, struct cmd_ctx *ctx, const char *name)
 {
-	struct args	*args = self->args;
-	const char	*name;
 	char		*value;
-
-	name = args_get(args, 'k');
-	if (!name)
-		return (-1);
 
 	value = control_get_kvp_value(name);
 	if (value)
@@ -419,30 +415,29 @@ int
 cmd_control_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
-	const char	*set_value;
-	const char	*set_name;
+	const char	*subcommand;
+	const char	*value;
 
-	if (args_has(args, 'e'))
+	subcommand = args->argv[0];
+
+	if (!strcmp(subcommand, "get-emulator"))
 		return control_emulator_command(self, ctx);
-	else if (args_has(args, 'h'))
+	else if (!strcmp(subcommand, "get-history"))
 		return control_history_command(self, ctx);
-	else if (args_has(args, 'k'))
-		return control_kvp_command(self, ctx);
-	else if (args_has(args, 's')) {
-		set_name = args_get(args, 's');
-		if (args->argc < 1)
-			set_value = NULL;
-		else
-			set_value = args->argv[0];
-
-		if (!strcmp(set_name, "client-size"))
-			return control_set_client_size_command(ctx, set_value);
-		else if (!strcmp(set_name, "ready"))
-			return control_set_ready_command(ctx);
-		else if (!strcmp(set_name, "set"))
-			return control_set_kvp_command(ctx, set_value);
-		else
+	else if (!strcmp(subcommand, "get-value")) {
+		if (args->argc != 2)
 		    return (-1);
-	} else
-		return (-1);
+		value = args->argv[1];
+		return control_kvp_command(self, ctx, value);
+	} else if (!strcmp(subcommand, "set-client-size")) {
+		if (args->argc != 2)
+		    return (-1);
+		value = args->argv[1];
+		return control_set_client_size_command(ctx, value);
+	} else if (!strcmp(subcommand, "set-ready")) {
+		return control_set_ready_command(ctx);
+	} else if (!strcmp(subcommand, "set-value"))
+		return control_set_kvp_command(ctx, value);
+	else
+		    return (-1);
 }
