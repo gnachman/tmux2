@@ -1625,7 +1625,6 @@ extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
-extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;

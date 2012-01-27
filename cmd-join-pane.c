@@ -32,8 +32,8 @@ int	cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
-	"bdhvp:l:s:t:", 0, 0,
-	"[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
+	"bdhvmp:l:s:t:", 0, 0,
+	"[-bdhvm] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
 	0,
 	cmd_join_pane_key_binding,
 	NULL,
@@ -57,7 +57,7 @@ cmd_join_pane_key_binding(struct cmd *self, int key)
 int
 cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	return join_pane(self, ctx, 1);
+	return join_pane(self, ctx, !args_has(self->args, 'm'));
 }
 
 int
