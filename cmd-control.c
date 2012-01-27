@@ -37,7 +37,7 @@ int cmd_control_exec(struct cmd *, struct cmd_ctx *);
 
 /*
  * -e: Output emulator state. -t gives pane.
- * -h: Output history. -t gives pnae. -l gives lines. -a means alternate screen.
+ * -h: Output history. -t gives pane. -l gives lines. -a means alternate screen.
  * -k: Output value from key-value store. -k gives key.
  * -s client-size: Set client size to set-value, of form "80x25".
  * -s ready: Mark client ready for spontaneous messages.
