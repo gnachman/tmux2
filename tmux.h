@@ -443,9 +443,12 @@ enum mode_key_cmd {
 	MODEKEYEDIT_ENTER,
 	MODEKEYEDIT_HISTORYDOWN,
 	MODEKEYEDIT_HISTORYUP,
+	MODEKEYEDIT_NEXTSPACE,
+	MODEKEYEDIT_NEXTSPACEEND,
 	MODEKEYEDIT_NEXTWORD,
 	MODEKEYEDIT_NEXTWORDEND,
 	MODEKEYEDIT_PASTE,
+	MODEKEYEDIT_PREVIOUSSPACE,
 	MODEKEYEDIT_PREVIOUSWORD,
 	MODEKEYEDIT_STARTOFLINE,
 	MODEKEYEDIT_SWITCHMODE,
@@ -538,9 +541,9 @@ struct mode_key_binding {
 	int			mode;
 	enum mode_key_cmd	cmd;
 
-	SPLAY_ENTRY(mode_key_binding) entry;
+	RB_ENTRY(mode_key_binding) entry;
 };
-SPLAY_HEAD(mode_key_tree, mode_key_binding);
+RB_HEAD(mode_key_tree, mode_key_binding);
 
 /* Command to string mapping. */
 struct mode_key_cmdstr {
@@ -666,20 +669,14 @@ struct options_entry {
 
 	char		*str;
 	long long	 num;
-	void		*data;
 
-	void		 (*freefn)(void *);
-
-	SPLAY_ENTRY(options_entry) entry;
+	RB_ENTRY(options_entry) entry;
 };
 
 struct options {
-	SPLAY_HEAD(options_tree, options_entry) tree;
+	RB_HEAD(options_tree, options_entry) tree;
 	struct options	*parent;
 };
-
-/* Key list for prefix option. */
-ARRAY_DECL(keylist, int);
 
 /* Scheduled job. */
 struct job {
@@ -1167,8 +1164,7 @@ struct client {
 #define CLIENT_DEAD 0x200
 #define CLIENT_BORDERS 0x400
 #define CLIENT_READONLY 0x800
-#define CLIENT_BACKOFF 0x1000
-#define CLIENT_REDRAWWINDOW 0x2000
+#define CLIENT_REDRAWWINDOW 0x1000
 	int		 flags;
 
 	struct event	 identify_timer;
@@ -1275,9 +1271,9 @@ struct key_binding {
 	struct cmd_list	*cmdlist;
 	int		 can_repeat;
 
-	SPLAY_ENTRY(key_binding) entry;
+	RB_ENTRY(key_binding) entry;
 };
-SPLAY_HEAD(key_bindings, key_binding);
+RB_HEAD(key_bindings, key_binding);
 
 /*
  * Option table entries. The option table is the user-visible part of the
@@ -1287,7 +1283,7 @@ SPLAY_HEAD(key_bindings, key_binding);
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
 	OPTIONS_TABLE_NUMBER,
-	OPTIONS_TABLE_KEYS,
+	OPTIONS_TABLE_KEY,
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_ATTRIBUTES,
 	OPTIONS_TABLE_FLAG,
@@ -1382,7 +1378,7 @@ extern struct mode_key_tree mode_key_tree_emacs_edit;
 extern struct mode_key_tree mode_key_tree_emacs_choice;
 extern struct mode_key_tree mode_key_tree_emacs_copy;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
-SPLAY_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
+RB_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 const char *mode_key_tostring(const struct mode_key_cmdstr *,
 	    enum mode_key_cmd);
 enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
@@ -1394,7 +1390,7 @@ enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);
-SPLAY_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
+RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
 void	options_init(struct options *, struct options *);
 void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
@@ -1406,9 +1402,6 @@ char   *options_get_string(struct options *, const char *);
 struct options_entry *options_set_number(
 	    struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
-struct options_entry *options_set_data(
-	    struct options *, const char *, void *, void (*)(void *));
-void   *options_get_data(struct options *, const char *);
 
 /* options-table.c */
 extern const struct options_table_entry server_options_table[];
@@ -1558,7 +1551,7 @@ int		 cmd_find_index(
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
 char		*cmd_template_replace(char *, const char *, int);
-char		*cmd_get_default_path(struct cmd_ctx *ctx);
+const char     	*cmd_get_default_path(struct cmd_ctx *ctx);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -1659,7 +1652,7 @@ int	client_main(int, char **, int);
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
-SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
+RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
 struct key_binding *key_bindings_lookup(int);
 void	 key_bindings_add(int, int, struct cmd_list *);
 void	 key_bindings_remove(int);
@@ -1825,6 +1818,7 @@ char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 void	 screen_write_start(
 	     struct screen_write_ctx *, struct window_pane *, struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
+void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike2 screen_write_cstrlen(int, const char *, ...);
 void printflike5 screen_write_cnputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, ...);

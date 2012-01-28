@@ -54,9 +54,12 @@ const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_ENTER, "enter" },
 	{ MODEKEYEDIT_HISTORYDOWN, "history-down" },
 	{ MODEKEYEDIT_HISTORYUP, "history-up" },
+	{ MODEKEYEDIT_NEXTSPACE, "next-space" },
+	{ MODEKEYEDIT_NEXTSPACEEND, "next-space-end" },
 	{ MODEKEYEDIT_NEXTWORD, "next-word" },
 	{ MODEKEYEDIT_NEXTWORDEND, "next-word-end" },
 	{ MODEKEYEDIT_PASTE, "paste" },
+	{ MODEKEYEDIT_PREVIOUSSPACE, "previous-space" },
 	{ MODEKEYEDIT_PREVIOUSWORD, "previous-word" },
 	{ MODEKEYEDIT_STARTOFLINE, "start-of-line" },
 	{ MODEKEYEDIT_SWITCHMODE, "switch-mode" },
@@ -148,7 +151,10 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 
 	{ '$',			1, MODEKEYEDIT_ENDOFLINE },
 	{ '0',			1, MODEKEYEDIT_STARTOFLINE },
+	{ 'B',			1, MODEKEYEDIT_PREVIOUSSPACE },
 	{ 'D',			1, MODEKEYEDIT_DELETETOENDOFLINE },
+	{ 'E',			1, MODEKEYEDIT_NEXTSPACEEND },
+	{ 'W',			1, MODEKEYEDIT_NEXTSPACE },
 	{ 'X',			1, MODEKEYEDIT_BACKSPACE },
 	{ '\003' /* C-c */,	1, MODEKEYEDIT_CANCEL },
 	{ '\010' /* C-h */,	1, MODEKEYEDIT_BACKSPACE },
@@ -406,7 +412,7 @@ const struct mode_key_table mode_key_tables[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-SPLAY_GENERATE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
+RB_GENERATE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 
 int
 mode_key_cmp(struct mode_key_binding *mbind1, struct mode_key_binding *mbind2)
@@ -456,13 +462,13 @@ mode_key_init_trees(void)
 	struct mode_key_binding		*mbind;
 
 	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
-		SPLAY_INIT(mtab->tree);
+		RB_INIT(mtab->tree);
 		for (ment = mtab->table; ment->mode != -1; ment++) {
 			mbind = xmalloc(sizeof *mbind);
 			mbind->key = ment->key;
 			mbind->mode = ment->mode;
 			mbind->cmd = ment->cmd;
-			SPLAY_INSERT(mode_key_tree, mtab->tree, mbind);
+			RB_INSERT(mode_key_tree, mtab->tree, mbind);
 		}
 	}
 }
@@ -481,7 +487,7 @@ mode_key_lookup(struct mode_key_data *mdata, int key)
 
 	mtmp.key = key;
 	mtmp.mode = mdata->mode;
-	if ((mbind = SPLAY_FIND(mode_key_tree, mdata->tree, &mtmp)) == NULL) {
+	if ((mbind = RB_FIND(mode_key_tree, mdata->tree, &mtmp)) == NULL) {
 		if (mdata->mode != 0)
 			return (MODEKEY_NONE);
 		return (MODEKEY_OTHER);
