@@ -1215,19 +1215,19 @@ section.
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
-.Op Fl t Ar target-session
-.Op Fl I Ar window-id
+.Op Fl t Ar target
 .Xc
 .D1 (alias: Ic lsw )
 If
 .Fl a
 is given, list all windows on the server.
-Otherwise, list windows in the current session or in
-.Ar target-session .
+Otherwise, list windows in the current session or, if
+.Ar target
+names a session, list all the windows in that session.
 If
-.Fl I
-is given, list only the window with the window ID
-.Ar window-id .
+.Ar target
+names a session and window, list only that window.
+If
 For the meaning of the
 .Fl F
 flag, see the

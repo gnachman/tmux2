@@ -765,6 +765,22 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 	return (s);
 }
 
+/* The target may specify a session to find or "session:window". */
+struct winlink *
+cmd_find_session_or_window(struct cmd_ctx *ctx, const char *arg,
+			   struct session **sp, int prefer_unattached)
+{
+    const char	*colon;
+    if (arg)
+	colon = strchr(arg, ':');
+    if (arg && colon && colon[1])
+	return cmd_find_window(ctx, arg, sp);
+    else {
+	*sp = cmd_find_session(ctx, arg, prefer_unattached);
+	return NULL;
+    }
+}
+
 /* Find the target session and window or report an error and return NULL. */
 struct winlink *
 cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)

@@ -30,7 +30,8 @@ int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
 void	cmd_list_windows_session(
-	    struct cmd *, struct session *, struct cmd_ctx *, int);
+	    struct cmd *, struct session *,struct winlink *,
+	    struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -47,14 +48,16 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct session	*s;
+	struct winlink	*wl;
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, ctx);
 	else {
-		s = cmd_find_session(ctx, args_get(args, 't'), 0);
+		s = NULL;
+		wl = cmd_find_session_or_window(ctx, args_get(args, 't'), &s, 0);
 		if (s == NULL)
 			return (-1);
-		cmd_list_windows_session(self, s, ctx, 0);
+		cmd_list_windows_session(self, s, wl, ctx, 0);
 	}
 
 	return (0);
@@ -66,12 +69,13 @@ cmd_list_windows_server(struct cmd *self, struct cmd_ctx *ctx)
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_windows_session(self, s, ctx, 1);
+		cmd_list_windows_session(self, s, NULL, ctx, 1);
 }
 
 void
 cmd_list_windows_session(
-    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
+    struct cmd *self, struct session *s, struct winlink *target_wl,
+    struct cmd_ctx *ctx, int type)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -79,8 +83,6 @@ cmd_list_windows_session(
 	struct format_tree	*ft;
 	const char		*template;
 	char			*line;
-	int			 has_window_id;
-	u_int			 window_id;
 
 	template = args_get(args, 'F');
 	if (template == NULL) {
@@ -102,19 +104,9 @@ cmd_list_windows_session(
 		}
 	}
 
-	if (args_has(args, 'I')) {
-		has_window_id = 1;
-		char *cause;
-		window_id = args_strtonum(args, 'I', 0, INT_MAX, &cause);
-		if (cause) {
-			xfree(cause);
-			return;
-		}
-	} else
-		has_window_id = 0;
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (has_window_id && window_id != wl->window->id)
+		if (target_wl && target_wl->window->id != wl->window->id)
 			continue;
 
 		ft = format_create();

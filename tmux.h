@@ -1575,6 +1575,9 @@ struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
+struct winlink	*cmd_find_session_or_window(
+		    struct cmd_ctx *ctx, const char *arg, struct session **sp,
+		    int prefer_unattached);
 struct winlink	*cmd_find_window(
 		     struct cmd_ctx *, const char *, struct session **);
 int		 cmd_find_index(
