@@ -436,8 +436,9 @@ cmd_control_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return control_set_client_size_command(ctx, value);
 	} else if (!strcmp(subcommand, "set-ready")) {
 		return control_set_ready_command(ctx);
-	} else if (!strcmp(subcommand, "set-value"))
+	} else if (!strcmp(subcommand, "set-value")) {
+		value = args->argv[1];
 		return control_set_kvp_command(ctx, value);
-	else
+	} else
 		    return (-1);
 }
