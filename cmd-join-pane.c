@@ -32,8 +32,8 @@ int	cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
-	"bdhvmp:l:s:t:", 0, 0,
-	"[-bdhvm] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
+	"bdhvp:l:s:t:", 0, 0,
+	"[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
 	0,
 	cmd_join_pane_key_binding,
 	NULL,
@@ -57,7 +57,7 @@ cmd_join_pane_key_binding(struct cmd *self, int key)
 int
 cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	return join_pane(self, ctx, !args_has(self->args, 'm'));
+	return join_pane(self, ctx, 1);
 }
 
 int
@@ -86,6 +86,10 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows)
 
 	if (require_diff_windows && src_w == dst_w) {
 		ctx->error(ctx, "can't join a pane to its own window");
+		return (-1);
+	}
+	if (!require_diff_windows && src_wp == dst_wp) {
+		ctx->error(ctx, "source and target panes must be different");
 		return (-1);
 	}
 
