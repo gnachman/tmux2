@@ -31,8 +31,8 @@ int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
-	"ht:", 0, -1,
-	"[-t target-pane] [-h] key ...",
+	"hRt:", 0, -1,
+	"-[R] [-t target-pane] [-h] key ...",
 	0,
 	NULL,
 	NULL,
@@ -66,13 +66,30 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct window_pane	*wp;
 	struct session		*s;
+	struct input_ctx	*ictx;
 	const char		*str;
 	int			 i, key;
-	int		  	 hex_code;
+	int			 hex_code;
 
 	hex_code = args_has(args, 'h');
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
+
+	if (args_has(args, 'R')) {
+		ictx = &wp->ictx;
+
+		memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
+		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
+		ictx->old_cx = 0;
+		ictx->old_cy = 0;
+
+		if (wp->mode == NULL)
+			screen_write_start(&ictx->ctx, wp, &wp->base);
+		else
+			screen_write_start(&ictx->ctx, NULL, &wp->base);
+		screen_write_reset(&ictx->ctx);
+		screen_write_stop(&ictx->ctx);
+	}
 
 	for (i = 0; i < args->argc; i++) {
 		str = args->argv[i];

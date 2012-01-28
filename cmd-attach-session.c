@@ -80,6 +80,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		session_update_activity(s);
 		server_redraw_client(ctx->curclient);
+		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	} else {
 		if (!(ctx->cmdclient->flags & CLIENT_CONTROL) &&
 			!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
@@ -115,6 +116,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		environ_update(update, &ctx->cmdclient->environ, &s->environ);
 
 		server_redraw_client(ctx->cmdclient);
+		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	}
 	recalculate_sizes();
 	server_update_socket();

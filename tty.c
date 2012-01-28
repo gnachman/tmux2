@@ -983,7 +983,10 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			 * move as far left as possible and redraw the last
 			 * cell to move into the last position.
 			 */
-			cx = screen_size_x(s) - width;
+			if (ctx->last_cell.flags & GRID_FLAG_UTF8)
+				cx = screen_size_x(s) - ctx->last_utf8.width;
+			else
+				cx = screen_size_x(s) - 1;
 			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
 			tty_cell(tty, &ctx->last_cell, &ctx->last_utf8);
 		}
@@ -1451,7 +1454,7 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 
 	/* Is this an aixterm colour? */
 	colours = tty_term_number(tty->term, TTYC_COLORS);
-	if (gc->bg >= 100 && gc->bg <= 107 && colours < 16) {
+	if (gc->bg >= 90 && gc->bg <= 97 && colours < 16) {
 		gc->bg -= 90;
 		gc->attr |= GRID_ATTR_BRIGHT;
 	}
@@ -1511,14 +1514,14 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 	}
 
 	/* Is this an aixterm bright colour? */
-	if (bg >= 100 && bg <= 107) {
+	if (bg >= 90 && bg <= 97) {
 		/* 16 colour terminals or above only. */
 		if (tty_term_number(tty->term, TTYC_COLORS) >= 16) {
-			xsnprintf(s, sizeof s, "\033[%dm", bg);
+			xsnprintf(s, sizeof s, "\033[%dm", bg + 10);
 			tty_puts(tty, s);
 			goto save_bg;
 		}
-		bg -= 100;
+		bg -= 90;
 		/* no such thing as a bold background */
 	}
 

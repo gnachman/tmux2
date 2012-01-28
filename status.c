@@ -684,14 +684,34 @@ status_print(
 		fmt = options_get_string(oo, "window-status-current-format");
 	}
 
-	if (wl->flags & WINLINK_ALERTFLAGS) {
-		fg = options_get_number(oo, "window-status-alert-fg");
+	if (wl->flags & WINLINK_BELL) {
+		fg = options_get_number(oo, "window-status-bell-fg");
 		if (fg != 8)
 			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-alert-bg");
+		bg = options_get_number(oo, "window-status-bell-bg");
 		if (bg != 8)
 			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-alert-attr");
+		attr = options_get_number(oo, "window-status-bell-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	} else if (wl->flags & WINLINK_CONTENT) {
+		fg = options_get_number(oo, "window-status-content-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-content-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-content-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	} else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE)) {
+		fg = options_get_number(oo, "window-status-activity-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-activity-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-activity-attr");
 		if (attr != 0)
 			gc->attr = attr;
 	}
@@ -978,7 +998,7 @@ status_prompt_key(struct client *c, int key)
 	struct paste_buffer	*pb;
 	char			*s, *first, *last, word[64], swapc;
 	const char		*histstr;
-	const char		*wsep;
+	const char		*wsep = NULL;
 	u_char			 ch;
 	size_t			 size, n, off, idx;
 
@@ -1124,8 +1144,12 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = idx;
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_NEXTSPACE:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORD:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a separator. */
 		while (c->prompt_index != size) {
@@ -1143,8 +1167,12 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_NEXTSPACEEND:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORDEND:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a word. */
 		while (c->prompt_index != size) {
@@ -1162,8 +1190,12 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_PREVIOUSSPACE:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_PREVIOUSWORD:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a non-separator. */
 		while (c->prompt_index != 0) {
