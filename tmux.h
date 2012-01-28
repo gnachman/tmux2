@@ -2065,7 +2065,7 @@ struct layout_cell *layout_split_pane(
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */
-char		*layout_dump(struct window *, int);
+char		*layout_dump(struct window *);
 int		 layout_parse(struct window *, const char *);
 
 /* layout-set.c */

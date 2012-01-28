@@ -337,7 +337,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 			if (w && w->layout_root) {
 				const char *template =
 				    "%layout-change #{window_id} "
-				    "#{window_layout_ex}\n";
+				    "#{window_layout}\n";
 				ft = format_create();
 				wl = winlink_find_by_window(
 				    &c->session->windows, w);
@@ -604,7 +604,7 @@ control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
 
 	wwl = &session->windows;
 	RB_FOREACH(wl, winlinks, wwl) {
-		const char *template = "#{window_id} #{window_layout_ex}";
+		const char *template = "#{window_id} #{window_layout}";
 		ft = format_create();
 		format_winlink(ft, session, wl);
 		ctx->print(ctx, "%s", format_expand(ft, template));

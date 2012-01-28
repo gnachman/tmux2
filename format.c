@@ -336,10 +336,9 @@ void
 format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 {
 	struct window	*w = wl->window;
-	char		*layout, *layout_ex, *flags;
+	char		*layout, *flags;
 
-	layout = layout_dump(w, 0);
-	layout_ex = layout_dump(w, 1);
+	layout = layout_dump(w);
 	flags = window_printable_flags(s, wl);
 
 	format_add(ft, "window_id", "%u", w->id);
@@ -349,7 +348,6 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	format_add(ft, "window_height", "%u", w->sy);
 	format_add(ft, "window_flags", "%s", flags);
 	format_add(ft, "window_layout", "%s", layout);
-	format_add(ft, "window_layout_ex", "%s", layout_ex);
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
 	xfree(flags);
