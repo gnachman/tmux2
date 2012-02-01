@@ -965,6 +965,7 @@ TAILQ_HEAD(session_groups, session_group);
 struct session {
 	u_int		 idx;
 	u_int		 id;
+
 	char		*name;
 	char		*cwd;
 
@@ -1340,6 +1341,7 @@ ARRAY_DECL(causelist, char *);
 #define CMD_TARGET_PANE_USAGE "[-t target-pane]"
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
 #define CMD_TARGET_SESSION_USAGE "[-t target-session]"
+#define CMD_TARGET_SESSION_OR_WINDOW_USAGE "[-t target]"
 #define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
 #define CMD_SRCDST_PANE_USAGE "[-s src-pane] [-t dst-pane]"
 #define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
