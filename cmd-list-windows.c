@@ -35,8 +35,8 @@ void	cmd_list_windows_session(
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
-	"I:aF:t:", 0, 0,
-	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
+	"aF:t:", 0, 0,
+	"[-a] [-F format] " CMD_TARGET_SESSION_OR_WINDOW_USAGE,
 	0,
 	NULL,
 	NULL,
