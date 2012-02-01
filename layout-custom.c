@@ -84,7 +84,7 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		    lc->yoff, lc->wp->id);
 	} else {
 		tmplen = xsnprintf(tmp, sizeof tmp,
-		    "%ux%u,%u,%u,na", lc->sx, lc->sy, lc->xoff,
+		    "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff,
 		    lc->yoff);
 	}
 	if (tmplen > (sizeof tmp) - 1)
