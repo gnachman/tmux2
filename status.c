@@ -60,6 +60,20 @@ status_out_cmp(struct status_out *so1, struct status_out *so2)
 	return (strcmp(so1->cmd, so2->cmd));
 }
 
+/* Get screen line of status line. -1 means off. */
+int
+status_at_line(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (!options_get_number(&s->options, "status"))
+		return (-1);
+
+	if (options_get_number(&s->options, "status-position") == 0)
+		return (0);
+	return (c->tty.sy - 1);
+}
+
 /* Retrieve options for left string. */
 char *
 status_redraw_get_left(struct client *c,
@@ -462,12 +476,13 @@ do_replace:
 		ptrlen = limit;
 
 	if (*optr + ptrlen >= out + outsize - 1)
-		return;
+		goto out;
 	while (ptrlen > 0 && *ptr != '\0') {
 		*(*optr)++ = *ptr++;
 		ptrlen--;
 	}
 
+out:
 	if (freeptr != NULL)
 		xfree(freeptr);
 	return;
@@ -490,9 +505,10 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 {
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], ch, *iptr, *optr;
+	size_t		len;
 
-	strftime(in, sizeof in, fmt, localtime(&t));
-	in[(sizeof in) - 1] = '\0';
+	len = strftime(in, sizeof in, fmt, localtime(&t));
+	in[len] = '\0';
 
 	iptr = in;
 	optr = out;
