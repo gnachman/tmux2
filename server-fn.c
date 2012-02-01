@@ -343,8 +343,8 @@ server_destroy_pane(struct window_pane *wp)
 
 	old_fd = wp->fd;
 	if (wp->fd != -1) {
-		close(wp->fd);
 		bufferevent_free(wp->event);
+		close(wp->fd);
 		wp->fd = -1;
 	}
 

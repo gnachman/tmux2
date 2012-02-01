@@ -55,8 +55,8 @@ struct windows windows;
 
 /* Global panes tree. */
 struct window_pane_tree all_window_panes;
-u_int	next_window_pane;
-u_int	next_window;
+u_int	next_window_pane_id;
+u_int	next_window_id;
 
 void	window_pane_read_callback(struct bufferevent *, void *);
 void	window_pane_error_callback(struct bufferevent *, short, void *);
@@ -105,11 +105,11 @@ winlink_find_by_index(struct winlinks *wwl, int idx)
 struct winlink *
 winlink_find_by_window_id(struct winlinks *wwl, u_int id)
 {
-	struct winlink *c_wl;
-	RB_FOREACH(c_wl, winlinks, wwl) {
-		if (c_wl->window->id == id) {
-			return (c_wl);
-		}
+	struct winlink *wl;
+
+	RB_FOREACH(wl, winlinks, wwl) {
+		if (wl->window->id == id)
+			return (wl);
 	}
 	return NULL;
 }
@@ -259,13 +259,27 @@ window_index(struct window *s, u_int *i)
 }
 
 struct window *
+window_find_by_id(u_int id)
+{
+	struct window	*w;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		w = ARRAY_ITEM(&windows, i);
+		if (w->id == id)
+			return (w);
+	}
+	return NULL;
+}
+
+struct window *
 window_create1(u_int sx, u_int sy)
 {
 	struct window	*w;
 	u_int		 i;
 
 	w = xcalloc(1, sizeof *w);
-	w->id = next_window++;
+	w->id = next_window_id++;
 	w->name = NULL;
 	w->flags = 0;
 
@@ -591,7 +605,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
 
-	wp->id = next_window_pane++;
+	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
 
 	wp->cmd = NULL;
@@ -631,8 +645,8 @@ window_pane_destroy(struct window_pane *wp)
 	window_pane_reset_mode(wp);
 
 	if (wp->fd != -1) {
-		close(wp->fd);
 		bufferevent_free(wp->event);
+		close(wp->fd);
 	}
 
 	input_free(wp);
@@ -642,8 +656,8 @@ window_pane_destroy(struct window_pane *wp)
 		grid_destroy(wp->saved_grid);
 
 	if (wp->pipe_fd != -1) {
-		close(wp->pipe_fd);
 		bufferevent_free(wp->pipe_event);
+		close(wp->pipe_fd);
 	}
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
@@ -667,8 +681,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	struct termios	 tio2;
 
 	if (wp->fd != -1) {
-		close(wp->fd);
 		bufferevent_free(wp->event);
+		close(wp->fd);
 	}
 	if (cmd != NULL) {
 		if (wp->cmd != NULL)
