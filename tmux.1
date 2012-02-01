@@ -1227,7 +1227,6 @@ names a session, list all the windows in that session.
 If
 .Ar target
 names a session and window, list only that window.
-If
 For the meaning of the
 .Fl F
 flag, see the
@@ -1246,7 +1245,7 @@ except the window at
 is moved to
 .Ar dst-window .
 .It Xo Ic new-window
-.Op Fl adkPI
+.Op Fl adkP
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar shell-command
@@ -1298,10 +1297,6 @@ start-up files.
 The
 .Fl P
 option prints the location of the new window after it has been created.
-.Pp
-The
-.Fl I
-option prints the window ID of the new window after it has been created.
 .It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
