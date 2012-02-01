@@ -30,7 +30,7 @@ int	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"Iadkn:Pt:", 0, 1,
+	"adkn:Pt:", 0, 1,
 	"[-adk] [-n window-name] [-t target-window] [command]",
 	0,
 	NULL,
@@ -44,6 +44,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args	*args = self->args;
 	struct session	*s;
 	struct winlink	*wl;
+	struct client	*c;
 	const char	*cmd, *cwd;
 	char		*cause;
 	int		 idx, last, detached;
@@ -118,7 +119,10 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (args_has(args, 'P'))
 		ctx->print(ctx, "%s:%u", s->name, wl->idx);
-	if (args_has(args, 'I'))
+
+	// TODO: Use a -F instead
+	c = cmd_find_client(ctx, NULL);
+	if (c && c->flags & CLIENT_CONTROL)
 		ctx->print(ctx, "%u", wl->window->id);
 
 	return (0);
