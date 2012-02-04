@@ -1555,7 +1555,7 @@ int		 cmd_find_index(
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
 char		*cmd_template_replace(char *, const char *, int);
-const char     	*cmd_get_default_path(struct cmd_ctx *ctx);
+const char     	*cmd_get_default_path(struct cmd_ctx *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -1964,6 +1964,7 @@ struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
+void		 window_set_name(struct window *, const char *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
