@@ -2675,6 +2675,7 @@ is used.
 .El
 .Sh FORMATS
 The
+.Ic display-message ,
 .Ic list-clients ,
 .Ic list-sessions ,
 .Ic list-windows
@@ -3006,6 +3007,7 @@ This command works only from inside
 .Op Fl p
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
+.Op Fl F format
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
@@ -3015,7 +3017,14 @@ If
 is given, the output is printed to stdout, otherwise it is displayed in the
 .Ar target-client
 status line.
-The format of
+If
+.Fl F
+is given, then
+.Ar format
+is defines the message as described in the 
+.Sx FORMATS
+section.
+Otherwise, the format of
 .Ar message
 is as for
 .Ic status-left ,
