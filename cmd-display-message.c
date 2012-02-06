@@ -30,8 +30,8 @@ int	cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
-	"c:pt:", 0, 1,
-	"[-p] [-c target-client] [-t target-pane] [message]",
+	"c:pt:F:", 0, 1,
+	"[-p] [-c target-client] [-t target-pane] [-F format] [message]",
 	0,
 	NULL,
 	NULL,
@@ -48,6 +48,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	const char		*template;
 	char			*msg;
+	struct format_tree	*ft;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
 		return (-1);
@@ -62,12 +63,22 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 		wp = NULL;
 	}
 
-	if (args->argc == 0)
-		template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
-	else
-		template = args->argv[0];
+	template = args_get(args, 'F');
+	if (template != NULL) {
+		ft = format_create();
+		format_session(ft, s);
+		format_winlink(ft, s, wl);
+		format_window_pane(ft, wp);
 
-	msg = status_replace(c, s, wl, wp, template, time(NULL), 0);
+		msg = format_expand(ft, template);
+	} else {
+		if (args->argc == 0)
+			template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
+		else
+			template = args->argv[0];
+
+		msg = status_replace(c, s, wl, wp, template, time(NULL), 0);
+	}
 	if (args_has(self->args, 'p'))
 		ctx->print(ctx, "%s", msg);
 	else
