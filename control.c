@@ -30,8 +30,10 @@
  * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
  * 0.2: Adds session notifications. Goes with iTerm2 1.0.0.20120108.
  * 0.3: Renames dump-state and set-control-client-attr to control.
+ *      Goes with iTerm2 1.0.0.20120203.
+ * 0.4: Various changes as code is integrated upstream.
  */
-#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.3"
+#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.4"
 
 typedef void control_write_cb(struct client *c, void *user_data);
 
