@@ -296,7 +296,7 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	control_uint(ctx, wp->base.rupper, "scroll_region_upper");
 	control_uint(ctx, wp->base.rlower, "scroll_region_lower");
 	control_bits(ctx, wp->base.tabs, wp->base.grid->sx, "tabstops");
-	control_string(ctx, wp->base.title, "title");
+	control_string(ctx, wp->window->name, "title");
 
 	/* This is the saved cursor position from CSI DECSC. */
 	control_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
