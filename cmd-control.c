@@ -56,6 +56,12 @@ const struct cmd_entry cmd_control_entry = {
 };
 
 static void
+control_bool(struct cmd_ctx *ctx, unsigned int value, const char *name)
+{
+	ctx->print(ctx, "%s=%u", name, value ? 1 : 0);
+}
+
+static void
 control_uint(struct cmd_ctx *ctx, unsigned int value, const char *name)
 {
 	ctx->print(ctx, "%s=%u", name, value);
@@ -297,6 +303,18 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	control_uint(ctx, wp->base.rlower, "scroll_region_lower");
 	control_bits(ctx, wp->base.tabs, wp->base.grid->sx, "tabstops");
 	control_string(ctx, wp->window->name, "title");
+	control_bool(ctx, !!(wp->base.mode & MODE_CURSOR), "cursor_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_INSERT), "insert_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_KCURSOR), "kcursor_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_KKEYPAD), "kkeypad_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_WRAP), "wrap_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_MOUSE_STANDARD),
+		     "mouse_standard_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_MOUSE_BUTTON),
+		     "mouse_button_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_MOUSE_ANY), "mouse_any_mode");
+	control_bool(ctx, !!(wp->base.mode & MODE_MOUSE_UTF8),
+		     "mouse_utf8_mode");
 
 	/* This is the saved cursor position from CSI DECSC. */
 	control_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
