@@ -617,10 +617,10 @@ layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
  * split. This must be followed by layout_assign_pane before much else happens!
  **/
 struct layout_cell *
-layout_split_pane(struct window_pane *wp, enum layout_type type,
-    int size, int insert_before)
+layout_split_pane(
+    struct window_pane *wp, enum layout_type type, int size, int insert_before)
 {
-	struct layout_cell     *lc, *lcparent, *lcnew;
+	struct layout_cell     *lc, *lcparent, *lcnew, *lc1, *lc2;
 	u_int			sx, sy, xoff, yoff, size1, size2;
 
 	lc = wp->layout_cell;
@@ -652,12 +652,12 @@ layout_split_pane(struct window_pane *wp, enum layout_type type,
 		 */
 
 		/* Create the new child cell. */
-		lcnew = layout_create_cell(lc->parent);
+		lcparent = lc->parent;
+		lcnew = layout_create_cell(lcparent);
 		if (insert_before)
 			TAILQ_INSERT_BEFORE(lc, lcnew, entry);
 		else
-			TAILQ_INSERT_AFTER(
-			    &lc->parent->cells, lc, lcnew, entry);
+			TAILQ_INSERT_AFTER(&lcparent->cells, lc, lcnew, entry);
 	} else {
 		/*
 		 * Otherwise create a new parent and insert it.
@@ -683,6 +683,13 @@ layout_split_pane(struct window_pane *wp, enum layout_type type,
 		else
 			TAILQ_INSERT_TAIL(&lcparent->cells, lcnew, entry);
 	}
+	if (insert_before) {
+		lc1 = lcnew;
+		lc2 = lc;
+	} else {
+		lc1 = lc;
+		lc2 = lcnew;
+	}
 
 	/* Set new cell sizes.  size is the target size or -1 for middle split,
 	 * size1 is the size of the top/left and size2 the bottom/right.
@@ -698,8 +705,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type,
 		else if (size2 > sx - 2)
 			size2 = sx - 2;
 		size1 = sx - 1 - size2;
-		layout_set_size(lc, size1, sy, xoff, yoff);
-		layout_set_size(lcnew, size2, sy, xoff + lc->sx + 1, yoff);
+		layout_set_size(lc1, size1, sy, xoff, yoff);
+		layout_set_size(lc2, size2, sy, xoff + lc1->sx + 1, yoff);
 		break;
 	case LAYOUT_TOPBOTTOM:
 		if (size < 0)
@@ -711,8 +718,8 @@ layout_split_pane(struct window_pane *wp, enum layout_type type,
 		else if (size2 > sy - 2)
 			size2 = sy - 2;
 		size1 = sy - 1 - size2;
-		layout_set_size(lc, sx, size1, xoff, yoff);
-		layout_set_size(lcnew, sx, size2, xoff, yoff + lc->sy + 1);
+		layout_set_size(lc1, sx, size1, xoff, yoff);
+		layout_set_size(lc2, sx, size2, xoff, yoff + lc1->sy + 1);
 		break;
 	default:
 		fatalx("bad layout type");

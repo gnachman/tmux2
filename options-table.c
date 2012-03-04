@@ -583,6 +583,21 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0 /* overridden in main() */
 	},
 
+	{ .name = "window-status-activity-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .default_num = GRID_ATTR_REVERSE
+	},
+
+	{ .name = "window-status-activity-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8
+	},
+
+	{ .name = "window-status-activity-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8
+	},
+
 	{ .name = "window-status-bell-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
 	  .default_num = GRID_ATTR_REVERSE
@@ -609,21 +624,6 @@ const struct options_table_entry window_options_table[] = {
 	},
 
 	{ .name = "window-status-content-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-activity-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE
-	},
-
-	{ .name = "window-status-activity-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-activity-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8
 	},
@@ -730,4 +730,37 @@ options_table_print_entry(
 		break;
 	}
 	return (out);
+}
+
+/* Find an option. */
+int
+options_table_find(
+    const char *optstr, const struct options_table_entry **table,
+    const struct options_table_entry **oe)
+{
+	static const struct options_table_entry	*tables[] = {
+		server_options_table,
+		window_options_table,
+		session_options_table
+	};
+	const struct options_table_entry	*oe_loop;
+	u_int					 i;
+
+	for (i = 0; i < nitems(tables); i++) {
+		for (oe_loop = tables[i]; oe_loop->name != NULL; oe_loop++) {
+			if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
+				continue;
+
+			/* If already found, ambiguous. */
+			if (*oe != NULL)
+				return (-1);
+			*oe = oe_loop;
+			*table = tables[i];
+
+			/* Bail now if an exact match. */
+			if (strcmp((*oe)->name, optstr) == 0)
+				break;
+		}
+	}
+	return (0);
 }

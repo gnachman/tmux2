@@ -1113,7 +1113,7 @@ choice list is shown.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
-.Op Fl bdhvm
+.Op Fl bdhv
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc
@@ -1134,12 +1134,8 @@ The
 .Fl b
 option causes
 .Ar src-pane
-to be inserted before (above or to the left of) the
+to be joined to left of or above
 .Ar dst-pane .
-The
-.Fl m
-option allows a pane to be moved within a window, not requiring it to come from
-a different window.
 .It Xo Ic kill-pane
 .Op Fl a
 .Op Fl t Ar target-pane
@@ -1232,6 +1228,22 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
+.It Xo Ic move-pane
+.Op Fl bdhv
+.Oo Fl l
+.Ar size |
+.Fl p Ar percentage Oc
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
+.Xc
+.D1 (alias: Ic movep )
+Like
+.Ic join-pane ,
+but
+.Ar src-pane
+and
+.Ar dst-pane
+may belong to the same window.
 .It Xo Ic move-window
 .Op Fl dk
 .Op Fl s Ar src-window
@@ -1813,6 +1825,10 @@ It is not possible to unset a global option.
 .Pp
 Available window options are listed under
 .Ic set-window-option .
+.Pp
+.Ar value
+depends on the option and may be a number, a string, or a flag (on, off, or
+omitted to toggle).
 .Pp
 Available server options are:
 .Bl -tag -width Ds
@@ -2649,9 +2665,10 @@ The default is off.
 .It Xo Ic show-options
 .Op Fl gsw
 .Op Fl t Ar target-session | Ar target-window
+.Op Ar option
 .Xc
 .D1 (alias: Ic show )
-Show the window options with
+Show the window options (or a single window option if given) with
 .Fl w
 (equivalent to
 .Ic show-window-options ) ,
@@ -2665,9 +2682,10 @@ is used.
 .It Xo Ic show-window-options
 .Op Fl g
 .Op Fl t Ar target-window
+.Op Ar option
 .Xc
 .D1 (alias: Ic showw )
-List the window options for
+List the window options or a single option for
 .Ar target-window ,
 or the global window options if
 .Fl g
@@ -3026,9 +3044,9 @@ is defines the message as described in the
 section.
 Otherwise, the format of
 .Ar message
-is as for
-.Ic status-left ,
-with the exception that #() are not handled; information is taken from
+is described in the
+.Sx FORMATS
+section; information is taken from
 .Ar target-pane
 if
 .Fl t

@@ -49,36 +49,43 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char		*template;
 	char			*msg;
 	struct format_tree	*ft;
+	char			 out[BUFSIZ];
+	time_t			 t;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
 		return (-1);
 
-	if (args_has(args, 't') != 0) {
+	if (args_has(args, 't')) {
 		wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp);
 		if (wl == NULL)
 			return (-1);
 	} else {
-		s = NULL;
-		wl = NULL;
-		wp = NULL;
+		wl = cmd_find_pane(ctx, NULL, &s, &wp);
+		if (wl == NULL)
+			return (-1);
+	}
+
+	if (args_has(args, 'F') && args->argc != 0) {
+		ctx->error(ctx, "only one of -F or argument must be given");
+		return (-1);
 	}
 
 	template = args_get(args, 'F');
-	if (template != NULL) {
-		ft = format_create();
-		format_session(ft, s);
-		format_winlink(ft, s, wl);
-		format_window_pane(ft, wp);
+	if (args->argc != 0)
+		template = args->argv[0];
+	if (template == NULL)
+		template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
 
-		msg = format_expand(ft, template);
-	} else {
-		if (args->argc == 0)
-			template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
-		else
-			template = args->argv[0];
+	ft = format_create();
+	format_client(ft, c);
+	format_session(ft, s);
+	format_winlink(ft, s, wl);
+	format_window_pane(ft, wp);
 
-		msg = status_replace(c, s, wl, wp, template, time(NULL), 0);
-	}
+	t = time(NULL);
+	strftime(out, sizeof out, template, localtime(&t));
+
+	msg = format_expand(ft, out);
 	if (args_has(self->args, 'p'))
 		ctx->print(ctx, "%s", msg);
 	else
