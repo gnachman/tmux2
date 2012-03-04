@@ -31,34 +31,13 @@ int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
-	"hlRt:", 0, -1,
-	"[-hlR] [-t target-pane] key ...",
+	"lRt:", 0, -1,
+	"[-lR] [-t target-pane] key ...",
 	0,
 	NULL,
 	NULL,
 	cmd_send_keys_exec
 };
-
-static int
-hextoint(char hex)
-{
-	if (hex >= '0' && hex <= '9') {
-		return hex - '0';
-	}
-	if (hex >= 'a' && hex <= 'f') {
-		return hex - 'a' + 10;
-	}
-	if (hex >= 'A' && hex <= 'F') {
-		return hex - 'A' + 10;
-	}
-	return 0;
-}
-
-static int
-hexdecode(char *hex)
-{
-	return hextoint(hex[0]) * 16 + hextoint(hex[1]);
-}
 
 int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
@@ -92,14 +71,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	for (i = 0; i < args->argc; i++) {
 		str = args->argv[i];
 
-		if (args_has(args, 'h')) {
-			int arglen = strlen(args->argv[i]);
-			for (int j = 0; j < arglen - 1; j += 2) {
-				window_pane_key(
-				    wp, s, hexdecode(args->argv[i] + j));
-			}
-		} else if (!args_has(args, 'l') &&
-			   (key = key_string_lookup_string(str)) != KEYC_NONE) {
+		if (!args_has(args, 'l') &&
+		    (key = key_string_lookup_string(str)) != KEYC_NONE) {
 			    window_pane_key(wp, s, key);
 		} else {
 			for (; *str != '\0'; str++)

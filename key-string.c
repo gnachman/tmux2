@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: key-string.c 2669 2012-01-21 19:36:40Z tcunha $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,8 +136,17 @@ key_string_get_modifiers(const char **string)
 int
 key_string_lookup_string(const char *string)
 {
+        size_t	size;
 	int	key, modifiers;
+	u_short	u;
 
+	/* Is this a hexadecimal value? */
+	size = strlen(string);
+	if (string[0] == '0' && string[1] == 'x' && (size == 4 || size == 6)) {
+	        if (sscanf(string + 2, "%04hx", &u) != 1)
+	                return (KEYC_NONE);
+	        return (u);
+	}
 	/* Check for modifiers. */
 	modifiers = 0;
 	if (string[0] == '^' && string[1] != '\0') {
