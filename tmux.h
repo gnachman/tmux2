@@ -1363,7 +1363,7 @@ int		 format_cmp(struct format_entry *, struct format_entry *);
 RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
-void		 format_add(
+void printflike3 format_add(
 		     struct format_tree *, const char *, const char *, ...);
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
@@ -1415,6 +1415,9 @@ void	options_table_populate_tree(
 	    const struct options_table_entry *, struct options *);
 const char *options_table_print_entry(
 	    const struct options_table_entry *, struct options_entry *);
+int	options_table_find(
+	    const char *, const struct options_table_entry **,
+	    const struct options_table_entry **);
 
 /* job.c */
 extern struct joblist all_jobs;
@@ -1454,6 +1457,7 @@ void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, int, char *);
 int	tty_resize(struct tty *);
+int	tty_set_size(struct tty *tty, u_int sx, u_int sy);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
@@ -1597,6 +1601,7 @@ extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
+extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
@@ -1991,7 +1996,7 @@ void		 layout_resize_pane_mouse(
 		     struct client *c, struct mouse_event *mouse);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
-		     struct window_pane *, enum layout_type, int);
+		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */
@@ -2013,7 +2018,7 @@ extern const struct window_mode window_clock_mode;
 extern const struct window_mode window_copy_mode;
 void		 window_copy_init_from_pane(struct window_pane *);
 void		 window_copy_init_for_output(struct window_pane *);
-void		 window_copy_add(struct window_pane *, const char *, ...);
+void printflike2 window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *);
 

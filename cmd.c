@@ -67,6 +67,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_lock_client_entry,
 	&cmd_lock_server_entry,
 	&cmd_lock_session_entry,
+	&cmd_move_pane_entry,
 	&cmd_move_window_entry,
 	&cmd_new_session_entry,
 	&cmd_new_window_entry,
@@ -1308,7 +1309,8 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 		else
 			return (s->cwd);
 		skip = 0;
-		goto complete_path;
+		if (root != NULL)
+			goto complete_path;
 	}
 
 	return (s->cwd);
