@@ -1261,6 +1261,7 @@ is moved to
 .Op Fl c Ar start-directory
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
+.Op Fl F Ar format
 .Op Ar shell-command
 .Xc
 .D1 (alias: Ic neww )
@@ -1318,7 +1319,14 @@ start-up files.
 .Pp
 The
 .Fl P
-option prints the location of the new window after it has been created.
+option prints information about the new window after it has been created.
+By default, it uses the format
+.Ql #{session_name}:#{window_index} ,
+but a different format may be specified with the
+.Fl F
+flag with a
+.Ar format
+argument.
 .It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
