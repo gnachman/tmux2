@@ -53,7 +53,7 @@ osdep_get_name(int fd, unused char *tty)
 char *
 osdep_get_cwd(pid_t pid)
 {
-	static char			wd[PATH_MAX];
+	static char 			wd[PATH_MAX];
 	struct proc_vnodepathinfo	pathinfo;
 	int				ret;
 

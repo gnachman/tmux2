@@ -48,7 +48,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct environ		 env;
 	const char		*cmd;
-	char			*cause;
+	char		 	*cause;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
 		return (-1);

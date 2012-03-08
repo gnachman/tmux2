@@ -86,7 +86,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
-	const char		*errstr;
+	const char	       	*errstr;
 	struct window_pane	*wp;
 	u_int			 adjust;
 

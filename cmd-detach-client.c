@@ -41,9 +41,9 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct client	*c;
-	struct session	*s;
+	struct session 	*s;
 	enum msgtype     msgtype;
-	u_int		 i;
+	u_int 		 i;
 
 	if (args_has(args, 'P'))
 		msgtype = MSG_DETACHKILL;

@@ -107,7 +107,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
-	struct cmd_ctx			 ctx;
+	struct cmd_ctx	 	 	 ctx;
 	char				*cause;
 
 	if (s == NULL || *s == '\0')

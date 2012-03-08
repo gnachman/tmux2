@@ -201,7 +201,7 @@ window_copy_init_from_pane(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct screen_write_ctx		 ctx;
+	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
 	if (wp->mode != &window_copy_mode)
@@ -268,7 +268,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*backing = data->backing;
-	struct screen_write_ctx		 back_ctx, ctx;
+	struct screen_write_ctx	 	 back_ctx, ctx;
 	struct grid_cell		 gc;
 	int				 utf8flag;
 	u_int				 old_hsize;
@@ -334,7 +334,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct screen_write_ctx		 ctx;
+	struct screen_write_ctx	 	 ctx;
 
 	screen_resize(s, sx, sy);
 	if (data->backing != &wp->base)
@@ -807,7 +807,7 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 	if (key < '0' || key > '9')
 		return 1;
 
-	if (data->numprefix >= 100)	/* no more than three digits */
+	if (data->numprefix >= 100) 	/* no more than three digits */
 		return 0;
 	data->numprefix = data->numprefix * 10 + key - '0';
 
@@ -981,7 +981,7 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid, *sgd;
-	struct grid_cell		 gc;
+	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, last, fx, fy, px;
 	int				 utf8flag, n, wrapped;
@@ -1038,7 +1038,7 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
 	struct grid			*gd = s->grid, *sgd;
-	struct grid_cell		 gc;
+	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, first, fx, fy, px;
 	int				 utf8flag, n, wrapped;
@@ -1113,7 +1113,7 @@ window_copy_write_line(
 	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
 	char				 hdr[32];
-	size_t				 last, xoff = 0, size = 0;
+	size_t	 			 last, xoff = 0, size = 0;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
@@ -1167,7 +1167,7 @@ void
 window_copy_redraw_lines(struct window_pane *wp, u_int py, u_int ny)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	struct screen_write_ctx		 ctx;
+	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
 	screen_write_start(&ctx, wp, NULL);

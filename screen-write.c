@@ -113,9 +113,9 @@ size_t printflike2
 screen_write_strlen(int utf8flag, const char *fmt, ...)
 {
 	va_list			ap;
-	char		       *msg;
+	char   	       	       *msg;
 	struct utf8_data	utf8data;
-	u_char		       *ptr;
+	u_char 	      	       *ptr;
 	size_t			left, size = 0;
 
 	va_start(ap, fmt);
@@ -173,10 +173,10 @@ void
 screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
     struct grid_cell *gc, int utf8flag, const char *fmt, va_list ap)
 {
-	char		       *msg;
+	char   		       *msg;
 	struct utf8_data	utf8data;
-	u_char		       *ptr;
-	size_t			left, size = 0;
+	u_char 		       *ptr;
+	size_t		 	left, size = 0;
 
 	xvasprintf(&msg, fmt, ap);
 
@@ -227,7 +227,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 	struct utf8_data	 utf8data;
 	va_list			 ap;
 	char			*msg;
-	u_char			*ptr, *last;
+	u_char 			*ptr, *last;
 	size_t			 left, size = 0;
 
 	va_start(ap, fmt);
@@ -373,7 +373,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	const struct grid_cell	*gc;
 	const struct grid_utf8	*gu;
 	struct utf8_data	 utf8data;
-	u_int			 xx, yy, cx, cy, ax, bx;
+	u_int		 	 xx, yy, cx, cy, ax, bx;
 
 	cx = s->cx;
 	cy = s->cy;
@@ -563,8 +563,8 @@ void
 screen_write_alignmenttest(struct screen_write_ctx *ctx)
 {
 	struct screen		*s = ctx->s;
-	struct tty_ctx		 ttyctx;
-	struct grid_cell	 gc;
+	struct tty_ctx	 	 ttyctx;
+	struct grid_cell       	 gc;
 	u_int			 xx, yy;
 
 	screen_write_initctx(ctx, &ttyctx, 0);
@@ -878,13 +878,25 @@ screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
 	s->mode |= mode;
 }
 
+/* Set bracketed paste mode. */
+void
+screen_write_bracketpaste(struct screen_write_ctx *ctx, int state)
+{
+	struct screen	*s = ctx->s;
+
+	if (state)
+		s->mode |= MODE_BRACKETPASTE;
+	else
+		s->mode &= ~MODE_BRACKETPASTE;
+}
+
 /* Line feed. */
 void
 screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 {
 	struct screen		*s = ctx->s;
 	struct grid_line	*gl;
-	struct tty_ctx		 ttyctx;
+	struct tty_ctx	 	 ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 
@@ -1023,8 +1035,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	struct grid_utf8	 gu;
-	u_int			 width, xx;
-	struct grid_cell	 tmp_gc, *tmp_gcp;
+	u_int		 	 width, xx;
+	struct grid_cell 	 tmp_gc, *tmp_gcp;
 	int			 insert = 0;
 
 	/* Ignore padding. */

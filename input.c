@@ -1036,7 +1036,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct window_pane	       *wp = ictx->wp;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int				n, m;
+	int			 	n, m;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1212,6 +1212,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1049:
 			window_pane_alternate_off(wp, &ictx->cell);
 			break;
+		case 2004:
+			screen_write_bracketpaste(&ictx->ctx, 0);
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1263,6 +1266,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		case 1049:
 			window_pane_alternate_on(wp, &ictx->cell);
+			break;
+		case 2004:
+			screen_write_bracketpaste(&ictx->ctx, 1);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

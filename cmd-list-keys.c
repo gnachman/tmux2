@@ -106,7 +106,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind;
 	const char			*key, *cmdstr, *mode;
-	int				 width, keywidth, any_mode;
+	int			 	 width, keywidth, any_mode;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {

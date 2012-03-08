@@ -43,7 +43,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 
 struct cmd_choose_client_data {
 	struct client	*client;
-	char		*template;
+	char   		*template;
 };
 
 int
@@ -53,7 +53,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_choose_client_data	*cdata;
 	struct winlink			*wl;
 	struct client			*c;
-	u_int				 i, idx, cur;
+	u_int			 	 i, idx, cur;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -101,7 +101,7 @@ void
 cmd_choose_client_callback(void *data, int idx)
 {
 	struct cmd_choose_client_data	*cdata = data;
-	struct client			*c;
+	struct client  			*c;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
 	char				*template, *cause;

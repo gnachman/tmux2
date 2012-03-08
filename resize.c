@@ -49,8 +49,8 @@ recalculate_sizes(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 i, j, ssx, ssy, has, limit;
-	int			 flag;
+	u_int		 	 i, j, ssx, ssy, has, limit;
+	int		 	 flag;
 
 	RB_FOREACH(s, sessions, &sessions) {
 		ssx = ssy = UINT_MAX;

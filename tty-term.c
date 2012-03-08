@@ -316,7 +316,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	const struct tty_term_code_entry	*ent;
 	struct tty_code				*code;
 	u_int					 i;
-	int					 n, error;
+	int		 			 n, error;
 	char					*s;
 	const char				*acs;
 

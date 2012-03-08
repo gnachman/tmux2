@@ -251,7 +251,7 @@ cmd_set_option_number(unused struct cmd *self, struct cmd_ctx *ctx,
     const struct options_table_entry *oe, struct options *oo, const char *value)
 {
 	long long	 ll;
-	const char	*errstr;
+	const char     	*errstr;
 
 	ll = strtonum(value, oe->minimum, oe->maximum, &errstr);
 	if (errstr != NULL) {

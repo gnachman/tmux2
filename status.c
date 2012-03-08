@@ -141,7 +141,7 @@ status_set_window_at(struct client *c, u_int x)
 	struct session	*s = c->session;
 	struct winlink	*wl;
 
-	x += s->wlmouse;
+	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (x < wl->status_width &&
 			session_select(s, wl->idx) == 0) {
@@ -356,7 +356,7 @@ draw:
 		wloffset++;
 
 	/* Copy the window list. */
-	s->wlmouse = -wloffset + wlstart;
+	c->wlmouse = -wloffset + wlstart;
 	screen_write_cursormove(&ctx, wloffset, 0);
 	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
@@ -535,7 +535,7 @@ char *
 status_find_job(struct client *c, char **iptr)
 {
 	struct status_out	*so, so_find;
-	char			*cmd;
+	char   			*cmd;
 	int			 lastesc;
 	size_t			 len;
 
@@ -674,7 +674,7 @@ status_print(
 	struct options	*oo = &wl->window->options;
 	struct session	*s = c->session;
 	const char	*fmt;
-	char		*text;
+	char   		*text;
 	u_char		 fg, bg, attr;
 
 	fg = options_get_number(oo, "window-status-fg");
@@ -816,8 +816,8 @@ status_message_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
-	struct screen			old_status;
-	size_t				len;
+	struct screen		        old_status;
+	size_t			        len;
 	struct grid_cell		gc;
 	int				utf8flag;
 
@@ -940,8 +940,8 @@ status_prompt_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
-	struct screen			old_status;
-	size_t				i, size, left, len, off;
+	struct screen		        old_status;
+	size_t			        i, size, left, len, off;
 	struct grid_cell		gc, *gcp;
 	int				utf8flag;
 
@@ -1038,12 +1038,18 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case MODEKEYEDIT_SWITCHMODEBEGINLINE:
+		c->flags |= CLIENT_STATUS;
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_STARTOFLINE:
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case MODEKEYEDIT_SWITCHMODEAPPENDLINE:
+		c->flags |= CLIENT_STATUS;
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_ENDOFLINE:
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
@@ -1380,12 +1386,12 @@ status_prompt_add_history(const char *line)
 char *
 status_prompt_complete(const char *s)
 {
-	const struct cmd_entry		       **cmdent;
+	const struct cmd_entry 	  	       **cmdent;
 	const struct options_table_entry	*oe;
 	ARRAY_DECL(, const char *)		 list;
 	char					*prefix, *s2;
 	u_int					 i;
-	size_t					 j;
+	size_t				 	 j;
 
 	if (*s == '\0')
 		return (NULL);

@@ -27,7 +27,7 @@ int	key_string_get_modifiers(const char **);
 
 const struct {
 	const char     *string;
-	int		key;
+	int	 	key;
 } key_string_table[] = {
 	/* Function keys. */
 	{ "F1",		KEYC_F1 },
@@ -74,7 +74,7 @@ const struct {
 	{ "Right",	KEYC_RIGHT },
 
 	/* Numeric keypad. */
-	{ "KP/",	KEYC_KP_SLASH },
+	{ "KP/", 	KEYC_KP_SLASH },
 	{ "KP*",	KEYC_KP_STAR },
 	{ "KP-",	KEYC_KP_MINUS },
 	{ "KP7",	KEYC_KP_SEVEN },
@@ -137,6 +137,15 @@ int
 key_string_lookup_string(const char *string)
 {
 	int	key, modifiers;
+	u_short	u;
+	int	size;
+
+	/* Is this a hexadecimal value? */
+	if (string[0] == '0' && string[1] == 'x') {
+	        if (sscanf(string + 2, "%hx%n", &u, &size) != 1 || size > 4)
+	                return (KEYC_NONE);
+	        return (u);
+	}
 
 	/* Check for modifiers. */
 	modifiers = 0;
@@ -184,7 +193,7 @@ key_string_lookup_key(int key)
 {
 	static char	out[24];
 	char		tmp[8];
-	u_int		i;
+	u_int	   	i;
 
 	*out = '\0';
 

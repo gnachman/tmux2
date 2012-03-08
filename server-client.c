@@ -335,7 +335,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	struct options		*oo;
 	struct timeval		 tv;
 	struct key_binding	*bd;
-	int			 xtimeout, isprefix;
+	int		      	 xtimeout, isprefix;
 
 	/* Check the client is good to accept input. */
 	if ((c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
@@ -452,7 +452,7 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 i;
+	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -595,7 +595,7 @@ server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
 	struct window_pane	*wp;
-	int			 flags, redraw;
+	int		 	 flags, redraw;
 
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;

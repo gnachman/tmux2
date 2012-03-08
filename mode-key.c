@@ -35,8 +35,9 @@
  *
  * vi command mode is handled by having a mode flag in the struct which allows
  * two sets of bindings to be swapped between. A couple of editing commands
- * (MODEKEYEDIT_SWITCHMODE and MODEKEYEDIT_SWITCHMODEAPPEND) are special-cased
- * to do this.
+ * (MODEKEYEDIT_SWITCHMODE, MODEKEYEDIT_SWITCHMODEAPPEND,
+ * MODEKEYEDIT_SWITCHMODEAPPENDLINE, and MODEKEYEDIT_SWITCHMODEBEGINLINE)
+ * are special-cased to do this.
  */
 
 /* Edit keys command strings. */
@@ -64,6 +65,8 @@ const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_STARTOFLINE, "start-of-line" },
 	{ MODEKEYEDIT_SWITCHMODE, "switch-mode" },
 	{ MODEKEYEDIT_SWITCHMODEAPPEND, "switch-mode-append" },
+	{ MODEKEYEDIT_SWITCHMODEAPPENDLINE, "switch-mode-append-line" },
+	{ MODEKEYEDIT_SWITCHMODEBEGINLINE, "switch-mode-begin-line" },
 	{ MODEKEYEDIT_TRANSPOSECHARS, "transpose-chars" },
 
 	{ 0, NULL }
@@ -134,7 +137,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 /* vi editing keys. */
 const struct mode_key_entry mode_key_vi_edit[] = {
 	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
-	{ '\010' /* C-h */,	0, MODEKEYEDIT_BACKSPACE },
+	{ '\010' /* C-h */, 	0, MODEKEYEDIT_BACKSPACE },
 	{ '\011' /* Tab */,	0, MODEKEYEDIT_COMPLETE },
 	{ '\025' /* C-u */,	0, MODEKEYEDIT_DELETELINE },
 	{ '\027' /* C-w */,	0, MODEKEYEDIT_DELETEWORD },
@@ -151,13 +154,15 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 
 	{ '$',			1, MODEKEYEDIT_ENDOFLINE },
 	{ '0',			1, MODEKEYEDIT_STARTOFLINE },
+	{ 'A',			1, MODEKEYEDIT_SWITCHMODEAPPENDLINE },
 	{ 'B',			1, MODEKEYEDIT_PREVIOUSSPACE },
 	{ 'D',			1, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ 'E',			1, MODEKEYEDIT_NEXTSPACEEND },
+	{ 'I',			1, MODEKEYEDIT_SWITCHMODEBEGINLINE },
 	{ 'W',			1, MODEKEYEDIT_NEXTSPACE },
 	{ 'X',			1, MODEKEYEDIT_BACKSPACE },
 	{ '\003' /* C-c */,	1, MODEKEYEDIT_CANCEL },
-	{ '\010' /* C-h */,	1, MODEKEYEDIT_BACKSPACE },
+	{ '\010' /* C-h */, 	1, MODEKEYEDIT_BACKSPACE },
 	{ '\r',			1, MODEKEYEDIT_ENTER },
 	{ '^',			1, MODEKEYEDIT_STARTOFLINE },
 	{ 'a',			1, MODEKEYEDIT_SWITCHMODEAPPEND },
@@ -496,6 +501,8 @@ mode_key_lookup(struct mode_key_data *mdata, int key)
 	switch (mbind->cmd) {
 	case MODEKEYEDIT_SWITCHMODE:
 	case MODEKEYEDIT_SWITCHMODEAPPEND:
+	case MODEKEYEDIT_SWITCHMODEAPPENDLINE:
+	case MODEKEYEDIT_SWITCHMODEBEGINLINE:
 		mdata->mode = 1 - mdata->mode;
 		/* FALLTHROUGH */
 	default:

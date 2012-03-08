@@ -480,6 +480,12 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		else
 			tty_putcode(tty, TTYC_RMKX);
 	}
+	if (changed & MODE_BRACKETPASTE) {
+		if (mode & MODE_BRACKETPASTE)
+			tty_puts(tty, "\033[?2004h");
+		else
+			tty_puts(tty, "\033[?2004l");
+	}
 	tty->mode = mode;
 }
 
@@ -505,7 +511,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i;
+	u_int		 	 i;
 
 	/*
 	 * If region is >= 50% of the screen, just schedule a window redraw. In
@@ -599,7 +605,7 @@ tty_write(
 	struct client		*c;
 	struct session		*s;
 	struct options		*oo;
-	u_int			 i;
+	u_int		 	 i;
 
 	/* wp can be NULL if updating the screen but not the terminal. */
 	if (wp == NULL)
@@ -733,7 +739,7 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i;
+	u_int		 	 i;
 
 	tty_reset(tty);
 
@@ -753,7 +759,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i;
+	u_int		 	 i;
 
 	tty_reset(tty);
 
@@ -771,7 +777,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	u_int	 i;
+	u_int 	 i;
 
 	tty_reset(tty);
 
@@ -845,7 +851,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i, j;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
@@ -881,7 +887,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i, j;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
@@ -911,7 +917,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 i, j;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
