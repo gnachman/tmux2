@@ -30,9 +30,9 @@ int	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"ac:dkn:Pt:F:", 0, 1,
-	"[-adkP] [-c start-directory] [-n window-name] [-t target-window] "
-	"[-F format] [command]",
+	"ac:dF:kn:Pt:", 0, 1,
+	"[-adkP] [-c start-directory] [-F format] [-n window-name] "
+	"[-t target-window] [command]",
 	0,
 	NULL,
 	NULL,
@@ -51,6 +51,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cause;
 	int			 idx, last, detached;
 	struct format_tree	*ft;
+	char			*cp;
 
 	if (args_has(args, 'a')) {
 		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
@@ -121,17 +122,21 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_status_session_group(s);
 
 	if (args_has(args, 'P')) {
+		template = "#{session_name}:#{window_index}";
 		if (args_has(args, 'F'))
 			template = args_get(args, 'F');
-		else
-		    template = "#{session_name}:#{window_index}";
-		c = cmd_find_client(ctx, NULL);
+
 		ft = format_create();
-		if (c != NULL)
+		if ((c = cmd_find_client(ctx, NULL)) != NULL)
 		    format_client(ft, c);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
-		ctx->print(ctx, "%s", format_expand(ft, template));
+
+		cp = format_expand(ft, template);
+		ctx->print(ctx, "%s", cp);
+		xfree(cp);
+
+		format_free(ft);
 	}
 
 	return (0);

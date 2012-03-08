@@ -43,7 +43,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 int
 cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
+	struct args 		*args = self->args;
 	struct client		*c;
 	struct session		*s;
 	struct format_tree	*ft;

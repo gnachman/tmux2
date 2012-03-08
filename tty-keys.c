@@ -45,8 +45,8 @@ struct tty_key_ent {
 	enum tty_code_code	code;
 	const char	       *string;
 
-	int			key;
-	int			flags;
+	int	 	 	key;
+	int		 	flags;
 #define TTYKEY_RAW 0x1
 };
 
@@ -289,7 +289,7 @@ tty_keys_add(struct tty *tty, const char *s, int key)
 {
 	struct tty_key	*tk;
 	size_t		 size;
-	const char	*keystr;
+	const char     	*keystr;
 
 	keystr = key_string_lookup_key(key);
 	if ((tk = tty_keys_find(tty, s, strlen(s), &size)) == NULL) {
@@ -344,7 +344,7 @@ void
 tty_keys_init(struct tty *tty)
 {
 	const struct tty_key_ent	*tke;
-	u_int				 i;
+	u_int		 		 i;
 	const char			*s;
 
 	tty->key_tree = NULL;

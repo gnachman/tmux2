@@ -1321,12 +1321,9 @@ The
 .Fl P
 option prints information about the new window after it has been created.
 By default, it uses the format
-.Ql #{session_name}:#{window_index} ,
-but a different format may be specified with the
-.Fl F
-flag with a
-.Ar format
-argument.
+.Ql #{session_name}:#{window_index}
+but a different format may be specified with
+.Fl F .
 .It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
@@ -3123,7 +3120,7 @@ List the global buffers.
 Load the contents of the specified paste buffer from
 .Ar path .
 .It Xo Ic paste-buffer
-.Op Fl dr
+.Op Fl dpr
 .Op Fl b Ar buffer-index
 .Op Fl s Ar separator
 .Op Fl t Ar target-pane
@@ -3142,6 +3139,10 @@ flag.
 The
 .Fl r
 flag means to do no replacement (equivalent to a separator of LF).
+If
+.Fl p
+is specified, paste bracket control codes are inserted around the
+buffer if the application has requested bracketed paste mode.
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-index

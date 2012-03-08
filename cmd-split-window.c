@@ -32,9 +32,9 @@ int	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"c:dl:hp:Pt:vF:", 0, 1,
-	"[-dhvP] [-c start-directory] [-p percentage|-l size] [-t target-pane] "
-	"[-F format] [command]",
+	"c:dF:l:hp:Pt:v", 0, 1,
+	"[-dhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
+	"[-t target-pane] [command]",
 	0,
 	cmd_split_window_key_binding,
 	NULL,
@@ -67,6 +67,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char		*template;
 	struct client		*c;
 	struct format_tree	*ft;
+	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
 		return (-1);
@@ -137,18 +138,22 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	environ_free(&env);
 
 	if (args_has(args, 'P')) {
+		template = "#{session_name}:#{window_index}.#{pane_index}";
 		if (args_has(args, 'F'))
 			template = args_get(args, 'F');
-		else
-		    	template = "#{session_name}:#{window_index}.#{pane_index}";
-		c = cmd_find_client(ctx, NULL);
+
 		ft = format_create();
-		if (c != NULL)
+		if ((c = cmd_find_client(ctx, NULL)) != NULL)
 		    format_client(ft, c);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
 		format_window_pane(ft, new_wp);
-		ctx->print(ctx, "%s", format_expand(ft, template));
+
+		cp = format_expand(ft, template);
+		ctx->print(ctx, "%s", cp);
+		xfree(cp);
+
+		format_free(ft);
 	}
 	control_notify_layout_change(w);
 	return (0);

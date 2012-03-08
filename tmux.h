@@ -454,6 +454,8 @@ enum mode_key_cmd {
 	MODEKEYEDIT_STARTOFLINE,
 	MODEKEYEDIT_SWITCHMODE,
 	MODEKEYEDIT_SWITCHMODEAPPEND,
+	MODEKEYEDIT_SWITCHMODEAPPENDLINE,
+	MODEKEYEDIT_SWITCHMODEBEGINLINE,
 	MODEKEYEDIT_TRANSPOSECHARS,
 
 	/* Menu (choice) keys. */
@@ -570,6 +572,7 @@ struct mode_key_table {
 #define MODE_MOUSE_BUTTON 0x40
 #define MODE_MOUSE_ANY 0x80
 #define MODE_MOUSE_UTF8 0x100
+#define MODE_BRACKETPASTE 0x200
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
@@ -989,8 +992,6 @@ struct session {
 
 	struct environ	 environ;
 
-	int		 wlmouse;
-
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
@@ -1216,6 +1217,8 @@ struct client {
 	struct session	*last_session;
 
 	struct mouse_event last_mouse;
+
+	int		 wlmouse;
 
 	int		 references;
 };
@@ -1948,6 +1951,7 @@ void	 screen_write_cell(struct screen_write_ctx *,
 	     const struct grid_cell *, const struct utf8_data *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
+void	 screen_write_bracketpaste(struct screen_write_ctx *, int);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, int, int);
