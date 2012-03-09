@@ -88,7 +88,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	const char	       	*errstr;
 	struct window_pane	*wp;
-	struct client		*c;
 	u_int			 adjust;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
@@ -113,10 +112,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else if (args_has(self->args, 'D'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
 	server_redraw_window(wl->window);
-
-	c = cmd_find_client(ctx, NULL);
-	if (c && (c->flags & CLIENT_CONTROL))
-		control_print_session_layouts(c->session, ctx);
 
 	return (0);
 }

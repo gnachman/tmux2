@@ -1,4 +1,4 @@
-/* $Id: key-string.c 2669 2012-01-21 19:36:40Z tcunha $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,7 +136,6 @@ key_string_get_modifiers(const char **string)
 int
 key_string_lookup_string(const char *string)
 {
-        size_t	size;
 	int	key, modifiers;
 	u_short	u;
 	int	size;

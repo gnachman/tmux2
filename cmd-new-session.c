@@ -113,11 +113,10 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Control clients don't have a tty, so avoid doing tty-ish things in
 	 * that case. */
 	if ((ctx->cmdclient && (ctx->cmdclient->flags & CLIENT_CONTROL)) ||
-		(ctx->curclient && (ctx->curclient->flags & CLIENT_CONTROL))) {
-		hastty = 0;
-	} else {
-		hastty = 1;
-	}
+		(ctx->curclient && (ctx->curclient->flags & CLIENT_CONTROL)))
+	    hastty = 0;
+	else
+	    hastty = 1;
 
 	/*
 	 * Save the termios settings, part of which is used for new windows in
