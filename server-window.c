@@ -169,7 +169,7 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 
 	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED)) {
 		/*
-		 * Reset the timer for this window if we've focused it.	We
+		 * Reset the timer for this window if we've focused it.  We
 		 * don't want the timer tripping as soon as we've switched away
 		 * from this window.
 		 */
@@ -255,7 +255,7 @@ ring_bell(struct session *s)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s || (c->flags & CLIENT_CONTROL))
+		if (c != NULL && c->session == s && !(c->flags & CLIENT_CONTROL))
 			tty_bell(&c->tty);
 	}
 }

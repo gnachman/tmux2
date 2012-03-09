@@ -67,7 +67,7 @@ layout_dump(struct window *w)
 	return (out);
 }
 
-/* Append information for a single cell.  */
+/* Append information for a single cell. */
 int
 layout_append(struct layout_cell *lc, char *buf, size_t len)
 {
@@ -78,6 +78,7 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 
 	if (len == 0)
 		return (-1);
+
 	if (lc->wp != NULL) {
 		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%u,%u,%u",
 		    lc->sx, lc->sy, lc->xoff, lc->yoff, lc->wp->id);

@@ -62,7 +62,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28lquvVC] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28ClquvV] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);

@@ -249,20 +249,18 @@ client_main(int argc, char **argv, int flags)
 				 * not client-initiated. */
 				if (strcmp("detached", client_exitmsg))
 					read_stray_input(fileno(stdin));
-			} else {
-				printf("[%s]\n", client_exitmsg);
-			}
+			} else
+			    printf("[%s]\n", client_exitmsg);
 		}
 
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
 	}
-	if (is_control_client) {
-		/* Turn off echo in control mode (we only get here if stdout is
-		 * a tty so it's ok to do). */
-		tcsetattr(fileno(stdout), TCSANOW, &saved_termios);
-	}
+	if (is_control_client)
+	    /* Turn off echo in control mode (we only get here if stdout is
+	     * a tty so it's ok to do). */
+	    tcsetattr(fileno(stdout), TCSANOW, &saved_termios);
 	return (client_exitval);
 }
 
@@ -294,9 +292,9 @@ client_send_identify(int flags)
 	imsg_compose(&client_ibuf,
 	    MSG_STDERR, PROTOCOL_VERSION, -1, fd, NULL, 0);
 
-	/* For control clients, this has to be the last message. */
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
+	/* For control clients, this has to be the last message. */
 	imsg_compose(&client_ibuf,
 	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
 }

@@ -83,7 +83,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	} else {
 		if (!(ctx->cmdclient->flags & CLIENT_CONTROL) &&
-			!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
+		    !(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
 			ctx->error(ctx, "not a terminal");
 			return (-1);
 		}
