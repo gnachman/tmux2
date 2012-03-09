@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: cmd-list-windows.c 2689 2012-01-31 12:02:24Z tcunha $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,13 +30,12 @@ int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
 void	cmd_list_windows_session(
-	    struct cmd *, struct session *,struct winlink *,
-	    struct cmd_ctx *, int);
+	    struct cmd *, struct session *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
 	"aF:t:", 0, 0,
-	"[-a] [-F format] " CMD_TARGET_SESSION_OR_WINDOW_USAGE,
+	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -48,16 +47,14 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct session	*s;
-	struct winlink	*wl;
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, ctx);
 	else {
-		s = NULL;
-		wl = cmd_find_session_or_window(ctx, args_get(args, 't'), &s, 0);
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
-		cmd_list_windows_session(self, s, wl, ctx, 0);
+		cmd_list_windows_session(self, s, ctx, 0);
 	}
 
 	return (0);
@@ -69,13 +66,12 @@ cmd_list_windows_server(struct cmd *self, struct cmd_ctx *ctx)
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_windows_session(self, s, NULL, ctx, 1);
+		cmd_list_windows_session(self, s, ctx, 1);
 }
 
 void
 cmd_list_windows_session(
-    struct cmd *self, struct session *s, struct winlink *target_wl,
-    struct cmd_ctx *ctx, int type)
+    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -106,9 +102,6 @@ cmd_list_windows_session(
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (target_wl && target_wl->window->id != wl->window->id)
-			continue;
-
 		ft = format_create();
 		format_add(ft, "line", "%u", n);
 		format_session(ft, s);
