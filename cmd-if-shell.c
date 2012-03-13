@@ -28,95 +28,95 @@
  * Executes a tmux command if a shell command returns true or false.
  */
 
-int	cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_if_shell_callback(struct job *);
-void	cmd_if_shell_free(void *);
+void    cmd_if_shell_callback(struct job *);
+void    cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
-	"if-shell", "if",
-	"", 2, 3,
-	"shell-command command [command]",
-	0,
-	NULL,
-	NULL,
-	cmd_if_shell_exec
+        "if-shell", "if",
+        "", 2, 3,
+        "shell-command command [command]",
+        0,
+        NULL,
+        NULL,
+        cmd_if_shell_exec
 };
 
 struct cmd_if_shell_data {
-	char		*cmd_if;
-	char		*cmd_else;
-	struct cmd_ctx	 ctx;
+        char            *cmd_if;
+        char            *cmd_else;
+        struct cmd_ctx   ctx;
 };
 
 int
 cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args			*args = self->args;
-	struct cmd_if_shell_data	*cdata;
-	const char			*shellcmd = args->argv[0];
+        struct args                     *args = self->args;
+        struct cmd_if_shell_data        *cdata;
+        const char                      *shellcmd = args->argv[0];
 
-	cdata = xmalloc(sizeof *cdata);
-	cdata->cmd_if = xstrdup(args->argv[1]);
-	if (args->argc == 3)
-		cdata->cmd_else = xstrdup(args->argv[2]);
-	else
-		cdata->cmd_else = NULL;
-	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
+        cdata = xmalloc(sizeof *cdata);
+        cdata->cmd_if = xstrdup(args->argv[1]);
+        if (args->argc == 3)
+                cdata->cmd_else = xstrdup(args->argv[2]);
+        else
+                cdata->cmd_else = NULL;
+        memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references++;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references++;
+        if (ctx->cmdclient != NULL)
+                ctx->cmdclient->references++;
+        if (ctx->curclient != NULL)
+                ctx->curclient->references++;
 
-	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+        job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 
-	return (1);	/* don't let client exit */
+        return (1);     /* don't let client exit */
 }
 
 void
 cmd_if_shell_callback(struct job *job)
 {
-	struct cmd_if_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
-	struct cmd_list			*cmdlist;
-	char				*cause, *cmd;
+        struct cmd_if_shell_data        *cdata = job->data;
+        struct cmd_ctx                  *ctx = &cdata->ctx;
+        struct cmd_list                 *cmdlist;
+        char                            *cause, *cmd;
 
-	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
-		cmd = cdata->cmd_else;
-		if (cmd == NULL)
-			return;
-	} else
-		cmd = cdata->cmd_if;
-	if (cmd_string_parse(cmd, &cmdlist, &cause) != 0) {
-		if (cause != NULL) {
-			ctx->error(ctx, "%s", cause);
-			xfree(cause);
-		}
-		return;
-	}
+        if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
+                cmd = cdata->cmd_else;
+                if (cmd == NULL)
+                        return;
+        } else
+                cmd = cdata->cmd_if;
+        if (cmd_string_parse(cmd, &cmdlist, &cause) != 0) {
+                if (cause != NULL) {
+                        ctx->error(ctx, "%s", cause);
+                        xfree(cause);
+                }
+                return;
+        }
 
-	cmd_list_exec(cmdlist, ctx);
-	cmd_list_free(cmdlist);
+        cmd_list_exec(cmdlist, ctx);
+        cmd_list_free(cmdlist);
 }
 
 void
 cmd_if_shell_free(void *data)
 {
-	struct cmd_if_shell_data	*cdata = data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
-	struct msg_exit_data		 exitdata;
+        struct cmd_if_shell_data        *cdata = data;
+        struct cmd_ctx                  *ctx = &cdata->ctx;
+        struct msg_exit_data             exitdata;
 
-	if (ctx->cmdclient != NULL) {
-		ctx->cmdclient->references--;
-		exitdata.retcode = ctx->cmdclient->retcode;
-		ctx->cmdclient->flags |= CLIENT_EXIT;
-	}
-	if (ctx->curclient != NULL)
-		ctx->curclient->references--;
+        if (ctx->cmdclient != NULL) {
+                ctx->cmdclient->references--;
+                exitdata.retcode = ctx->cmdclient->retcode;
+                ctx->cmdclient->flags |= CLIENT_EXIT;
+        }
+        if (ctx->curclient != NULL)
+                ctx->curclient->references--;
 
-	if (cdata->cmd_else != NULL)
-		xfree(cdata->cmd_else);
-	xfree(cdata->cmd_if);
-	xfree(cdata);
+        if (cdata->cmd_else != NULL)
+                xfree(cdata->cmd_else);
+        xfree(cdata->cmd_if);
+        xfree(cdata);
 }

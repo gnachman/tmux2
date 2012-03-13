@@ -28,90 +28,90 @@
  * Saves a paste buffer to a file.
  */
 
-int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
-	"save-buffer", "saveb",
-	"ab:", 1, 1,
-	"[-a] " CMD_BUFFER_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_save_buffer_exec
+        "save-buffer", "saveb",
+        "ab:", 1, 1,
+        "[-a] " CMD_BUFFER_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_save_buffer_exec
 };
 
 int
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct client		*c = ctx->cmdclient;
-	struct session          *s;
-	struct paste_buffer	*pb;
-	const char		*path, *newpath, *wd;
-	char			*cause;
-	int			 buffer;
-	mode_t			 mask;
-	FILE			*f;
+        struct args             *args = self->args;
+        struct client           *c = ctx->cmdclient;
+        struct session          *s;
+        struct paste_buffer     *pb;
+        const char              *path, *newpath, *wd;
+        char                    *cause;
+        int                      buffer;
+        mode_t                   mask;
+        FILE                    *f;
 
-	if (!args_has(args, 'b')) {
-		if ((pb = paste_get_top(&global_buffers)) == NULL) {
-			ctx->error(ctx, "no buffers");
-			return (-1);
-		}
-	} else {
-		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			ctx->error(ctx, "buffer %s", cause);
-			xfree(cause);
-			return (-1);
-		}
+        if (!args_has(args, 'b')) {
+                if ((pb = paste_get_top(&global_buffers)) == NULL) {
+                        ctx->error(ctx, "no buffers");
+                        return (-1);
+                }
+        } else {
+                buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+                if (cause != NULL) {
+                        ctx->error(ctx, "buffer %s", cause);
+                        xfree(cause);
+                        return (-1);
+                }
 
-		pb = paste_get_index(&global_buffers, buffer);
-		if (pb == NULL) {
-			ctx->error(ctx, "no buffer %d", buffer);
-			return (-1);
-		}
-	}
+                pb = paste_get_index(&global_buffers, buffer);
+                if (pb == NULL) {
+                        ctx->error(ctx, "no buffer %d", buffer);
+                        return (-1);
+                }
+        }
 
-	path = args->argv[0];
-	if (strcmp(path, "-") == 0) {
-		if (c == NULL) {
-			ctx->error(ctx, "%s: can't write to stdout", path);
-			return (-1);
-		}
-		bufferevent_write(c->stdout_event, pb->data, pb->size);
-	} else {
-		if (c != NULL)
-			wd = c->cwd;
-		else if ((s = cmd_current_session(ctx, 0)) != NULL) {
-			wd = options_get_string(&s->options, "default-path");
-			if (*wd == '\0')
-				wd = s->cwd;
-		} else
-			wd = NULL;
-		if (wd != NULL && *wd != '\0') {
-			newpath = get_full_path(wd, path);
-			if (newpath != NULL)
-				path = newpath;
-		}
+        path = args->argv[0];
+        if (strcmp(path, "-") == 0) {
+                if (c == NULL) {
+                        ctx->error(ctx, "%s: can't write to stdout", path);
+                        return (-1);
+                }
+                bufferevent_write(c->stdout_event, pb->data, pb->size);
+        } else {
+                if (c != NULL)
+                        wd = c->cwd;
+                else if ((s = cmd_current_session(ctx, 0)) != NULL) {
+                        wd = options_get_string(&s->options, "default-path");
+                        if (*wd == '\0')
+                                wd = s->cwd;
+                } else
+                        wd = NULL;
+                if (wd != NULL && *wd != '\0') {
+                        newpath = get_full_path(wd, path);
+                        if (newpath != NULL)
+                                path = newpath;
+                }
 
-		mask = umask(S_IRWXG | S_IRWXO);
-		if (args_has(self->args, 'a'))
-			f = fopen(path, "ab");
-		else
-			f = fopen(path, "wb");
-		umask(mask);
-		if (f == NULL) {
-			ctx->error(ctx, "%s: %s", path, strerror(errno));
-			return (-1);
-		}
-		if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
-			ctx->error(ctx, "%s: fwrite error", path);
-			fclose(f);
-			return (-1);
-		}
-		fclose(f);
-	}
+                mask = umask(S_IRWXG | S_IRWXO);
+                if (args_has(self->args, 'a'))
+                        f = fopen(path, "ab");
+                else
+                        f = fopen(path, "wb");
+                umask(mask);
+                if (f == NULL) {
+                        ctx->error(ctx, "%s: %s", path, strerror(errno));
+                        return (-1);
+                }
+                if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
+                        ctx->error(ctx, "%s: fwrite error", path);
+                        fclose(f);
+                        return (-1);
+                }
+                fclose(f);
+        }
 
-	return (0);
+        return (0);
 }

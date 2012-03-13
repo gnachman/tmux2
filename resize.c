@@ -45,101 +45,101 @@
 void
 recalculate_sizes(void)
 {
-	struct session		*s;
-	struct client		*c;
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int		 	 i, j, ssx, ssy, has, limit;
-	int		 	 flag;
+        struct session          *s;
+        struct client           *c;
+        struct window           *w;
+        struct window_pane      *wp;
+        u_int                    i, j, ssx, ssy, has, limit;
+        int                      flag;
 
-	RB_FOREACH(s, sessions, &sessions) {
-		ssx = ssy = UINT_MAX;
-		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL || c->flags & CLIENT_SUSPENDED)
-				continue;
-			if (c->session == s) {
-				if (c->tty.sx < ssx)
-					ssx = c->tty.sx;
-				if (c->tty.sy < ssy)
-					ssy = c->tty.sy;
-			}
-		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX) {
-			s->flags |= SESSION_UNATTACHED;
-			continue;
-		}
-		s->flags &= ~SESSION_UNATTACHED;
+        RB_FOREACH(s, sessions, &sessions) {
+                ssx = ssy = UINT_MAX;
+                for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+                        c = ARRAY_ITEM(&clients, j);
+                        if (c == NULL || c->flags & CLIENT_SUSPENDED)
+                                continue;
+                        if (c->session == s) {
+                                if (c->tty.sx < ssx)
+                                        ssx = c->tty.sx;
+                                if (c->tty.sy < ssy)
+                                        ssy = c->tty.sy;
+                        }
+                }
+                if (ssx == UINT_MAX || ssy == UINT_MAX) {
+                        s->flags |= SESSION_UNATTACHED;
+                        continue;
+                }
+                s->flags &= ~SESSION_UNATTACHED;
 
-		if (options_get_number(&s->options, "status")) {
-			if (ssy == 0)
-				ssy = 1;
-			else
-				ssy--;
-		}
-		if (s->sx == ssx && s->sy == ssy)
-			continue;
+                if (options_get_number(&s->options, "status")) {
+                        if (ssy == 0)
+                                ssy = 1;
+                        else
+                                ssy--;
+                }
+                if (s->sx == ssx && s->sy == ssy)
+                        continue;
 
-		log_debug(
-		    "session size %u,%u (was %u,%u)", ssx, ssy, s->sx, s->sy);
+                log_debug(
+                    "session size %u,%u (was %u,%u)", ssx, ssy, s->sx, s->sy);
 
-		s->sx = ssx;
-		s->sy = ssy;
-	}
+                s->sx = ssx;
+                s->sy = ssy;
+        }
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-		flag = options_get_number(&w->options, "aggressive-resize");
+        for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+                w = ARRAY_ITEM(&windows, i);
+                if (w == NULL)
+                        continue;
+                flag = options_get_number(&w->options, "aggressive-resize");
 
-		ssx = ssy = UINT_MAX;
-		RB_FOREACH(s, sessions, &sessions) {
-			if (s->flags & SESSION_UNATTACHED)
-				continue;
-			if (flag)
-				has = s->curw->window == w;
-			else
-				has = session_has(s, w) != NULL;
-			if (has) {
-				if (s->sx < ssx)
-					ssx = s->sx;
-				if (s->sy < ssy)
-					ssy = s->sy;
-			}
-		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX)
-			continue;
+                ssx = ssy = UINT_MAX;
+                RB_FOREACH(s, sessions, &sessions) {
+                        if (s->flags & SESSION_UNATTACHED)
+                                continue;
+                        if (flag)
+                                has = s->curw->window == w;
+                        else
+                                has = session_has(s, w) != NULL;
+                        if (has) {
+                                if (s->sx < ssx)
+                                        ssx = s->sx;
+                                if (s->sy < ssy)
+                                        ssy = s->sy;
+                        }
+                }
+                if (ssx == UINT_MAX || ssy == UINT_MAX)
+                        continue;
 
-		limit = options_get_number(&w->options, "force-width");
-		if (limit != 0 && ssx > limit)
-			ssx = limit;
-		limit = options_get_number(&w->options, "force-height");
-		if (limit != 0 && ssy > limit)
-			ssy = limit;
+                limit = options_get_number(&w->options, "force-width");
+                if (limit != 0 && ssx > limit)
+                        ssx = limit;
+                limit = options_get_number(&w->options, "force-height");
+                if (limit != 0 && ssy > limit)
+                        ssy = limit;
 
-		if (w->sx == ssx && w->sy == ssy)
-			continue;
+                if (w->sx == ssx && w->sy == ssy)
+                        continue;
 
-		log_debug(
-		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
+                log_debug(
+                    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
 
-		layout_resize(w, ssx, ssy);
-		window_resize(w, ssx, ssy);
+                layout_resize(w, ssx, ssy);
+                window_resize(w, ssx, ssy);
 
-		/*
-		 * If the current pane is now not visible, move to the next
-		 * that is.
-		 */
-		wp = w->active;
-		while (!window_pane_visible(w->active)) {
-			w->active = TAILQ_PREV(w->active, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_LAST(&w->panes, window_panes);
-			if (w->active == wp)
-			       break;
-		}
+                /*
+                 * If the current pane is now not visible, move to the next
+                 * that is.
+                 */
+                wp = w->active;
+                while (!window_pane_visible(w->active)) {
+                        w->active = TAILQ_PREV(w->active, window_panes, entry);
+                        if (w->active == NULL)
+                                w->active = TAILQ_LAST(&w->panes, window_panes);
+                        if (w->active == wp)
+                               break;
+                }
 
-		server_redraw_window(w);
-	}
+                server_redraw_window(w);
+        }
 }

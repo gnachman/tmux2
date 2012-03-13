@@ -26,50 +26,50 @@
  * Kill pane.
  */
 
-int	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
-	"kill-pane", "killp",
-	"at:", 0, 0,
-	"[-a] " CMD_TARGET_PANE_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_kill_pane_exec
+        "kill-pane", "killp",
+        "at:", 0, 0,
+        "[-a] " CMD_TARGET_PANE_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_kill_pane_exec
 };
 
 int
 cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window_pane	*loopwp, *nextwp, *wp;
+        struct args             *args = self->args;
+        struct winlink          *wl;
+        struct window_pane      *loopwp, *nextwp, *wp;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
-		return (-1);
+        if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
+                return (-1);
 
-	if (window_count_panes(wl->window) == 1) {
-		/* Only one pane, kill the window. */
-		server_kill_window(wl->window);
-		recalculate_sizes();
-		return (0);
-	}
+        if (window_count_panes(wl->window) == 1) {
+                /* Only one pane, kill the window. */
+                server_kill_window(wl->window);
+                recalculate_sizes();
+                return (0);
+        }
 
-	if (args_has(self->args, 'a')) {
-		loopwp = TAILQ_FIRST(&wl->window->panes);
-		while (loopwp != NULL) {
-			nextwp = TAILQ_NEXT(loopwp, entry);
-			if (loopwp != wp) {
-				layout_close_pane(loopwp);
-				window_remove_pane(wl->window, loopwp);
-			}
-			loopwp = nextwp;
-		}
-	} else {
-		layout_close_pane(wp);
-		window_remove_pane(wl->window, wp);
-	}
-	server_redraw_window(wl->window);
+        if (args_has(self->args, 'a')) {
+                loopwp = TAILQ_FIRST(&wl->window->panes);
+                while (loopwp != NULL) {
+                        nextwp = TAILQ_NEXT(loopwp, entry);
+                        if (loopwp != wp) {
+                                layout_close_pane(loopwp);
+                                window_remove_pane(wl->window, loopwp);
+                        }
+                        loopwp = nextwp;
+                }
+        } else {
+                layout_close_pane(wp);
+                window_remove_pane(wl->window, wp);
+        }
+        server_redraw_window(wl->window);
 
-	return (0);
+        return (0);
 }

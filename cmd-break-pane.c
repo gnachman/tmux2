@@ -26,67 +26,67 @@
  * Break pane off into a window.
  */
 
-int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_break_pane_entry = {
-	"break-pane", "breakp",
-	"dt:", 0, 0,
-	"[-d] " CMD_TARGET_PANE_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_break_pane_exec
+        "break-pane", "breakp",
+        "dt:", 0, 0,
+        "[-d] " CMD_TARGET_PANE_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_break_pane_exec
 };
 
 int
 cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct session		*s;
-	struct window_pane	*wp;
-	struct window		*w;
-	char			*name;
-	char			*cause;
-	int			 base_idx;
+        struct args             *args = self->args;
+        struct winlink          *wl;
+        struct session          *s;
+        struct window_pane      *wp;
+        struct window           *w;
+        char                    *name;
+        char                    *cause;
+        int                      base_idx;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
+        if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
+                return (-1);
 
-	if (window_count_panes(wl->window) == 1) {
-		ctx->error(ctx, "can't break with only one pane");
-		return (-1);
-	}
+        if (window_count_panes(wl->window) == 1) {
+                ctx->error(ctx, "can't break with only one pane");
+                return (-1);
+        }
 
-	w = wl->window;
-	TAILQ_REMOVE(&w->panes, wp, entry);
-	if (wp == w->active) {
-		w->active = w->last;
-		w->last = NULL;
-		if (w->active == NULL) {
-			w->active = TAILQ_PREV(wp, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_NEXT(wp, entry);
-		}
-	} else if (wp == w->last)
-		w->last = NULL;
-	layout_close_pane(wp);
+        w = wl->window;
+        TAILQ_REMOVE(&w->panes, wp, entry);
+        if (wp == w->active) {
+                w->active = w->last;
+                w->last = NULL;
+                if (w->active == NULL) {
+                        w->active = TAILQ_PREV(wp, window_panes, entry);
+                        if (w->active == NULL)
+                                w->active = TAILQ_NEXT(wp, entry);
+                }
+        } else if (wp == w->last)
+                w->last = NULL;
+        layout_close_pane(wp);
 
-	w = wp->window = window_create1(s->sx, s->sy);
-	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
-	w->active = wp;
-	name = default_window_name(w);
-	window_set_name(w, name);
-	xfree(name);
-	layout_init(w);
+        w = wp->window = window_create1(s->sx, s->sy);
+        TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+        w->active = wp;
+        name = default_window_name(w);
+        window_set_name(w, name);
+        xfree(name);
+        layout_init(w);
 
-	base_idx = options_get_number(&s->options, "base-index");
-	wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
-	if (!args_has(self->args, 'd'))
-		session_select(s, wl->idx);
+        base_idx = options_get_number(&s->options, "base-index");
+        wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
+        if (!args_has(self->args, 'd'))
+                session_select(s, wl->idx);
 
-	server_redraw_session(s);
-	server_status_session_group(s);
+        server_redraw_session(s);
+        server_status_session_group(s);
 
-	return (0);
+        return (0);
 }

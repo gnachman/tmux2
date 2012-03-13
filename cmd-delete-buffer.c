@@ -26,41 +26,41 @@
  * Delete a paste buffer.
  */
 
-int	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_delete_buffer_entry = {
-	"delete-buffer", "deleteb",
-	"b:", 0, 0,
-	CMD_BUFFER_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_delete_buffer_exec
+        "delete-buffer", "deleteb",
+        "b:", 0, 0,
+        CMD_BUFFER_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_delete_buffer_exec
 };
 
 int
 cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args	*args = self->args;
-	char		*cause;
-	int		 buffer;
+        struct args     *args = self->args;
+        char            *cause;
+        int              buffer;
 
-	if (!args_has(args, 'b')) {
-		paste_free_top(&global_buffers);
-		return (0);
-	}
+        if (!args_has(args, 'b')) {
+                paste_free_top(&global_buffers);
+                return (0);
+        }
 
-	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-	if (cause != NULL) {
-		ctx->error(ctx, "buffer %s", cause);
-		xfree(cause);
-		return (-1);
-	}
+        buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+        if (cause != NULL) {
+                ctx->error(ctx, "buffer %s", cause);
+                xfree(cause);
+                return (-1);
+        }
 
-	if (paste_free_index(&global_buffers, buffer) != 0) {
-		ctx->error(ctx, "no buffer %d", buffer);
-		return (-1);
-	}
+        if (paste_free_index(&global_buffers, buffer) != 0) {
+                ctx->error(ctx, "no buffer %d", buffer);
+                return (-1);
+        }
 
-	return (0);
+        return (0);
 }

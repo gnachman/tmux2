@@ -24,51 +24,51 @@
  * Sources a configuration file.
  */
 
-int	cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_source_file_entry = {
-	"source-file", "source",
-	"", 1, 1,
-	"path",
-	0,
-	NULL,
-	NULL,
-	cmd_source_file_exec
+        "source-file", "source",
+        "", 1, 1,
+        "path",
+        0,
+        NULL,
+        NULL,
+        cmd_source_file_exec
 };
 
 int
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct causelist	 causes;
-	char			*cause;
-	struct window_pane	*wp;
-	int			 retval;
-	u_int			 i;
+        struct args             *args = self->args;
+        struct causelist         causes;
+        char                    *cause;
+        struct window_pane      *wp;
+        int                      retval;
+        u_int                    i;
 
-	ARRAY_INIT(&causes);
+        ARRAY_INIT(&causes);
 
-	retval = load_cfg(args->argv[0], ctx, &causes);
-	if (ARRAY_EMPTY(&causes))
-		return (retval);
+        retval = load_cfg(args->argv[0], ctx, &causes);
+        if (ARRAY_EMPTY(&causes))
+                return (retval);
 
-	if (retval == 1 && !RB_EMPTY(&sessions) && ctx->cmdclient != NULL) {
-		wp = RB_MIN(sessions, &sessions)->curw->window->active;
-		window_pane_set_mode(wp, &window_copy_mode);
-		window_copy_init_for_output(wp);
-		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
-			cause = ARRAY_ITEM(&causes, i);
-			window_copy_add(wp, "%s", cause);
-			xfree(cause);
-		}
-	} else {
-		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
-			cause = ARRAY_ITEM(&causes, i);
-			ctx->print(ctx, "%s", cause);
-			xfree(cause);
-		}
-	}
-	ARRAY_FREE(&causes);
+        if (retval == 1 && !RB_EMPTY(&sessions) && ctx->cmdclient != NULL) {
+                wp = RB_MIN(sessions, &sessions)->curw->window->active;
+                window_pane_set_mode(wp, &window_copy_mode);
+                window_copy_init_for_output(wp);
+                for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
+                        cause = ARRAY_ITEM(&causes, i);
+                        window_copy_add(wp, "%s", cause);
+                        xfree(cause);
+                }
+        } else {
+                for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
+                        cause = ARRAY_ITEM(&causes, i);
+                        ctx->print(ctx, "%s", cause);
+                        xfree(cause);
+                }
+        }
+        ARRAY_FREE(&causes);
 
-	return (retval);
+        return (retval);
 }

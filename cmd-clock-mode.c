@@ -24,28 +24,28 @@
  * Enter clock mode.
  */
 
-int	cmd_clock_mode_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_clock_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_clock_mode_entry = {
-	"clock-mode", NULL,
-	"t:", 0, 0,
-	CMD_TARGET_PANE_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_clock_mode_exec
+        "clock-mode", NULL,
+        "t:", 0, 0,
+        CMD_TARGET_PANE_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_clock_mode_exec
 };
 
 int
 cmd_clock_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct window_pane	*wp;
+        struct args             *args = self->args;
+        struct window_pane      *wp;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (-1);
+        if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
+                return (-1);
 
-	window_pane_set_mode(wp, &window_clock_mode);
+        window_pane_set_mode(wp, &window_clock_mode);
 
-	return (0);
+        return (0);
 }

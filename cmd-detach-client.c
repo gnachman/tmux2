@@ -24,49 +24,49 @@
  * Detach a client.
  */
 
-int	cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_detach_client_entry = {
-	"detach-client", "detach",
-	"s:t:P", 0, 0,
-	"[-P] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
-	CMD_READONLY,
-	NULL,
-	NULL,
-	cmd_detach_client_exec
+        "detach-client", "detach",
+        "s:t:P", 0, 0,
+        "[-P] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
+        CMD_READONLY,
+        NULL,
+        NULL,
+        cmd_detach_client_exec
 };
 
 int
 cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args	*args = self->args;
-	struct client	*c;
-	struct session 	*s;
-	enum msgtype     msgtype;
-	u_int 		 i;
+        struct args     *args = self->args;
+        struct client   *c;
+        struct session  *s;
+        enum msgtype     msgtype;
+        u_int            i;
 
-	if (args_has(args, 'P'))
-		msgtype = MSG_DETACHKILL;
-	else
-		msgtype = MSG_DETACH;
+        if (args_has(args, 'P'))
+                msgtype = MSG_DETACHKILL;
+        else
+                msgtype = MSG_DETACH;
 
-	if (args_has(args, 's')) {
-		s = cmd_find_session(ctx, args_get(args, 's'), 0);
-		if (s == NULL)
-			return (-1);
+        if (args_has(args, 's')) {
+                s = cmd_find_session(ctx, args_get(args, 's'), 0);
+                if (s == NULL)
+                        return (-1);
 
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session == s)
-				server_write_client(c, msgtype, NULL, 0);
-		}
-	} else {
-		c = cmd_find_client(ctx, args_get(args, 't'));
-		if (c == NULL)
-			return (-1);
+                for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+                        c = ARRAY_ITEM(&clients, i);
+                        if (c != NULL && c->session == s)
+                                server_write_client(c, msgtype, NULL, 0);
+                }
+        } else {
+                c = cmd_find_client(ctx, args_get(args, 't'));
+                if (c == NULL)
+                        return (-1);
 
-		server_write_client(c, msgtype, NULL, 0);
-	}
+                server_write_client(c, msgtype, NULL, 0);
+        }
 
-	return (0);
+        return (0);
 }

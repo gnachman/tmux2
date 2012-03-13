@@ -29,67 +29,67 @@
 pid_t
 forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 {
-	int	slave, fd;
-	char   *path;
-	pid_t	pid;
+        int     slave, fd;
+        char   *path;
+        pid_t   pid;
 
-	if ((*master = open("/dev/ptc", O_RDWR|O_NOCTTY)) == -1)
-		return (-1);
+        if ((*master = open("/dev/ptc", O_RDWR|O_NOCTTY)) == -1)
+                return (-1);
 
-	if ((path = ttyname(*master)) == NULL)
-		goto out;
-	if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
-		goto out;
+        if ((path = ttyname(*master)) == NULL)
+                goto out;
+        if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
+                goto out;
 
-	switch (pid = fork()) {
-	case -1:
-		goto out;
-	case 0:
-		close(*master);
+        switch (pid = fork()) {
+        case -1:
+                goto out;
+        case 0:
+                close(*master);
 
-		fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
-		if (fd >= 0) {
-			ioctl(fd, TIOCNOTTY, NULL);
-			close(fd);
-		}
+                fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
+                if (fd >= 0) {
+                        ioctl(fd, TIOCNOTTY, NULL);
+                        close(fd);
+                }
 
-		if (setsid() < 0)
-			fatal("setsid");
+                if (setsid() < 0)
+                        fatal("setsid");
 
-		fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
-		if (fd >= 0)
-			fatalx("open succeeded (failed to disconnect)");
+                fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
+                if (fd >= 0)
+                        fatalx("open succeeded (failed to disconnect)");
 
-		fd = open(path, O_RDWR);
-		if (fd < 0)
-			fatal("open failed");
-		close(fd);
+                fd = open(path, O_RDWR);
+                if (fd < 0)
+                        fatal("open failed");
+                close(fd);
 
-		fd = open("/dev/tty", O_WRONLY);
-		if (fd < 0)
-			fatal("open failed");
-		close(fd);
+                fd = open("/dev/tty", O_WRONLY);
+                if (fd < 0)
+                        fatal("open failed");
+                close(fd);
 
-		if (tio != NULL && tcsetattr(slave, TCSAFLUSH, tio) == -1)
-			fatal("tcsetattr failed");
-		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
-			fatal("ioctl failed");
+                if (tio != NULL && tcsetattr(slave, TCSAFLUSH, tio) == -1)
+                        fatal("tcsetattr failed");
+                if (ioctl(slave, TIOCSWINSZ, ws) == -1)
+                        fatal("ioctl failed");
 
-		dup2(slave, 0);
-		dup2(slave, 1);
-		dup2(slave, 2);
-		if (slave > 2)
-			close(slave);
-		return (0);
-	}
+                dup2(slave, 0);
+                dup2(slave, 1);
+                dup2(slave, 2);
+                if (slave > 2)
+                        close(slave);
+                return (0);
+        }
 
-	close(slave);
-	return (pid);
+        close(slave);
+        return (pid);
 
 out:
-	if (*master != -1)
-		close(*master);
-	if (slave != -1)
-		close(slave);
-	return (-1);
+        if (*master != -1)
+                close(*master);
+        if (slave != -1)
+                close(slave);
+        return (-1);
 }

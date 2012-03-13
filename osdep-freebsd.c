@@ -31,136 +31,136 @@
 #include <unistd.h>
 #include <libutil.h>
 
-struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
-char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(pid_t);
-struct event_base	*osdep_event_init(void);
+struct kinfo_proc       *cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
+char                    *osdep_get_name(int, char *);
+char                    *osdep_get_cwd(pid_t);
+struct event_base       *osdep_event_init(void);
 
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
 #define is_runnable(p) \
-	((p)->ki_stat == SRUN || (p)->ki_stat == SIDL)
+        ((p)->ki_stat == SRUN || (p)->ki_stat == SIDL)
 #define is_stopped(p) \
-	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
+        ((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
 
 struct kinfo_proc *
 cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
 {
-	if (is_runnable(p1) && !is_runnable(p2))
-		return (p1);
-	if (!is_runnable(p1) && is_runnable(p2))
-		return (p2);
+        if (is_runnable(p1) && !is_runnable(p2))
+                return (p1);
+        if (!is_runnable(p1) && is_runnable(p2))
+                return (p2);
 
-	if (is_stopped(p1) && !is_stopped(p2))
-		return (p1);
-	if (!is_stopped(p1) && is_stopped(p2))
-		return (p2);
+        if (is_stopped(p1) && !is_stopped(p2))
+                return (p1);
+        if (!is_stopped(p1) && is_stopped(p2))
+                return (p2);
 
-	if (p1->ki_estcpu > p2->ki_estcpu)
-		return (p1);
-	if (p1->ki_estcpu < p2->ki_estcpu)
-		return (p2);
+        if (p1->ki_estcpu > p2->ki_estcpu)
+                return (p1);
+        if (p1->ki_estcpu < p2->ki_estcpu)
+                return (p2);
 
-	if (p1->ki_slptime < p2->ki_slptime)
-		return (p1);
-	if (p1->ki_slptime > p2->ki_slptime)
-		return (p2);
+        if (p1->ki_slptime < p2->ki_slptime)
+                return (p1);
+        if (p1->ki_slptime > p2->ki_slptime)
+                return (p2);
 
-	if (strcmp(p1->ki_comm, p2->ki_comm) < 0)
-		return (p1);
-	if (strcmp(p1->ki_comm, p2->ki_comm) > 0)
-		return (p2);
+        if (strcmp(p1->ki_comm, p2->ki_comm) < 0)
+                return (p1);
+        if (strcmp(p1->ki_comm, p2->ki_comm) > 0)
+                return (p2);
 
-	if (p1->ki_pid > p2->ki_pid)
-		return (p1);
-	return (p2);
+        if (p1->ki_pid > p2->ki_pid)
+                return (p1);
+        return (p2);
 }
 
 char *
 osdep_get_name(int fd, char *tty)
 {
-	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
-	struct stat	 sb;
-	size_t		 len;
-	struct kinfo_proc *buf, *newbuf, *bestp;
-	u_int		 i;
-	char		*name;
+        int              mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
+        struct stat      sb;
+        size_t           len;
+        struct kinfo_proc *buf, *newbuf, *bestp;
+        u_int            i;
+        char            *name;
 
-	buf = NULL;
+        buf = NULL;
 
-	if (stat(tty, &sb) == -1)
-		return (NULL);
-	if ((mib[3] = tcgetpgrp(fd)) == -1)
-		return (NULL);
+        if (stat(tty, &sb) == -1)
+                return (NULL);
+        if ((mib[3] = tcgetpgrp(fd)) == -1)
+                return (NULL);
 
 retry:
-	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
-		return (NULL);
-	len = (len * 5) / 4;
+        if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
+                return (NULL);
+        len = (len * 5) / 4;
 
-	if ((newbuf = realloc(buf, len)) == NULL)
-		goto error;
-	buf = newbuf;
+        if ((newbuf = realloc(buf, len)) == NULL)
+                goto error;
+        buf = newbuf;
 
-	if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
-		if (errno == ENOMEM)
-			goto retry;
-		goto error;
-	}
+        if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
+                if (errno == ENOMEM)
+                        goto retry;
+                goto error;
+        }
 
-	bestp = NULL;
-	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
-		if (buf[i].ki_tdev != sb.st_rdev)
-			continue;
-		if (bestp == NULL)
-			bestp = &buf[i];
-		else
-			bestp = cmp_procs(&buf[i], bestp);
-	}
+        bestp = NULL;
+        for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
+                if (buf[i].ki_tdev != sb.st_rdev)
+                        continue;
+                if (bestp == NULL)
+                        bestp = &buf[i];
+                else
+                        bestp = cmp_procs(&buf[i], bestp);
+        }
 
-	name = NULL;
-	if (bestp != NULL)
-		name = strdup(bestp->ki_comm);
+        name = NULL;
+        if (bestp != NULL)
+                name = strdup(bestp->ki_comm);
 
-	free(buf);
-	return (name);
+        free(buf);
+        return (name);
 
 error:
-	free(buf);
-	return (NULL);
+        free(buf);
+        return (NULL);
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-	static char		 wd[PATH_MAX];
-	struct kinfo_file	*info = NULL;
-	int			 nrecords, i;
+        static char              wd[PATH_MAX];
+        struct kinfo_file       *info = NULL;
+        int                      nrecords, i;
 
-	if ((info = kinfo_getfile(pid, &nrecords)) == NULL)
-		return (NULL);
+        if ((info = kinfo_getfile(pid, &nrecords)) == NULL)
+                return (NULL);
 
-	for (i = 0; i < nrecords; i++) {
-		if (info[i].kf_fd == KF_FD_TYPE_CWD) {
-			strlcpy(wd, info[i].kf_path, sizeof wd);
-			free(info);
-			return (wd);
-		}
-	}
+        for (i = 0; i < nrecords; i++) {
+                if (info[i].kf_fd == KF_FD_TYPE_CWD) {
+                        strlcpy(wd, info[i].kf_path, sizeof wd);
+                        free(info);
+                        return (wd);
+                }
+        }
 
-	free(info);
-	return (NULL);
+        free(info);
+        return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-	/*
-	 * On some versions of FreeBSD, kqueue doesn't work properly on tty
-	 * file descriptors. This is fixed in recent FreeBSD versions.
-	 */
-	setenv("EVENT_NOKQUEUE", "1", 1);
-	return (event_init());
+        /*
+         * On some versions of FreeBSD, kqueue doesn't work properly on tty
+         * file descriptors. This is fixed in recent FreeBSD versions.
+         */
+        setenv("EVENT_NOKQUEUE", "1", 1);
+        return (event_init());
 }

@@ -24,34 +24,34 @@
  * Send prefix key as a key.
  */
 
-int	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_prefix_entry = {
-	"send-prefix", NULL,
-	"2t:", 0, 0,
-	"[-2] " CMD_TARGET_PANE_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_send_prefix_exec
+        "send-prefix", NULL,
+        "2t:", 0, 0,
+        "[-2] " CMD_TARGET_PANE_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_send_prefix_exec
 };
 
 int
 cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct session		*s;
-	struct window_pane	*wp;
-	int			 key;
+        struct args             *args = self->args;
+        struct session          *s;
+        struct window_pane      *wp;
+        int                      key;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
-		return (-1);
+        if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
+                return (-1);
 
-	if (args_has(args, '2'))
-		key = options_get_number(&s->options, "prefix2");
-	else
-		key = options_get_number(&s->options, "prefix");
-	window_pane_key(wp, s, key);
+        if (args_has(args, '2'))
+                key = options_get_number(&s->options, "prefix2");
+        else
+                key = options_get_number(&s->options, "prefix");
+        window_pane_key(wp, s, key);
 
-	return (0);
+        return (0);
 }

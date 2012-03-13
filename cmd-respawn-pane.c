@@ -27,65 +27,65 @@
  * Respawn a pane (restart the command). Kill existing if -k given.
  */
 
-int	cmd_respawn_pane_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_respawn_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
-	"respawn-pane", "respawnp",
-	"kt:", 0, 1,
-	"[-k] " CMD_TARGET_PANE_USAGE " [command]",
-	0,
-	NULL,
-	NULL,
-	cmd_respawn_pane_exec
+        "respawn-pane", "respawnp",
+        "kt:", 0, 1,
+        "[-k] " CMD_TARGET_PANE_USAGE " [command]",
+        0,
+        NULL,
+        NULL,
+        cmd_respawn_pane_exec
 };
 
 int
 cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window		*w;
-	struct window_pane	*wp;
-	struct session		*s;
-	struct environ		 env;
-	const char		*cmd;
-	char			*cause;
-	u_int			 idx;
+        struct args             *args = self->args;
+        struct winlink          *wl;
+        struct window           *w;
+        struct window_pane      *wp;
+        struct session          *s;
+        struct environ           env;
+        const char              *cmd;
+        char                    *cause;
+        u_int                    idx;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
-	w = wl->window;
+        if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
+                return (-1);
+        w = wl->window;
 
-	if (!args_has(self->args, 'k') && wp->fd != -1) {
-		if (window_pane_index(wp, &idx) != 0)
-			fatalx("index not found");
-		ctx->error(ctx, "pane still active: %s:%u.%u",
-		    s->name, wl->idx, idx);
-		return (-1);
-	}
+        if (!args_has(self->args, 'k') && wp->fd != -1) {
+                if (window_pane_index(wp, &idx) != 0)
+                        fatalx("index not found");
+                ctx->error(ctx, "pane still active: %s:%u.%u",
+                    s->name, wl->idx, idx);
+                return (-1);
+        }
 
-	environ_init(&env);
-	environ_copy(&global_environ, &env);
-	environ_copy(&s->environ, &env);
-	server_fill_environ(s, &env);
+        environ_init(&env);
+        environ_copy(&global_environ, &env);
+        environ_copy(&s->environ, &env);
+        server_fill_environ(s, &env);
 
-	window_pane_reset_mode(wp);
-	screen_reinit(&wp->base);
-	input_init(wp);
+        window_pane_reset_mode(wp);
+        screen_reinit(&wp->base);
+        input_init(wp);
 
-	if (args->argc != 0)
-		cmd = args->argv[0];
-	else
-		cmd = NULL;
-	if (window_pane_spawn(wp, cmd, NULL, NULL, &env, s->tio, &cause) != 0) {
-		ctx->error(ctx, "respawn pane failed: %s", cause);
-		xfree(cause);
-		environ_free(&env);
-		return (-1);
-	}
-	wp->flags |= PANE_REDRAW;
-	server_status_window(w);
+        if (args->argc != 0)
+                cmd = args->argv[0];
+        else
+                cmd = NULL;
+        if (window_pane_spawn(wp, cmd, NULL, NULL, &env, s->tio, &cause) != 0) {
+                ctx->error(ctx, "respawn pane failed: %s", cause);
+                xfree(cause);
+                environ_free(&env);
+                return (-1);
+        }
+        wp->flags |= PANE_REDRAW;
+        server_status_window(w);
 
-	environ_free(&env);
-	return (0);
+        environ_free(&env);
+        return (0);
 }

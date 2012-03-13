@@ -50,7 +50,7 @@
 #endif
 
 #ifndef OPEN_MAX
-# define OPEN_MAX	256
+# define OPEN_MAX       256
 #endif
 
 #if 0
@@ -80,31 +80,31 @@ closefrom(int lowfd)
     /* Check for a /proc/$$/fd directory. */
     len = snprintf(fdpath, sizeof(fdpath), "/proc/%ld/fd", (long)getpid());
     if (len > 0 && (size_t)len <= sizeof(fdpath) && (dirp = opendir(fdpath))) {
-	while ((dent = readdir(dirp)) != NULL) {
-	    fd = strtol(dent->d_name, &endp, 10);
-	    if (dent->d_name != endp && *endp == '\0' &&
-		fd >= 0 && fd < INT_MAX && fd >= lowfd && fd != dirfd(dirp))
-		(void) close((int) fd);
-	}
-	(void) closedir(dirp);
+        while ((dent = readdir(dirp)) != NULL) {
+            fd = strtol(dent->d_name, &endp, 10);
+            if (dent->d_name != endp && *endp == '\0' &&
+                fd >= 0 && fd < INT_MAX && fd >= lowfd && fd != dirfd(dirp))
+                (void) close((int) fd);
+        }
+        (void) closedir(dirp);
     } else
 #endif
     {
-	/*
-	 * Fall back on sysconf() or getdtablesize().  We avoid checking
-	 * resource limits since it is possible to open a file descriptor
-	 * and then drop the rlimit such that it is below the open fd.
-	 */
+        /*
+         * Fall back on sysconf() or getdtablesize().  We avoid checking
+         * resource limits since it is possible to open a file descriptor
+         * and then drop the rlimit such that it is below the open fd.
+         */
 #ifdef HAVE_SYSCONF
-	maxfd = sysconf(_SC_OPEN_MAX);
+        maxfd = sysconf(_SC_OPEN_MAX);
 #else
-	maxfd = getdtablesize();
+        maxfd = getdtablesize();
 #endif /* HAVE_SYSCONF */
-	if (maxfd < 0)
-	    maxfd = OPEN_MAX;
+        if (maxfd < 0)
+            maxfd = OPEN_MAX;
 
-	for (fd = lowfd; fd < maxfd; fd++)
-	    (void) close((int) fd);
+        for (fd = lowfd; fd < maxfd; fd++)
+            (void) close((int) fd);
     }
 }
 #endif /* !HAVE_FCNTL_CLOSEM */

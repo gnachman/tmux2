@@ -27,50 +27,50 @@
  * List all sessions.
  */
 
-int	cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
-	"list-sessions", "ls",
-	"F:", 0, 0,
-	"[-F format]",
-	0,
-	NULL,
-	NULL,
-	cmd_list_sessions_exec
+        "list-sessions", "ls",
+        "F:", 0, 0,
+        "[-F format]",
+        0,
+        NULL,
+        NULL,
+        cmd_list_sessions_exec
 };
 
 int
 cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct session		*s;
-	u_int		 	 n;
-	struct format_tree	*ft;
-	const char		*template;
-	char			*line;
+        struct args             *args = self->args;
+        struct session          *s;
+        u_int                    n;
+        struct format_tree      *ft;
+        const char              *template;
+        char                    *line;
 
-	template = args_get(args, 'F');
-	if (template == NULL) {
-		template = "#{session_name}: #{session_windows} windows "
-		    "(created #{session_created_string}) [#{session_width}x"
-		    "#{session_height}]#{?session_grouped, (group ,}"
-		    "#{session_group}#{?session_grouped,),}"
-		    "#{?session_attached, (attached),}";
-	}
+        template = args_get(args, 'F');
+        if (template == NULL) {
+                template = "#{session_name}: #{session_windows} windows "
+                    "(created #{session_created_string}) [#{session_width}x"
+                    "#{session_height}]#{?session_grouped, (group ,}"
+                    "#{session_group}#{?session_grouped,),}"
+                    "#{?session_attached, (attached),}";
+        }
 
-	n = 0;
-	RB_FOREACH(s, sessions, &sessions) {
-		ft = format_create();
-		format_add(ft, "line", "%u", n);
-		format_session(ft, s);
+        n = 0;
+        RB_FOREACH(s, sessions, &sessions) {
+                ft = format_create();
+                format_add(ft, "line", "%u", n);
+                format_session(ft, s);
 
-		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
-		xfree(line);
+                line = format_expand(ft, template);
+                ctx->print(ctx, "%s", line);
+                xfree(line);
 
-		format_free(ft);
-		n++;
-	}
+                format_free(ft);
+                n++;
+        }
 
-	return (0);
+        return (0);
 }

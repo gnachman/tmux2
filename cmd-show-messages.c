@@ -27,38 +27,38 @@
  * Show client message log.
  */
 
-int	cmd_show_messages_exec(struct cmd *, struct cmd_ctx *);
+int     cmd_show_messages_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_messages_entry = {
-	"show-messages", "showmsgs",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_show_messages_exec
+        "show-messages", "showmsgs",
+        "t:", 0, 0,
+        CMD_TARGET_CLIENT_USAGE,
+        0,
+        NULL,
+        NULL,
+        cmd_show_messages_exec
 };
 
 int
 cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct client		*c;
-	struct message_entry	*msg;
-	char			*tim;
-	u_int			 i;
+        struct args             *args = self->args;
+        struct client           *c;
+        struct message_entry    *msg;
+        char                    *tim;
+        u_int                    i;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-		return (-1);
+        if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+                return (-1);
 
-	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
-		msg = &ARRAY_ITEM(&c->message_log, i);
+        for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
+                msg = &ARRAY_ITEM(&c->message_log, i);
 
-		tim = ctime(&msg->msg_time);
-		*strchr(tim, '\n') = '\0';
+                tim = ctime(&msg->msg_time);
+                *strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s %s", tim, msg->msg);
-	}
+                ctx->print(ctx, "%s %s", tim, msg->msg);
+        }
 
-	return (0);
+        return (0);
 }

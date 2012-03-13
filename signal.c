@@ -22,82 +22,82 @@
 
 #include "tmux.h"
 
-struct event	ev_sighup;
-struct event	ev_sigchld;
-struct event	ev_sigcont;
-struct event	ev_sigterm;
-struct event	ev_sigusr1;
-struct event	ev_sigwinch;
+struct event    ev_sighup;
+struct event    ev_sigchld;
+struct event    ev_sigcont;
+struct event    ev_sigterm;
+struct event    ev_sigusr1;
+struct event    ev_sigwinch;
 
 void
 set_signals(void(*handler)(int, short, unused void *))
 {
-	struct sigaction	sigact;
+        struct sigaction        sigact;
 
-	memset(&sigact, 0, sizeof sigact);
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = SA_RESTART;
-	sigact.sa_handler = SIG_IGN;
-	if (sigaction(SIGINT, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
-		fatal("sigaction failed");
+        memset(&sigact, 0, sizeof sigact);
+        sigemptyset(&sigact.sa_mask);
+        sigact.sa_flags = SA_RESTART;
+        sigact.sa_handler = SIG_IGN;
+        if (sigaction(SIGINT, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+                fatal("sigaction failed");
 
-	signal_set(&ev_sighup, SIGHUP, handler, NULL);
-	signal_add(&ev_sighup, NULL);
-	signal_set(&ev_sigchld, SIGCHLD, handler, NULL);
-	signal_add(&ev_sigchld, NULL);
-	signal_set(&ev_sigcont, SIGCONT, handler, NULL);
-	signal_add(&ev_sigcont, NULL);
-	signal_set(&ev_sigterm, SIGTERM, handler, NULL);
-	signal_add(&ev_sigterm, NULL);
-	signal_set(&ev_sigusr1, SIGUSR1, handler, NULL);
-	signal_add(&ev_sigusr1, NULL);
-	signal_set(&ev_sigwinch, SIGWINCH, handler, NULL);
-	signal_add(&ev_sigwinch, NULL);
+        signal_set(&ev_sighup, SIGHUP, handler, NULL);
+        signal_add(&ev_sighup, NULL);
+        signal_set(&ev_sigchld, SIGCHLD, handler, NULL);
+        signal_add(&ev_sigchld, NULL);
+        signal_set(&ev_sigcont, SIGCONT, handler, NULL);
+        signal_add(&ev_sigcont, NULL);
+        signal_set(&ev_sigterm, SIGTERM, handler, NULL);
+        signal_add(&ev_sigterm, NULL);
+        signal_set(&ev_sigusr1, SIGUSR1, handler, NULL);
+        signal_add(&ev_sigusr1, NULL);
+        signal_set(&ev_sigwinch, SIGWINCH, handler, NULL);
+        signal_add(&ev_sigwinch, NULL);
 }
 
 void
 clear_signals(int after_fork)
 {
-	struct sigaction	sigact;
+        struct sigaction        sigact;
 
-	memset(&sigact, 0, sizeof sigact);
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = SA_RESTART;
-	sigact.sa_handler = SIG_DFL;
-	if (sigaction(SIGINT, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
-		fatal("sigaction failed");
+        memset(&sigact, 0, sizeof sigact);
+        sigemptyset(&sigact.sa_mask);
+        sigact.sa_flags = SA_RESTART;
+        sigact.sa_handler = SIG_DFL;
+        if (sigaction(SIGINT, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+                fatal("sigaction failed");
+        if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+                fatal("sigaction failed");
 
-	if (after_fork) {
-		if (sigaction(SIGHUP, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGCHLD, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGCONT, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGTERM, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGUSR1, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGWINCH, &sigact, NULL) != 0)
-			fatal("sigaction failed");
-	} else {
-		event_del(&ev_sighup);
-		event_del(&ev_sigchld);
-		event_del(&ev_sigcont);
-		event_del(&ev_sigterm);
-		event_del(&ev_sigusr1);
-		event_del(&ev_sigwinch);
-	}
+        if (after_fork) {
+                if (sigaction(SIGHUP, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+                if (sigaction(SIGCHLD, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+                if (sigaction(SIGCONT, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+                if (sigaction(SIGTERM, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+                if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+                if (sigaction(SIGWINCH, &sigact, NULL) != 0)
+                        fatal("sigaction failed");
+        } else {
+                event_del(&ev_sighup);
+                event_del(&ev_sigchld);
+                event_del(&ev_sigcont);
+                event_del(&ev_sigterm);
+                event_del(&ev_sigusr1);
+                event_del(&ev_sigwinch);
+        }
 }

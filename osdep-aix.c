@@ -25,17 +25,17 @@
 char *
 osdep_get_name(unused int fd, unused char *tty)
 {
-	return (NULL);
+        return (NULL);
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-	return (NULL);
+        return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-	return (event_init());
+        return (event_init());
 }
