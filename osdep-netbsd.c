@@ -32,106 +32,106 @@
 #define is_stopped(p) \
         ((p)->p_stat == SSTOP || (p)->p_stat == SZOMB)
 
-struct kinfo_proc2      *cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
-char                    *osdep_get_name(int, char *);
-char                    *osdep_get_cwd(pid_t);
-struct event_base       *osdep_event_init(void);
+struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
+char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(pid_t);
+struct event_base	*osdep_event_init(void);
 
 struct kinfo_proc2 *
 cmp_procs(struct kinfo_proc2 *p1, struct kinfo_proc2 *p2)
 {
-        if (is_runnable(p1) && !is_runnable(p2))
-                return (p1);
-        if (!is_runnable(p1) && is_runnable(p2))
-                return (p2);
+	if (is_runnable(p1) && !is_runnable(p2))
+		return (p1);
+	if (!is_runnable(p1) && is_runnable(p2))
+		return (p2);
 
-        if (is_stopped(p1) && !is_stopped(p2))
-                return (p1);
-        if (!is_stopped(p1) && is_stopped(p2))
-                return (p2);
+	if (is_stopped(p1) && !is_stopped(p2))
+		return (p1);
+	if (!is_stopped(p1) && is_stopped(p2))
+		return (p2);
 
-        if (p1->p_estcpu > p2->p_estcpu)
-                return (p1);
-        if (p1->p_estcpu < p2->p_estcpu)
-                return (p2);
+	if (p1->p_estcpu > p2->p_estcpu)
+		return (p1);
+	if (p1->p_estcpu < p2->p_estcpu)
+		return (p2);
 
-        if (p1->p_slptime < p2->p_slptime)
-                return (p1);
-        if (p1->p_slptime > p2->p_slptime)
-                return (p2);
+	if (p1->p_slptime < p2->p_slptime)
+		return (p1);
+	if (p1->p_slptime > p2->p_slptime)
+		return (p2);
 
-        if (p1->p_pid > p2->p_pid)
-                return (p1);
-        return (p2);
+	if (p1->p_pid > p2->p_pid)
+		return (p1);
+	return (p2);
 }
 
 char *
 osdep_get_name(int fd, __unused char *tty)
 {
-        int              mib[6];
-        struct stat      sb;
-        size_t           len, i;
-        struct kinfo_proc2 *buf, *newbuf, *bestp;
-        char            *name;
+	int		 mib[6];
+	struct stat	 sb;
+	size_t		 len, i;
+	struct kinfo_proc2 *buf, *newbuf, *bestp;
+	char		*name;
 
-        if (stat(tty, &sb) == -1)
-                return (NULL);
-        if ((mib[3] = tcgetpgrp(fd)) == -1)
-                return (NULL);
+	if (stat(tty, &sb) == -1)
+		return (NULL);
+	if ((mib[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
 
-        buf = NULL;
-        len = sizeof(bestp);
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_PROC2;
-        mib[2] = KERN_PROC_PGRP;
-        mib[4] = sizeof (*buf);
-        mib[5] = 0;
+	buf = NULL;
+	len = sizeof(bestp);
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_PROC2;
+	mib[2] = KERN_PROC_PGRP;
+	mib[4] = sizeof (*buf);
+	mib[5] = 0;
 
 retry:
-        if (sysctl(mib, __arraycount(mib), NULL, &len, NULL, 0) == -1)
-                return (NULL);
+	if (sysctl(mib, __arraycount(mib), NULL, &len, NULL, 0) == -1)
+		return (NULL);
 
-        if ((newbuf = realloc(buf, len * sizeof (*buf))) == NULL)
-                goto error;
-        buf = newbuf;
+	if ((newbuf = realloc(buf, len * sizeof (*buf))) == NULL)
+		goto error;
+	buf = newbuf;
 
-        mib[5] = len / sizeof(*buf);
-        if (sysctl(mib, __arraycount(mib), buf, &len, NULL, 0) == -1) {
-                if (errno == ENOMEM)
-                        goto retry; /* possible infinite loop? */
-                goto error;
-        }
+	mib[5] = len / sizeof(*buf);
+	if (sysctl(mib, __arraycount(mib), buf, &len, NULL, 0) == -1) {
+		if (errno == ENOMEM)
+			goto retry; /* possible infinite loop? */
+		goto error;
+	}
 
-        bestp = NULL;
-        for (i = 0; i < len / sizeof (*buf); i++) {
-                if (buf[i].p_tdev != sb.st_rdev)
-                        continue;
-                if (bestp == NULL)
-                        bestp = &buf[i];
-                else
-                        bestp = cmp_procs(&buf[i], bestp);
-        }
+	bestp = NULL;
+	for (i = 0; i < len / sizeof (*buf); i++) {
+		if (buf[i].p_tdev != sb.st_rdev)
+			continue;
+		if (bestp == NULL)
+			bestp = &buf[i];
+		else
+			bestp = cmp_procs(&buf[i], bestp);
+	}
 
-        name = NULL;
-        if (bestp != NULL)
-                name = strdup(bestp->p_comm);
+	name = NULL;
+	if (bestp != NULL)
+		name = strdup(bestp->p_comm);
 
-        free(buf);
-        return (name);
+	free(buf);
+	return (name);
 
 error:
-        free(buf);
-        return (NULL);
+	free(buf);
+	return (NULL);
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-        return (NULL);
+	return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-        return (event_init());
+	return (event_init());
 }

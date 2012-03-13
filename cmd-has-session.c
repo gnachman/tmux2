@@ -24,25 +24,25 @@
  * Cause client to report an error and exit with 1 if session doesn't exist.
  */
 
-int     cmd_has_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_has_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_has_session_entry = {
-        "has-session", "has",
-        "t:", 0, 0,
-        CMD_TARGET_SESSION_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_has_session_exec
+	"has-session", "has",
+	"t:", 0, 0,
+	CMD_TARGET_SESSION_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_has_session_exec
 };
 
 int
 cmd_has_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
+	struct args	*args = self->args;
 
-        if (cmd_find_session(ctx, args_get(args, 't'), 0) == NULL)
-                return (-1);
+	if (cmd_find_session(ctx, args_get(args, 't'), 0) == NULL)
+		return (-1);
 
-        return (0);
+	return (0);
 }

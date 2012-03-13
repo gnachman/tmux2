@@ -27,29 +27,29 @@
  * Note this deliberately has no alias to make it hard to hit by accident.
  */
 
-int     cmd_kill_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_session_entry = {
-        "kill-session", NULL,
-        "t:", 0, 0,
-        CMD_TARGET_SESSION_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_kill_session_exec
+	"kill-session", NULL,
+	"t:", 0, 0,
+	CMD_TARGET_SESSION_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_kill_session_exec
 };
 
 int
 cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        struct session  *s;
+	struct args	*args = self->args;
+	struct session	*s;
 
-        if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
-                return (-1);
+	if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+		return (-1);
 
-        server_destroy_session(s);
-        session_destroy(s);
+	server_destroy_session(s);
+	session_destroy(s);
 
-        return (0);
+	return (0);
 }

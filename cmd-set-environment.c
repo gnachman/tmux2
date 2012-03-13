@@ -27,68 +27,68 @@
  * Set an environment variable.
  */
 
-int     cmd_set_environment_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_set_environment_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_environment_entry = {
-        "set-environment", "setenv",
-        "grt:u", 1, 2,
-        "[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
-        0,
-        NULL,
-        NULL,
-        cmd_set_environment_exec
+	"set-environment", "setenv",
+	"grt:u", 1, 2,
+	"[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
+	0,
+	NULL,
+	NULL,
+	cmd_set_environment_exec
 };
 
 int
 cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        struct session  *s;
-        struct environ  *env;
-        const char      *name, *value;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct environ	*env;
+	const char	*name, *value;
 
-        name = args->argv[0];
-        if (*name == '\0') {
-                ctx->error(ctx, "empty variable name");
-                return (-1);
-        }
-        if (strchr(name, '=') != NULL) {
-                ctx->error(ctx, "variable name contains =");
-                return (-1);
-        }
+	name = args->argv[0];
+	if (*name == '\0') {
+		ctx->error(ctx, "empty variable name");
+		return (-1);
+	}
+	if (strchr(name, '=') != NULL) {
+		ctx->error(ctx, "variable name contains =");
+		return (-1);
+	}
 
-        if (args->argc < 1)
-                value = NULL;
-        else
-                value = args->argv[1];
+	if (args->argc < 1)
+		value = NULL;
+	else
+		value = args->argv[1];
 
-        if (args_has(self->args, 'g'))
-                env = &global_environ;
-        else {
-                if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
-                        return (-1);
-                env = &s->environ;
-        }
+	if (args_has(self->args, 'g'))
+		env = &global_environ;
+	else {
+		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+			return (-1);
+		env = &s->environ;
+	}
 
-        if (args_has(self->args, 'u')) {
-                if (value != NULL) {
-                        ctx->error(ctx, "can't specify a value with -u");
-                        return (-1);
-                }
-                environ_unset(env, name);
-        } else if (args_has(self->args, 'r')) {
-                if (value != NULL) {
-                        ctx->error(ctx, "can't specify a value with -r");
-                        return (-1);
-                }
-                environ_set(env, name, NULL);
-        } else {
-                if (value == NULL) {
-                        ctx->error(ctx, "no value specified");
-                        return (-1);
-                }
-                environ_set(env, name, value);
-        }
+	if (args_has(self->args, 'u')) {
+		if (value != NULL) {
+			ctx->error(ctx, "can't specify a value with -u");
+			return (-1);
+		}
+		environ_unset(env, name);
+	} else if (args_has(self->args, 'r')) {
+		if (value != NULL) {
+			ctx->error(ctx, "can't specify a value with -r");
+			return (-1);
+		}
+		environ_set(env, name, NULL);
+	} else {
+		if (value == NULL) {
+			ctx->error(ctx, "no value specified");
+			return (-1);
+		}
+		environ_set(env, name, value);
+	}
 
-        return (0);
+	return (0);
 }

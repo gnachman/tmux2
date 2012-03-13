@@ -1,9 +1,9 @@
 /* $Id$ */
-/*      $OpenBSD: strsep.c,v 1.6 2005/08/08 08:05:37 espie Exp $        */
+/*	$OpenBSD: strsep.c,v 1.6 2005/08/08 08:05:37 espie Exp $	*/
 
 /*-
  * Copyright (c) 1990, 1993
- *      The Regents of the University of California.  All rights reserved.
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,26 +47,26 @@
 char *
 strsep(char **stringp, const char *delim)
 {
-        char *s;
-        const char *spanp;
-        int c, sc;
-        char *tok;
+	char *s;
+	const char *spanp;
+	int c, sc;
+	char *tok;
 
-        if ((s = *stringp) == NULL)
-                return (NULL);
-        for (tok = s;;) {
-                c = *s++;
-                spanp = delim;
-                do {
-                        if ((sc = *spanp++) == c) {
-                                if (c == 0)
-                                        s = NULL;
-                                else
-                                        s[-1] = 0;
-                                *stringp = s;
-                                return (tok);
-                        }
-                } while (sc != 0);
-        }
-        /* NOTREACHED */
+	if ((s = *stringp) == NULL)
+		return (NULL);
+	for (tok = s;;) {
+		c = *s++;
+		spanp = delim;
+		do {
+			if ((sc = *spanp++) == c) {
+				if (c == 0)
+					s = NULL;
+				else
+					s[-1] = 0;
+				*stringp = s;
+				return (tok);
+			}
+		} while (sc != 0);
+	}
+	/* NOTREACHED */
 }

@@ -24,26 +24,26 @@
  * List all commands with usages.
  */
 
-int     cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_commands_entry = {
-        "list-commands", "lscm",
-        "", 0, 0,
-        "",
-        0,
-        NULL,
-        NULL,
-        cmd_list_commands_exec
+	"list-commands", "lscm",
+	"", 0, 0,
+	"",
+	0,
+	NULL,
+	NULL,
+	cmd_list_commands_exec
 };
 
 /* ARGSUSED */
 int
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-        const struct cmd_entry        **entryp;
+	const struct cmd_entry 	      **entryp;
 
-        for (entryp = cmd_table; *entryp != NULL; entryp++)
-                ctx->print(ctx, "%s %s", (*entryp)->name, (*entryp)->usage);
+	for (entryp = cmd_table; *entryp != NULL; entryp++)
+		ctx->print(ctx, "%s %s", (*entryp)->name, (*entryp)->usage);
 
-        return (0);
+	return (0);
 }

@@ -29,65 +29,65 @@
 char *
 osdep_get_name(int fd, unused char *tty)
 {
-        FILE    *f;
-        char    *path, *buf;
-        size_t   len;
-        int      ch;
-        pid_t    pgrp;
+	FILE	*f;
+	char	*path, *buf;
+	size_t	 len;
+	int	 ch;
+	pid_t	 pgrp;
 
-        if ((pgrp = tcgetpgrp(fd)) == -1)
-                return (NULL);
+	if ((pgrp = tcgetpgrp(fd)) == -1)
+		return (NULL);
 
-        xasprintf(&path, "/proc/%lld/cmdline", (long long) pgrp);
-        if ((f = fopen(path, "r")) == NULL) {
-                xfree(path);
-                return (NULL);
-        }
-        xfree(path);
+	xasprintf(&path, "/proc/%lld/cmdline", (long long) pgrp);
+	if ((f = fopen(path, "r")) == NULL) {
+		xfree(path);
+		return (NULL);
+	}
+	xfree(path);
 
-        len = 0;
-        buf = NULL;
-        while ((ch = fgetc(f)) != EOF) {
-                if (ch == '\0')
-                        break;
-                buf = xrealloc(buf, 1, len + 2);
-                buf[len++] = ch;
-        }
-        if (buf != NULL)
-                buf[len] = '\0';
+	len = 0;
+	buf = NULL;
+	while ((ch = fgetc(f)) != EOF) {
+		if (ch == '\0')
+			break;
+		buf = xrealloc(buf, 1, len + 2);
+		buf[len++] = ch;
+	}
+	if (buf != NULL)
+		buf[len] = '\0';
 
-        fclose(f);
-        return (buf);
+	fclose(f);
+	return (buf);
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-        static char      target[MAXPATHLEN + 1];
-        char            *path;
-        ssize_t          n;
+	static char	 target[MAXPATHLEN + 1];
+	char		*path;
+	ssize_t		 n;
 
-        xasprintf(&path, "/proc/%d/cwd", pid);
-        n = readlink(path, target, MAXPATHLEN);
-        xfree(path);
-        if (n > 0) {
-                target[n] = '\0';
-                return (target);
-        }
-        return (NULL);
+	xasprintf(&path, "/proc/%d/cwd", pid);
+	n = readlink(path, target, MAXPATHLEN);
+	xfree(path);
+	if (n > 0) {
+		target[n] = '\0';
+		return (target);
+	}
+	return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-        /*
-         * On Linux, epoll doesn't work on /dev/null (yes, really).
-         *
-         * This has been commented because libevent versions up until the very
-         * latest (1.4 git or 2.0.10) do not handle signals properly when using
-         * poll or select, causing hangs.
-         * 
-         */
-        /* setenv("EVENT_NOEPOLL", "1", 1); */
-        return (event_init());
+	/*
+	 * On Linux, epoll doesn't work on /dev/null (yes, really).
+	 *
+	 * This has been commented because libevent versions up until the very
+	 * latest (1.4 git or 2.0.10) do not handle signals properly when using
+	 * poll or select, causing hangs.
+	 * 
+	 */
+	/* setenv("EVENT_NOEPOLL", "1", 1); */
+	return (event_init());
 }

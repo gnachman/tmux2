@@ -27,30 +27,30 @@
  * Suspend client with SIGTSTP.
  */
 
-int     cmd_suspend_client_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_suspend_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_suspend_client_entry = {
-        "suspend-client", "suspendc",
-        "t:", 0, 0,
-        CMD_TARGET_CLIENT_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_suspend_client_exec
+	"suspend-client", "suspendc",
+	"t:", 0, 0,
+	CMD_TARGET_CLIENT_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_suspend_client_exec
 };
 
 int
 cmd_suspend_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        struct client   *c;
+	struct args	*args = self->args;
+	struct client	*c;
 
-        if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-                return (-1);
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+		return (-1);
 
-        tty_stop_tty(&c->tty);
-        c->flags |= CLIENT_SUSPENDED;
-        server_write_client(c, MSG_SUSPEND, NULL, 0);
+	tty_stop_tty(&c->tty);
+	c->flags |= CLIENT_SUSPENDED;
+	server_write_client(c, MSG_SUSPEND, NULL, 0);
 
-        return (0);
+	return (0);
 }

@@ -24,28 +24,28 @@
  * Display panes on a client.
  */
 
-int     cmd_display_panes_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_display_panes_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_display_panes_entry = {
-        "display-panes", "displayp",
-        "t:", 0, 0,
-        CMD_TARGET_CLIENT_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_display_panes_exec
+	"display-panes", "displayp",
+	"t:", 0, 0,
+	CMD_TARGET_CLIENT_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_display_panes_exec
 };
 
 int
 cmd_display_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        struct client   *c;
+	struct args	*args = self->args;
+	struct client	*c;
 
-        if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-                return (-1);
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+		return (-1);
 
-        server_set_identify(c);
+	server_set_identify(c);
 
-        return (0);
+	return (0);
 }

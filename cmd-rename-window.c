@@ -26,32 +26,32 @@
  * Rename a window.
  */
 
-int     cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_rename_window_entry = {
-        "rename-window", "renamew",
-        "t:", 1, 1,
-        CMD_TARGET_WINDOW_USAGE " new-name",
-        0,
-        NULL,
-        NULL,
-        cmd_rename_window_exec
+	"rename-window", "renamew",
+	"t:", 1, 1,
+	CMD_TARGET_WINDOW_USAGE " new-name",
+	0,
+	NULL,
+	NULL,
+	cmd_rename_window_exec
 };
 
 int
 cmd_rename_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        struct session  *s;
-        struct winlink  *wl;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct winlink	*wl;
 
-        if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-                return (-1);
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
+		return (-1);
 
-        window_set_name(wl->window, args->argv[0]);
-        options_set_number(&wl->window->options, "automatic-rename", 0);
+	window_set_name(wl->window, args->argv[0]);
+	options_set_number(&wl->window->options, "automatic-rename", 0);
 
-        server_status_window(wl->window);
+	server_status_window(wl->window);
 
-        return (0);
+	return (0);
 }

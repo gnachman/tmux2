@@ -24,47 +24,47 @@
  * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-int     cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_unlink_window_entry = {
-        "unlink-window", "unlinkw",
-        "kt:", 0, 0,
-        "[-k] " CMD_TARGET_WINDOW_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_unlink_window_exec
+	"unlink-window", "unlinkw",
+	"kt:", 0, 0,
+	"[-k] " CMD_TARGET_WINDOW_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_unlink_window_exec
 };
 
 int
 cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args             *args = self->args;
-        struct winlink          *wl;
-        struct window           *w;
-        struct session          *s, *s2;
-        struct session_group    *sg;
-        u_int                    references;
+	struct args		*args = self->args;
+	struct winlink		*wl;
+	struct window		*w;
+	struct session		*s, *s2;
+	struct session_group	*sg;
+	u_int			 references;
 
-        if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-                return (-1);
-        w = wl->window;
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
+		return (-1);
+	w = wl->window;
 
-        sg = session_group_find(s);
-        if (sg != NULL) {
-                references = 0;
-                TAILQ_FOREACH(s2, &sg->sessions, gentry)
-                        references++;
-        } else
-                references = 1;
+	sg = session_group_find(s);
+	if (sg != NULL) {
+		references = 0;
+		TAILQ_FOREACH(s2, &sg->sessions, gentry)
+			references++;
+	} else
+		references = 1;
 
-        if (!args_has(self->args, 'k') && w->references == references) {
-                ctx->error(ctx, "window is only linked to one session");
-                return (-1);
-        }
+	if (!args_has(self->args, 'k') && w->references == references) {
+		ctx->error(ctx, "window is only linked to one session");
+		return (-1);
+	}
 
-        server_unlink_window(s, wl);
-        recalculate_sizes();
+	server_unlink_window(s, wl);
+	recalculate_sizes();
 
-        return (0);
+	return (0);
 }

@@ -33,128 +33,128 @@ RB_GENERATE(options_tree, options_entry, entry, options_cmp);
 int
 options_cmp(struct options_entry *o1, struct options_entry *o2)
 {
-        return (strcmp(o1->name, o2->name));
+	return (strcmp(o1->name, o2->name));
 }
 
 void
 options_init(struct options *oo, struct options *parent)
 {
-        RB_INIT(&oo->tree);
-        oo->parent = parent;
+	RB_INIT(&oo->tree);
+	oo->parent = parent;
 }
 
 void
 options_free(struct options *oo)
 {
-        struct options_entry    *o;
+	struct options_entry	*o;
 
-        while (!RB_EMPTY(&oo->tree)) {
-                o = RB_ROOT(&oo->tree);
-                RB_REMOVE(options_tree, &oo->tree, o);
-                xfree(o->name);
-                if (o->type == OPTIONS_STRING)
-                        xfree(o->str);
-                xfree(o);
-        }
+	while (!RB_EMPTY(&oo->tree)) {
+		o = RB_ROOT(&oo->tree);
+		RB_REMOVE(options_tree, &oo->tree, o);
+		xfree(o->name);
+		if (o->type == OPTIONS_STRING)
+			xfree(o->str);
+		xfree(o);
+	}
 }
 
 struct options_entry *
 options_find1(struct options *oo, const char *name)
 {
-        struct options_entry    p;
+	struct options_entry	p;
 
-        p.name = (char *) name;
-        return (RB_FIND(options_tree, &oo->tree, &p));
+	p.name = (char *) name;
+	return (RB_FIND(options_tree, &oo->tree, &p));
 }
 
 struct options_entry *
 options_find(struct options *oo, const char *name)
 {
-        struct options_entry    *o, p;
+	struct options_entry	*o, p;
 
-        p.name = (char *) name;
-        o = RB_FIND(options_tree, &oo->tree, &p);
-        while (o == NULL) {
-                oo = oo->parent;
-                if (oo == NULL)
-                        break;
-                o = RB_FIND(options_tree, &oo->tree, &p);
-        }
-        return (o);
+	p.name = (char *) name;
+	o = RB_FIND(options_tree, &oo->tree, &p);
+	while (o == NULL) {
+		oo = oo->parent;
+		if (oo == NULL)
+			break;
+		o = RB_FIND(options_tree, &oo->tree, &p);
+	}
+	return (o);
 }
 
 void
 options_remove(struct options *oo, const char *name)
 {
-        struct options_entry    *o;
+	struct options_entry	*o;
 
-        if ((o = options_find1(oo, name)) == NULL)
-                return;
+	if ((o = options_find1(oo, name)) == NULL)
+		return;
 
-        RB_REMOVE(options_tree, &oo->tree, o);
-        xfree(o->name);
-        if (o->type == OPTIONS_STRING)
-                xfree(o->str);
-        xfree(o);
+	RB_REMOVE(options_tree, &oo->tree, o);
+	xfree(o->name);
+	if (o->type == OPTIONS_STRING)
+		xfree(o->str);
+	xfree(o);
 }
 
 struct options_entry *printflike3
 options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 {
-        struct options_entry    *o;
-        va_list                  ap;
+	struct options_entry	*o;
+	va_list			 ap;
 
-        if ((o = options_find1(oo, name)) == NULL) {
-                o = xmalloc(sizeof *o);
-                o->name = xstrdup(name);
-                RB_INSERT(options_tree, &oo->tree, o);
-        } else if (o->type == OPTIONS_STRING)
-                xfree(o->str);
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		RB_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		xfree(o->str);
 
-        va_start(ap, fmt);
-        o->type = OPTIONS_STRING;
-        xvasprintf(&o->str, fmt, ap);
-        va_end(ap);
-        return (o);
+	va_start(ap, fmt);
+	o->type = OPTIONS_STRING;
+	xvasprintf(&o->str, fmt, ap);
+	va_end(ap);
+	return (o);
 }
 
 char *
 options_get_string(struct options *oo, const char *name)
 {
-        struct options_entry    *o;
+	struct options_entry	*o;
 
-        if ((o = options_find(oo, name)) == NULL)
-                fatalx("missing option");
-        if (o->type != OPTIONS_STRING)
-                fatalx("option not a string");
-        return (o->str);
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_STRING)
+		fatalx("option not a string");
+	return (o->str);
 }
 
 struct options_entry *
 options_set_number(struct options *oo, const char *name, long long value)
 {
-        struct options_entry    *o;
+	struct options_entry	*o;
 
-        if ((o = options_find1(oo, name)) == NULL) {
-                o = xmalloc(sizeof *o);
-                o->name = xstrdup(name);
-                RB_INSERT(options_tree, &oo->tree, o);
-        } else if (o->type == OPTIONS_STRING)
-                xfree(o->str);
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		RB_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		xfree(o->str);
 
-        o->type = OPTIONS_NUMBER;
-        o->num = value;
-        return (o);
+	o->type = OPTIONS_NUMBER;
+	o->num = value;
+	return (o);
 }
 
 long long
 options_get_number(struct options *oo, const char *name)
 {
-        struct options_entry    *o;
+	struct options_entry	*o;
 
-        if ((o = options_find(oo, name)) == NULL)
-                fatalx("missing option");
-        if (o->type != OPTIONS_NUMBER)
-                fatalx("option not a number");
-        return (o->num);
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_NUMBER)
+		fatalx("option not a number");
+	return (o->num);
 }

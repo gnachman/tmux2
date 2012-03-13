@@ -26,117 +26,117 @@
  * Create a new window.
  */
 
-int     cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_window_entry = {
-        "new-window", "neww",
-        "ac:dF:kn:Pt:", 0, 1,
-        "[-adkP] [-c start-directory] [-F format] [-n window-name] "
-        "[-t target-window] [command]",
-        0,
-        NULL,
-        NULL,
-        cmd_new_window_exec
+	"new-window", "neww",
+	"ac:dF:kn:Pt:", 0, 1,
+	"[-adkP] [-c start-directory] [-F format] [-n window-name] "
+	"[-t target-window] [command]",
+	0,
+	NULL,
+	NULL,
+	cmd_new_window_exec
 };
 
 int
 cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args             *args = self->args;
-        struct session          *s;
-        struct winlink          *wl;
-        struct client           *c;
-        const char              *cmd, *cwd;
-        const char              *template;
-        char                    *cause;
-        int                      idx, last, detached;
-        struct format_tree      *ft;
-        char                    *cp;
+	struct args		*args = self->args;
+	struct session		*s;
+	struct winlink		*wl;
+	struct client		*c;
+	const char		*cmd, *cwd;
+	const char		*template;
+	char			*cause;
+	int			 idx, last, detached;
+	struct format_tree	*ft;
+	char			*cp;
 
-        if (args_has(args, 'a')) {
-                wl = cmd_find_window(ctx, args_get(args, 't'), &s);
-                if (wl == NULL)
-                        return (-1);
-                idx = wl->idx + 1;
+	if (args_has(args, 'a')) {
+		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
+		if (wl == NULL)
+			return (-1);
+		idx = wl->idx + 1;
 
-                /* Find the next free index. */
-                for (last = idx; last < INT_MAX; last++) {
-                        if (winlink_find_by_index(&s->windows, last) == NULL)
-                                break;
-                }
-                if (last == INT_MAX) {
-                        ctx->error(ctx, "no free window indexes");
-                        return (-1);
-                }
+		/* Find the next free index. */
+		for (last = idx; last < INT_MAX; last++) {
+			if (winlink_find_by_index(&s->windows, last) == NULL)
+				break;
+		}
+		if (last == INT_MAX) {
+			ctx->error(ctx, "no free window indexes");
+			return (-1);
+		}
 
-                /* Move everything from last - 1 to idx up a bit. */
-                for (; last > idx; last--) {
-                        wl = winlink_find_by_index(&s->windows, last - 1);
-                        server_link_window(s, wl, s, last, 0, 0, NULL);
-                        server_unlink_window(s, wl);
-                }
-        } else {
-                if ((idx = cmd_find_index(ctx, args_get(args, 't'), &s)) == -2)
-                        return (-1);
-        }
-        detached = args_has(args, 'd');
+		/* Move everything from last - 1 to idx up a bit. */
+		for (; last > idx; last--) {
+			wl = winlink_find_by_index(&s->windows, last - 1);
+			server_link_window(s, wl, s, last, 0, 0, NULL);
+			server_unlink_window(s, wl);
+		}
+	} else {
+		if ((idx = cmd_find_index(ctx, args_get(args, 't'), &s)) == -2)
+			return (-1);
+	}
+	detached = args_has(args, 'd');
 
-        wl = NULL;
-        if (idx != -1)
-                wl = winlink_find_by_index(&s->windows, idx);
-        if (wl != NULL && args_has(args, 'k')) {
-                /*
-                 * Can't use session_detach as it will destroy session if this
-                 * makes it empty.
-                 */
-                wl->flags &= ~WINLINK_ALERTFLAGS;
-                winlink_stack_remove(&s->lastw, wl);
-                winlink_remove(&s->windows, wl);
+	wl = NULL;
+	if (idx != -1)
+		wl = winlink_find_by_index(&s->windows, idx);
+	if (wl != NULL && args_has(args, 'k')) {
+		/*
+		 * Can't use session_detach as it will destroy session if this
+		 * makes it empty.
+		 */
+		wl->flags &= ~WINLINK_ALERTFLAGS;
+		winlink_stack_remove(&s->lastw, wl);
+		winlink_remove(&s->windows, wl);
 
-                /* Force select/redraw if current. */
-                if (wl == s->curw) {
-                        detached = 0;
-                        s->curw = NULL;
-                }
-        }
+		/* Force select/redraw if current. */
+		if (wl == s->curw) {
+			detached = 0;
+			s->curw = NULL;
+		}
+	}
 
-        if (args->argc == 0)
-                cmd = options_get_string(&s->options, "default-command");
-        else
-                cmd = args->argv[0];
-        cwd = cmd_get_default_path(ctx, args_get(args, 'c'));
+	if (args->argc == 0)
+		cmd = options_get_string(&s->options, "default-command");
+	else
+		cmd = args->argv[0];
+	cwd = cmd_get_default_path(ctx, args_get(args, 'c'));
 
-        if (idx == -1)
-                idx = -1 - options_get_number(&s->options, "base-index");
-        wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
-        if (wl == NULL) {
-                ctx->error(ctx, "create window failed: %s", cause);
-                xfree(cause);
-                return (-1);
-        }
-        if (!detached) {
-                session_select(s, wl->idx);
-                server_redraw_session_group(s);
-        } else
-                server_status_session_group(s);
+	if (idx == -1)
+		idx = -1 - options_get_number(&s->options, "base-index");
+	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
+	if (wl == NULL) {
+		ctx->error(ctx, "create window failed: %s", cause);
+		xfree(cause);
+		return (-1);
+	}
+	if (!detached) {
+		session_select(s, wl->idx);
+		server_redraw_session_group(s);
+	} else
+		server_status_session_group(s);
 
-        if (args_has(args, 'P')) {
-                template = "#{session_name}:#{window_index}";
-                if (args_has(args, 'F'))
-                        template = args_get(args, 'F');
+	if (args_has(args, 'P')) {
+		template = "#{session_name}:#{window_index}";
+		if (args_has(args, 'F'))
+			template = args_get(args, 'F');
 
-                ft = format_create();
-                if ((c = cmd_find_client(ctx, NULL)) != NULL)
-                    format_client(ft, c);
-                format_session(ft, s);
-                format_winlink(ft, s, wl);
+		ft = format_create();
+		if ((c = cmd_find_client(ctx, NULL)) != NULL)
+		    format_client(ft, c);
+		format_session(ft, s);
+		format_winlink(ft, s, wl);
 
-                cp = format_expand(ft, template);
-                ctx->print(ctx, "%s", cp);
-                xfree(cp);
+		cp = format_expand(ft, template);
+		ctx->print(ctx, "%s", cp);
+		xfree(cp);
 
-                format_free(ft);
-        }
+		format_free(ft);
+	}
 
-        return (0);
+	return (0);
 }

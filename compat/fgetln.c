@@ -1,5 +1,5 @@
 /* $Id$ */
-/*      $NetBSD: fgetln.c,v 1.3 2007/08/07 02:06:58 lukem Exp $ */
+/*	$NetBSD: fgetln.c,v 1.3 2007/08/07 02:06:58 lukem Exp $	*/
 
 /*-
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -45,41 +45,41 @@
 char *
 fgetln(FILE *fp, size_t *len)
 {
-        static char *buf = NULL;
-        static size_t bufsiz = 0;
-        char *ptr;
+	static char *buf = NULL;
+	static size_t bufsiz = 0;
+	char *ptr;
 
 
-        if (buf == NULL) {
-                bufsiz = BUFSIZ;
-                if ((buf = malloc(bufsiz)) == NULL)
-                        return NULL;
-        }
+	if (buf == NULL) {
+		bufsiz = BUFSIZ;
+		if ((buf = malloc(bufsiz)) == NULL)
+			return NULL;
+	}
 
-        if (fgets(buf, bufsiz, fp) == NULL)
-                return NULL;
+	if (fgets(buf, bufsiz, fp) == NULL)
+		return NULL;
 
-        *len = 0;
-        while ((ptr = strchr(&buf[*len], '\n')) == NULL) {
-                size_t nbufsiz = bufsiz + BUFSIZ;
-                char *nbuf = realloc(buf, nbufsiz);
+	*len = 0;
+	while ((ptr = strchr(&buf[*len], '\n')) == NULL) {
+		size_t nbufsiz = bufsiz + BUFSIZ;
+		char *nbuf = realloc(buf, nbufsiz);
 
-                if (nbuf == NULL) {
-                        int oerrno = errno;
-                        free(buf);
-                        errno = oerrno;
-                        buf = NULL;
-                        return NULL;
-                } else
-                        buf = nbuf;
+		if (nbuf == NULL) {
+			int oerrno = errno;
+			free(buf);
+			errno = oerrno;
+			buf = NULL;
+			return NULL;
+		} else
+			buf = nbuf;
 
-                *len = bufsiz;
-                if (fgets(&buf[bufsiz], BUFSIZ, fp) == NULL)
-                        return buf;
+		*len = bufsiz;
+		if (fgets(&buf[bufsiz], BUFSIZ, fp) == NULL)
+			return buf;
 
-                bufsiz = nbufsiz;
-        }
+		bufsiz = nbufsiz;
+	}
 
-        *len = (ptr - buf) + 1;
-        return buf;
+	*len = (ptr - buf) + 1;
+	return buf;
 }

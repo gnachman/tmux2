@@ -25,25 +25,25 @@
 int
 setenv(const char *name, const char *value, unused int overwrite)
 {
-        char    *newval;
+	char	*newval;
 
-        xasprintf(&newval, "%s=%s", name, value);
-        return (putenv(newval));
+	xasprintf(&newval, "%s=%s", name, value);
+	return (putenv(newval));
 }
 
 int
 unsetenv(const char *name)
 {
-        char  **envptr;
-        int     namelen;
+	char  **envptr;
+	int	namelen;
 
-        namelen = strlen(name);
-        for (envptr = environ; *envptr != NULL; envptr++) {
-                if (strncmp(name, *envptr, namelen) == 0 &&
-                    ((*envptr)[namelen] == '=' || (*envptr)[namelen] == '\0'))
-                        break;
-        }
-        for (; *envptr != NULL; envptr++)
-                *envptr = *(envptr + 1);
-        return (0);
+	namelen = strlen(name);
+	for (envptr = environ; *envptr != NULL; envptr++) {
+		if (strncmp(name, *envptr, namelen) == 0 &&
+		    ((*envptr)[namelen] == '=' || (*envptr)[namelen] == '\0'))
+			break;
+	}
+	for (; *envptr != NULL; envptr++)
+		*envptr = *(envptr + 1);
+	return (0);
 }

@@ -31,58 +31,58 @@
 char *
 osdep_get_name(int fd, char *tty)
 {
-        struct psinfo    p;
-        struct stat      st;
-        char            *path;
-        ssize_t          bytes;
-        int              f;
-        pid_t            pgrp;
+	struct psinfo	 p;
+	struct stat	 st;
+	char		*path;
+	ssize_t		 bytes;
+	int		 f;
+	pid_t		 pgrp;
 
-        if ((f = open(tty, O_RDONLY)) < 0)
-                return (NULL);
+	if ((f = open(tty, O_RDONLY)) < 0)
+		return (NULL);
 
-        if (fstat(f, &st) != 0 || ioctl(f, TIOCGPGRP, &pgrp) != 0) {
-                close(f);
-                return (NULL);
-        }
-        close(f);
+	if (fstat(f, &st) != 0 || ioctl(f, TIOCGPGRP, &pgrp) != 0) {
+		close(f);
+		return (NULL);
+	}
+	close(f);
 
-        xasprintf(&path, "/proc/%u/psinfo", (u_int) pgrp);
-        f = open(path, O_RDONLY);
-        xfree(path);
-        if (f < 0)
-                return (NULL);
+	xasprintf(&path, "/proc/%u/psinfo", (u_int) pgrp);
+	f = open(path, O_RDONLY);
+	xfree(path);
+	if (f < 0)
+		return (NULL);
 
-        bytes = read(f, &p, sizeof(p));
-        close(f);
-        if (bytes != sizeof(p))
-                return (NULL);
+	bytes = read(f, &p, sizeof(p));
+	close(f);
+	if (bytes != sizeof(p))
+		return (NULL);
 
-        if (p.pr_ttydev != st.st_rdev)
-                return (NULL);
+	if (p.pr_ttydev != st.st_rdev)
+		return (NULL);
 
-        return (xstrdup(p.pr_fname));
+	return (xstrdup(p.pr_fname));
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-        static char      target[MAXPATHLEN + 1];
-        char            *path;
-        ssize_t          n;
+	static char	 target[MAXPATHLEN + 1];
+	char		*path;
+	ssize_t		 n;
 
-        xasprintf(&path, "/proc/%u/path/cwd", (u_int) pid);
-        n = readlink(path, target, MAXPATHLEN);
-        xfree(path);
-        if (n > 0) {
-                target[n] = '\0';
-                return (target);
-        }
-        return (NULL);
+	xasprintf(&path, "/proc/%u/path/cwd", (u_int) pid);
+	n = readlink(path, target, MAXPATHLEN);
+	xfree(path);
+	if (n > 0) {
+		target[n] = '\0';
+		return (target);
+	}
+	return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-        return (event_init());
+	return (event_init());
 }

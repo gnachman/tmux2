@@ -1,8 +1,8 @@
 /* $Id$ */
-/*      $OpenBSD: daemon.c,v 1.6 2005/08/08 08:05:33 espie Exp $ */
+/*	$OpenBSD: daemon.c,v 1.6 2005/08/08 08:05:33 espie Exp $ */
 /*-
  * Copyright (c) 1990, 1993
- *      The Regents of the University of California.  All rights reserved.
+ *	The Regents of the University of California.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,29 +38,29 @@
 int
 daemon(int nochdir, int noclose)
 {
-        int fd;
+	int fd;
 
-        switch (fork()) {
-        case -1:
-                return (-1);
-        case 0:
-                break;
-        default:
-                _exit(0);
-        }
+	switch (fork()) {
+	case -1:
+		return (-1);
+	case 0:
+		break;
+	default:
+		_exit(0);
+	}
 
-        if (setsid() == -1)
-                return (-1);
+	if (setsid() == -1)
+		return (-1);
 
-        if (!nochdir)
-                (void)chdir("/");
+	if (!nochdir)
+		(void)chdir("/");
 
-        if (!noclose && (fd = open(_PATH_DEVNULL, O_RDWR, 0)) != -1) {
-                (void)dup2(fd, STDIN_FILENO);
-                (void)dup2(fd, STDOUT_FILENO);
-                (void)dup2(fd, STDERR_FILENO);
-                if (fd > 2)
-                        (void)close (fd);
-        }
-        return (0);
+	if (!noclose && (fd = open(_PATH_DEVNULL, O_RDWR, 0)) != -1) {
+		(void)dup2(fd, STDIN_FILENO);
+		(void)dup2(fd, STDOUT_FILENO);
+		(void)dup2(fd, STDERR_FILENO);
+		if (fd > 2)
+			(void)close (fd);
+	}
+	return (0);
 }

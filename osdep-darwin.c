@@ -25,55 +25,55 @@
 #include <string.h>
 #include <unistd.h>
 
-char                    *osdep_get_name(int, char *);
-char                    *osdep_get_cwd(pid_t);
-struct event_base       *osdep_event_init(void);
+char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(pid_t);
+struct event_base	*osdep_event_init(void);
 
 #define unused __attribute__ ((unused))
 
 char *
 osdep_get_name(int fd, unused char *tty)
 {
-        int     mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
-        size_t  size;
-        struct kinfo_proc kp;
+	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
+	size_t	size;
+	struct kinfo_proc kp;
 
-        if ((mib[3] = tcgetpgrp(fd)) == -1)
-                return (NULL);
+	if ((mib[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
 
-        size = sizeof kp;
-        if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1)
-                return (NULL);
-        if (*kp.kp_proc.p_comm == '\0')
-                return (NULL);
+	size = sizeof kp;
+	if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1)
+		return (NULL);
+	if (*kp.kp_proc.p_comm == '\0')
+		return (NULL);
 
-        return (strdup(kp.kp_proc.p_comm));
+	return (strdup(kp.kp_proc.p_comm));
 }
 
 char *
 osdep_get_cwd(pid_t pid)
 {
-        static char                     wd[PATH_MAX];
-        struct proc_vnodepathinfo       pathinfo;
-        int                             ret;
+	static char 			wd[PATH_MAX];
+	struct proc_vnodepathinfo	pathinfo;
+	int				ret;
 
-        ret = proc_pidinfo(
-            pid, PROC_PIDVNODEPATHINFO, 0, &pathinfo, sizeof pathinfo);
-        if (ret == sizeof pathinfo) {
-                strlcpy(wd, pathinfo.pvi_cdir.vip_path, sizeof wd);
-                return (wd);
-        }
-        return (NULL);
+	ret = proc_pidinfo(
+	    pid, PROC_PIDVNODEPATHINFO, 0, &pathinfo, sizeof pathinfo);
+	if (ret == sizeof pathinfo) {
+		strlcpy(wd, pathinfo.pvi_cdir.vip_path, sizeof wd);
+		return (wd);
+	}
+	return (NULL);
 }
 
 struct event_base *
 osdep_event_init(void)
 {
-        /*
-         * On OS X, kqueue and poll are both completely broken and don't
-         * work on anything except socket file descriptors (yes, really).
-         */
-        setenv("EVENT_NOKQUEUE", "1", 1);
-        setenv("EVENT_NOPOLL", "1", 1);
-        return (event_init());
+	/*
+	 * On OS X, kqueue and poll are both completely broken and don't
+	 * work on anything except socket file descriptors (yes, really).
+	 */
+	setenv("EVENT_NOKQUEUE", "1", 1);
+	setenv("EVENT_NOPOLL", "1", 1);
+	return (event_init());
 }

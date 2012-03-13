@@ -24,86 +24,86 @@
  * Show a paste buffer.
  */
 
-int     cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_buffer_entry = {
-        "show-buffer", "showb",
-        "b:", 0, 0,
-        CMD_BUFFER_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_show_buffer_exec
+	"show-buffer", "showb",
+	"b:", 0, 0,
+	CMD_BUFFER_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_show_buffer_exec
 };
 
 int
 cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args             *args = self->args;
-        struct session          *s;
-        struct paste_buffer     *pb;
-        int                      buffer;
-        char                    *in, *buf, *ptr, *cause;
-        size_t                   size, len;
-        u_int                    width;
+	struct args		*args = self->args;
+	struct session		*s;
+	struct paste_buffer	*pb;
+	int			 buffer;
+	char			*in, *buf, *ptr, *cause;
+	size_t			 size, len;
+	u_int			 width;
 
-        if ((s = cmd_find_session(ctx, NULL, 0)) == NULL)
-                return (-1);
+	if ((s = cmd_find_session(ctx, NULL, 0)) == NULL)
+		return (-1);
 
-        if (!args_has(args, 'b')) {
-                if ((pb = paste_get_top(&global_buffers)) == NULL) {
-                        ctx->error(ctx, "no buffers");
-                        return (-1);
-                }
-        } else {
-                buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-                if (cause != NULL) {
-                        ctx->error(ctx, "buffer %s", cause);
-                        xfree(cause);
-                        return (-1);
-                }
+	if (!args_has(args, 'b')) {
+		if ((pb = paste_get_top(&global_buffers)) == NULL) {
+			ctx->error(ctx, "no buffers");
+			return (-1);
+		}
+	} else {
+		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "buffer %s", cause);
+			xfree(cause);
+			return (-1);
+		}
 
-                pb = paste_get_index(&global_buffers, buffer);
-                if (pb == NULL) {
-                        ctx->error(ctx, "no buffer %d", buffer);
-                        return (-1);
-                }
-        }
+		pb = paste_get_index(&global_buffers, buffer);
+		if (pb == NULL) {
+			ctx->error(ctx, "no buffer %d", buffer);
+			return (-1);
+		}
+	}
 
-        size = pb->size;
-        if (size > SIZE_MAX / 4 - 1)
-                size = SIZE_MAX / 4 - 1;
-        in = xmalloc(size * 4 + 1);
-        strvisx(in, pb->data, size, VIS_OCTAL|VIS_TAB);
+	size = pb->size;
+	if (size > SIZE_MAX / 4 - 1)
+		size = SIZE_MAX / 4 - 1;
+	in = xmalloc(size * 4 + 1);
+	strvisx(in, pb->data, size, VIS_OCTAL|VIS_TAB);
 
-        width = s->sx;
-        if (ctx->cmdclient != NULL)
-                width = ctx->cmdclient->tty.sx;
+	width = s->sx;
+	if (ctx->cmdclient != NULL)
+		width = ctx->cmdclient->tty.sx;
 
-        buf = xmalloc(width + 1);
-        len = 0;
+	buf = xmalloc(width + 1);
+	len = 0;
 
-        ptr = in;
-        do {
-                buf[len++] = *ptr++;
+	ptr = in;
+	do {
+		buf[len++] = *ptr++;
 
-                if (len == width || buf[len - 1] == '\n') {
-                        if (buf[len - 1] == '\n')
-                                len--;
-                        buf[len] = '\0';
+		if (len == width || buf[len - 1] == '\n') {
+			if (buf[len - 1] == '\n')
+				len--;
+			buf[len] = '\0';
 
-                        ctx->print(ctx, "%s", buf);
-                        len = 0;
-                }
-        } while (*ptr != '\0');
+			ctx->print(ctx, "%s", buf);
+			len = 0;
+		}
+	} while (*ptr != '\0');
 
-        if (len != 0) {
-                buf[len] = '\0';
-                ctx->print(ctx, "%s", buf);
-        }
-        xfree(buf);
+	if (len != 0) {
+		buf[len] = '\0';
+		ctx->print(ctx, "%s", buf);
+	}
+	xfree(buf);
 
-        xfree(in);
+	xfree(in);
 
-        return (0);
+	return (0);
 }

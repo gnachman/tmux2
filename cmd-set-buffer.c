@@ -26,50 +26,50 @@
  * Add or set a paste buffer.
  */
 
-int     cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
-        "set-buffer", "setb",
-        "b:", 1, 1,
-        CMD_BUFFER_USAGE " data",
-        0,
-        NULL,
-        NULL,
-        cmd_set_buffer_exec
+	"set-buffer", "setb",
+	"b:", 1, 1,
+	CMD_BUFFER_USAGE " data",
+	0,
+	NULL,
+	NULL,
+	cmd_set_buffer_exec
 };
 
 int
 cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args     *args = self->args;
-        u_int            limit;
-        char            *pdata, *cause;
-        size_t           psize;
-        int              buffer;
+	struct args	*args = self->args;
+	u_int		 limit;
+	char		*pdata, *cause;
+	size_t		 psize;
+	int		 buffer;
 
-        limit = options_get_number(&global_options, "buffer-limit");
+	limit = options_get_number(&global_options, "buffer-limit");
 
-        pdata = xstrdup(args->argv[0]);
-        psize = strlen(pdata);
+	pdata = xstrdup(args->argv[0]);
+	psize = strlen(pdata);
 
-        if (!args_has(args, 'b')) {
-                paste_add(&global_buffers, pdata, psize, limit);
-                return (0);
-        }
+	if (!args_has(args, 'b')) {
+		paste_add(&global_buffers, pdata, psize, limit);
+		return (0);
+	}
 
-        buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-        if (cause != NULL) {
-                ctx->error(ctx, "buffer %s", cause);
-                xfree(cause);
-                xfree(pdata);
-                return (-1);
-        }
+	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+	if (cause != NULL) {
+		ctx->error(ctx, "buffer %s", cause);
+		xfree(cause);
+		xfree(pdata);
+		return (-1);
+	}
 
-        if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
-                ctx->error(ctx, "no buffer %d", buffer);
-                xfree(pdata);
-                return (-1);
-        }
+	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
+		ctx->error(ctx, "no buffer %d", buffer);
+		xfree(pdata);
+		return (-1);
+	}
 
-        return (0);
+	return (0);
 }

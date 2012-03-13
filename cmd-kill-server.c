@@ -27,23 +27,23 @@
  * Kill the server and do nothing else.
  */
 
-int     cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_server_entry = {
-        "kill-server", NULL,
-        "", 0, 0,
-        "",
-        0,
-        NULL,
-        NULL,
-        cmd_kill_server_exec
+	"kill-server", NULL,
+	"", 0, 0,
+	"",
+	0,
+	NULL,
+	NULL,
+	cmd_kill_server_exec
 };
 
 /* ARGSUSED */
 int
 cmd_kill_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
-        kill(getpid(), SIGTERM);
+	kill(getpid(), SIGTERM);
 
-        return (0);
+	return (0);
 }

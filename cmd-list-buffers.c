@@ -26,33 +26,33 @@
  * List paste buffers.
  */
 
-int     cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
-        "list-buffers", "lsb",
-        "", 0, 0,
-        "",
-        0,
-        NULL,
-        NULL,
-        cmd_list_buffers_exec
+	"list-buffers", "lsb",
+	"", 0, 0,
+	"",
+	0,
+	NULL,
+	NULL,
+	cmd_list_buffers_exec
 };
 
 /* ARGSUSED */
 int
 cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct paste_buffer     *pb;
-        u_int                    idx;
-        char                    *tmp;
+	struct paste_buffer	*pb;
+	u_int			 idx;
+	char			*tmp;
 
-        idx = 0;
-        while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
-                tmp = paste_print(pb, 50);
-                ctx->print(ctx,
-                    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);
-                xfree(tmp);
-        }
+	idx = 0;
+	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
+		tmp = paste_print(pb, 50);
+		ctx->print(ctx,
+		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);
+		xfree(tmp);
+	}
 
-        return (0);
+	return (0);
 }

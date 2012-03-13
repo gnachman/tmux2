@@ -27,40 +27,40 @@
  * Show environment.
  */
 
-int     cmd_show_environment_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_show_environment_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_environment_entry = {
-        "show-environment", "showenv",
-        "gt:", 0, 0,
-        "[-g] " CMD_TARGET_SESSION_USAGE,
-        0,
-        NULL,
-        NULL,
-        cmd_show_environment_exec
+	"show-environment", "showenv",
+	"gt:", 0, 0,
+	"[-g] " CMD_TARGET_SESSION_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_show_environment_exec
 };
 
 int
 cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-        struct args             *args = self->args;
-        struct session          *s;
-        struct environ          *env;
-        struct environ_entry    *envent;
+	struct args		*args = self->args;
+	struct session		*s;
+	struct environ		*env;
+	struct environ_entry	*envent;
 
-        if (args_has(self->args, 'g'))
-                env = &global_environ;
-        else {
-                if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
-                        return (-1);
-                env = &s->environ;
-        }
+	if (args_has(self->args, 'g'))
+		env = &global_environ;
+	else {
+		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+			return (-1);
+		env = &s->environ;
+	}
 
-        RB_FOREACH(envent, environ, env) {
-                if (envent->value != NULL)
-                        ctx->print(ctx, "%s=%s", envent->name, envent->value);
-                else
-                        ctx->print(ctx, "-%s", envent->name);
-        }
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL)
+			ctx->print(ctx, "%s=%s", envent->name, envent->value);
+		else
+			ctx->print(ctx, "-%s", envent->name);
+	}
 
-        return (0);
+	return (0);
 }
