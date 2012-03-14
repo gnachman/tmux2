@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28lquvVC
+.Op Fl 28ClquvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -116,6 +116,10 @@ This option is for compatibility with
 when
 .Nm
 is used as a login shell.
+.It Fl C
+Operate in
+.Ic control mode ,
+which allows compatible terminal emulators to offer a native user interface for tmux.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
@@ -205,10 +209,6 @@ is the PID of the server or client process.
 Report the
 .Nm
 version.
-.It Fl C
-Operate in
-.Ic control mode ,
-which allows compatible terminal emulators to offer a native user interface for tmux.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
