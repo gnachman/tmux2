@@ -83,3 +83,4 @@ fgetln(FILE *fp, size_t *len)
 	*len = (ptr - buf) + 1;
 	return buf;
 }
+
