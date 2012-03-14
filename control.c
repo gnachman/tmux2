@@ -25,18 +25,19 @@
 
 #include "tmux.h"
 
-// TODO(georgen): Set this to 1 when it stabilizes
 /*
  * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
  * 0.2: Adds session notifications. Goes with iTerm2 1.0.0.20120108.
  * 0.3: Renames dump-state and set-control-client-attr to control.
  *      Goes with iTerm2 1.0.0.20120203.
- * 0.4: Various changes as code is integrated upstream.
+ * 0.4: Various changes as code is integrated upstream (not released).
+ * 1.0: Upstream integration complete.
  */
-#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.4"
+#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "1.0"
 
 typedef void control_write_cb(struct client *c, void *user_data);
 
+/* A pending change related to a window's state. */
 struct window_change {
 	u_int window_id;
 	enum {
@@ -46,6 +47,7 @@ struct window_change {
 };
 TAILQ_HEAD(, window_change) window_changes;
 
+/* A client-defined key-value pair. */
 struct kvp {
 	char *name;
 	char *value;
@@ -53,6 +55,7 @@ struct kvp {
 };
 TAILQ_HEAD(, kvp) kvps;
 
+/* Stored text to send control clients. */
 struct control_input_ctx {
 	struct window_pane *wp;
 	const u_char *buf;
@@ -62,13 +65,16 @@ struct control_input_ctx {
 
 static void	control_notify_windows_changed(void);
 
-static struct window			**layouts_changed;
-static int				  num_layouts_changed;
-static int				  spontaneous_message_allowed;
+static struct window	**layouts_changed;
+static int	    	  num_layouts_changed;
+static int	    	  spontaneous_message_allowed;
+/* Flag values for session_changed_flags. */
 #define SESSION_CHANGE_ADDREMOVE	0x1
 #define SESSION_CHANGE_ATTACHMENT	0x2
 #define SESSION_CHANGE_RENAME		0x4
-static int				  session_changed_flags;
+/* A bitmask storing which kinds of session changes clients need to be notified
+ * of. */
+static int	    	  session_changed_flags;
 
 void	control_read_callback(struct bufferevent *, void *);
 void	control_error_callback(struct bufferevent *, short, void *);
@@ -137,7 +143,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 
 	    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
 		    /* Error */
-		    if (cause) {
+		    if (cause != NULL) {
 			    /* cause should always be set if there's an
 			     * error.  */
 			    evbuffer_add_printf(out->output,
@@ -145,7 +151,10 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 						line, cause);
 			    bufferevent_write(out, "\n", 1);
 			    xfree(cause);
-		    }
+		    } else {
+			    evbuffer_add_printf(out->output, "%%error");
+			    bufferevent_write(out, "\n", 1);
+                    }
 	    } else {
 		    /* Parsed ok. Run command. */
 		    cmd_list_exec(cmdlist, &ctx);
@@ -262,12 +271,10 @@ control_foreach_client(control_write_cb *cb, void *user_data)
 {
 	for (int i = 0; i < (int) ARRAY_LENGTH(&clients); i++) {
 		struct client *c = ARRAY_ITEM(&clients, i);
-		if (c && c->flags & CLIENT_CONTROL) {
-			if (c->flags & CLIENT_SUSPENDED) {
-				continue;
-			}
+		if (c &&
+                    (c->flags & CLIENT_CONTROL) &&
+		    !(c->flags & CLIENT_SUSPENDED))
 			cb(c, user_data);
-		}
 	}
 }
 
@@ -275,9 +282,8 @@ static void
 control_write_input_cb(struct client *c, void *user_data)
 {
 	struct control_input_ctx	*ctx = user_data;
-	if (c->flags & CLIENT_CONTROL_READY) {
-		control_write_input(c, ctx->wp, ctx->buf, ctx->len);
-	}
+	if (c->flags & CLIENT_CONTROL_READY)
+	    control_write_input(c, ctx->wp, ctx->buf, ctx->len);
 }
 
 void
@@ -372,16 +378,16 @@ control_notify_layout_change(struct window *w)
 	}
 	layouts_changed[num_layouts_changed - 1] = w;
 
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 void
 control_notify_window_removed(struct window *w)
 {
 	struct window_change	*change;
-	int			 found;
+	int			 found_window;
+        int			 is_create;
 
 	for (int i = 0; i < num_layouts_changed; i++) {
 		if (layouts_changed[i] == w) {
@@ -389,28 +395,33 @@ control_notify_window_removed(struct window *w)
 			break;
 		}
 	}
-	/* If there is an existing change, remove it and return. */
-	found = 0;
+        /* If there is an existing change to the same window, remove it and
+         * return.  Repeatedly search the list of window changes for any
+         * relating to this window ID and remove them. Break out of the outer
+         * loop when none exist. */
+	found_window = 0;
+        is_create = 0;
 	do {
-		found &= 2;
+		found_window = 0;
 		TAILQ_FOREACH(change, &window_changes, entry) {
 			if (change->window_id == w->id) {
 				TAILQ_REMOVE(&window_changes, change, entry);
-				found |= 1;
-				if (change->action == WINDOW_CREATED) {
-					found |= 2;
-				}
+				found_window = 1;
+				if (change->action == WINDOW_CREATED)
+				    is_create = 1;
 				xfree(change);
 				break;
 			}
 		}
-	} while (found & 1);
-	if (found & 2) {
-		// A WIDNOW_CREATED was found.
-		return;
-	}
+	} while (found_window);
 
-	/* Add a WINDOW_CLOSED change. */
+	if (is_create) {
+          	/* We removed a queued WINDOW_CREATE so there's no need to queue a
+                 * WINDOW_CLOSED. */
+        	return;
+        }
+
+	/* Enqueue a WINDOW_CLOSED change. */
 	change = xmalloc(sizeof(struct window_change));
 	change->window_id = w->id;
 	change->action = WINDOW_CLOSED;
@@ -423,6 +434,7 @@ void
 control_notify_window_added(u_int id)
 {
 	struct window_change	*change = xmalloc(sizeof(struct window_change));
+
 	change->window_id = id;
 	change->action = WINDOW_CREATED;
 	TAILQ_INSERT_TAIL(&window_changes, change, entry);
@@ -434,6 +446,7 @@ void
 control_notify_window_renamed(struct window *w)
 {
 	struct window_change	*change;
+
 	change = xmalloc(sizeof(struct window_change));
 	change->window_id = w->id;
 	change->action = WINDOW_RENAMED;
@@ -442,17 +455,16 @@ control_notify_window_renamed(struct window *w)
 	control_notify_windows_changed();
 }
 
+/* The currently attached session for this client changed. */
 void
 control_notify_attached_session_changed(struct client *c)
 {
-	if (c->flags & CLIENT_SESSION_CHANGED) {
-		return;
-	}
+	if (c->flags & CLIENT_SESSION_CHANGED)
+	    return;
 	c->flags |= CLIENT_SESSION_CHANGED;
 	session_changed_flags |= SESSION_CHANGE_ATTACHMENT;
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 void
@@ -460,35 +472,31 @@ control_notify_session_renamed(struct session *s)
 {
 	session_changed_flags |= SESSION_CHANGE_RENAME;
 	s->flags |= SESSION_RENAMED;
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 void
 control_notify_session_created(unused struct session *s)
 {
 	session_changed_flags |= SESSION_CHANGE_ADDREMOVE;
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 void
 control_notify_session_closed(unused struct session *s)
 {
 	session_changed_flags |= SESSION_CHANGE_ADDREMOVE;
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 static void
 control_notify_windows_changed(void)
 {
-	if (spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (spontaneous_message_allowed)
+	    control_broadcast_queue();
 }
 
 static void
@@ -507,15 +515,19 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		return;
 	}
 	if (!c->session)
-		return;
+	    return;
 
 	TAILQ_FOREACH(change, &window_changes, entry) {
+                /* A notification for a window not linked to the client's
+                 * session gets a special notification (prefixed with
+                 * "unlinked-") because clients are likely to do less in
+                 * response to those, but at this point only the server knows
+                 * which windows are linked to the client's session. */
 		if (winlink_find_by_window_id(&c->session->windows,
-					      change->window_id)) {
-			prefix = "";
-		} else {
-			prefix = "unlinked-";
-		}
+					      change->window_id))
+		    prefix = "";
+		else
+		    prefix = "unlinked-";
 		switch (change->action) {
 			case WINDOW_CREATED:
 				control_write_printf(c, "%%%swindow-add %u\n",
@@ -574,9 +586,8 @@ control_broadcast_queue(void)
 void
 control_set_spontaneous_messages_allowed(int allowed)
 {
-	if (allowed && !spontaneous_message_allowed) {
-		control_broadcast_queue();
-	}
+	if (allowed && !spontaneous_message_allowed)
+	    control_broadcast_queue();
 	spontaneous_message_allowed = allowed;
 }
 
@@ -642,9 +653,8 @@ control_get_kvp_value(const char *name)
 	struct kvp	*current;
 
 	TAILQ_FOREACH(current, &kvps, entry) {
-		if (!strcmp(current->name, name)) {
-			return current->value;
-		}
+		if (!strcmp(current->name, name))
+		    return current->value;
 	}
 	return NULL;
 }

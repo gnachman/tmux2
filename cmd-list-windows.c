@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c 2689 2012-01-31 12:02:24Z tcunha $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
