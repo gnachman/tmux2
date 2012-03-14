@@ -26,12 +26,10 @@
 #include "tmux.h"
 
 /*
- * 0.1: The first public test. Goes with iTerm2 1.0.0.20111219.
- * 0.2: Adds session notifications. Goes with iTerm2 1.0.0.20120108.
- * 0.3: Renames dump-state and set-control-client-attr to control.
- *      Goes with iTerm2 1.0.0.20120203.
- * 0.4: Various changes as code is integrated upstream (not released).
- * 1.0: Upstream integration complete.
+ * Version number history:
+ * There may be some binaries in the world with 0.1, 0.2, 0.3, and
+ * 0.4. These were pre-release test versions.
+ * 1.0: First complete integration.
  */
 #define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "1.0"
 
@@ -595,6 +593,20 @@ void
 control_handshake(struct client *c)
 {
 	if (!(c->flags & CLIENT_SESSION_HANDSHAKE)) {
+		/* If additional capabilities are added to tmux that do not
+		 * break backward compatibility, they can be advertised
+		 * after the protocol version. A semicolon should separate
+		 * the version number from any optional parameters that follow.
+		 * Parameters should themselves be semicolon delimited.
+		 * Example:
+		 *   _tmux1.0;foo;bar
+		 * A 1.0-compatible client should work with such a version
+		 * string, even if it does not know about the "foo" and "bar"
+		 * features. The client may, at its discretion, use the foo and
+		 * bar features when they are advertised this way. Future
+		 * implementers should document or link to client requirements
+		 * for such features here.
+		 */
 		control_write_str(
 		    c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
 		    "\033\\%noop If you can see this message, "
