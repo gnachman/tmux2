@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c 2696 2012-02-02 02:00:12Z tcunha $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
