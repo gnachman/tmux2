@@ -1075,7 +1075,7 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	screen_write_initctx(ctx, &ttyctx, 1);
 
 	/* If in insert mode, make space for the cells. */
-	if (s->mode & MODE_INSERT && s->cx <= screen_size_x(s) - width) {
+	if ((s->mode & MODE_INSERT) && s->cx <= screen_size_x(s) - width) {
 		xx = screen_size_x(s) - s->cx - width;
 		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
 		insert = 1;

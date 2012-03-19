@@ -43,6 +43,7 @@ void	tty_check_bg(struct tty *, struct grid_cell *);
 void	tty_colours_fg(struct tty *, const struct grid_cell *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
+int	tty_large_region(struct tty *, const struct tty_ctx *);
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
 	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
@@ -174,18 +175,19 @@ tty_error_callback(
 }
 
 void
-tty_start_tty(struct tty *tty)
+tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 {
-	struct termios	 tio;
+	struct termios	tio;
 
-	if (tty->fd == -1 || tcgetattr(tty->fd, &tty->tio) != 0)
+	if (fd == -1 || tcgetattr(fd, orig_tio) != 0)
 		return;
 
-	setblocking(tty->fd, 0);
+	setblocking(fd, 0);
 
-	bufferevent_enable(tty->event, EV_READ|EV_WRITE);
+	if (bufev != NULL)
+		bufferevent_enable(bufev, EV_READ|EV_WRITE);
 
-	memcpy(&tio, &tty->tio, sizeof tio);
+	memcpy(&tio, orig_tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
 	tio.c_iflag |= IGNBRK;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
@@ -193,8 +195,14 @@ tty_start_tty(struct tty *tty)
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
 	tio.c_cc[VTIME] = 0;
-	if (tcsetattr(tty->fd, TCSANOW, &tio) == 0)
-		tcflush(tty->fd, TCIOFLUSH);
+	if (tcsetattr(fd, TCSANOW, &tio) == 0)
+		tcflush(fd, TCIOFLUSH);
+}
+
+void
+tty_start_tty(struct tty *tty)
+{
+	tty_init_termios(tty->fd, &tty->tio, tty->event);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
@@ -210,6 +218,9 @@ tty_start_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l");
 
+	if (tty_term_has(tty->term, TTYC_XT))
+		tty_puts(tty, "\033[>c");
+
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
 
@@ -221,6 +232,27 @@ tty_start_tty(struct tty *tty)
 	tty->flags |= TTY_STARTED;
 
 	tty_force_cursor_colour(tty, "");
+}
+
+void
+tty_set_version(struct tty *tty, u_int version)
+{
+	if (tty->xterm_version != 0)
+		return;
+	tty->xterm_version = version;
+
+	if (tty->xterm_version > 270) {
+		tty_puts(tty, "\033[65;1\"p");
+
+		tty_putcode(tty, TTYC_RMACS);
+		memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
+
+		tty->cx = UINT_MAX;
+		tty->cy = UINT_MAX;
+
+		tty->rupper = UINT_MAX;
+		tty->rlower = UINT_MAX;
+	}
 }
 
 void
@@ -265,6 +297,9 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
+	if (tty->xterm_version > 270)
+		tty_raw(tty, "\033[61;1\"p");
 }
 
 void
@@ -275,7 +310,8 @@ tty_close(struct tty *tty)
 		tty->log_fd = -1;
 	}
 
-	evtimer_del(&tty->key_timer);
+	if (event_initialized(&tty->key_timer))
+		evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
 
 	if (tty->flags & TTY_OPENED) {
@@ -502,6 +538,19 @@ tty_emulate_repeat(
 }
 
 /*
+ * Is the region large enough to be worth redrawing once later rather than
+ * probably several times now? Currently yes if it is more than 50% of the
+ * pane.
+ */
+int
+tty_large_region(unused struct tty *tty, const struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	return (ctx->orlower - ctx->orupper >= screen_size_y(wp->screen) / 2);
+}
+
+/*
  * Redraw scroll region using data from screen (already updated). Used when
  * CSR not supported, or window is a pane that doesn't take up the full
  * width of the terminal.
@@ -514,12 +563,10 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 	 i;
 
 	/*
-	 * If region is >= 50% of the screen, just schedule a window redraw. In
-	 * most cases, this is likely to be followed by some more scrolling -
-	 * without this, the entire pane ends up being redrawn many times which
-	 * can be much more data.
+	 * If region is large, schedule a window redraw. In most cases this is
+	 * likely to be followed by some more scrolling.
 	 */
-	if (ctx->orlower - ctx->orupper >= screen_size_y(s) / 2) {
+	if (tty_large_region(tty, ctx)) {
 		wp->flags |= PANE_REDRAW;
 		return;
 	}
@@ -588,7 +635,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	tty_reset(tty);
 
 	tty_cursor(tty, ox + sx, oy + py);
-	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL))
+	if (sx != screen_size_x(s) && ox + screen_size_x(s) >= tty->sx &&
+	    tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
 		for (i = sx; i < screen_size_x(s); i++)
@@ -627,7 +675,7 @@ tty_write(
 		if (s->curw->window == wp->window) {
 			if (c->tty.term == NULL)
 				continue;
-			if (c->tty.flags & (TTY_FREEZE|TTY_BACKOFF))
+			if (c->tty.flags & TTY_FREEZE)
 				continue;
 			oo = &s->options;
 
@@ -820,13 +868,28 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
+	char			 tmp[64];
 
 	if (ctx->ocy != ctx->orlower)
 		return;
 
 	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		tty_redraw_region(tty, ctx);
+		if (tty_large_region(tty, ctx))
+			wp->flags |= PANE_REDRAW;
+		else if (tty->xterm_version > 270) {
+			snprintf(tmp, sizeof tmp,
+			    "\033[%u;%u;%u;%u;1;%u;%u;1$v",
+			    ctx->yoff + ctx->orupper + 2,
+			    ctx->xoff + 1,
+			    ctx->yoff + ctx->orlower + 1,
+			    ctx->xoff + screen_size_x(s),
+			    ctx->yoff + ctx->orupper + 1,
+			    ctx->xoff + 1);
+			tty_puts(tty, tmp);
+			tty_cmd_clearline(tty, ctx);
+		} else
+			tty_redraw_region(tty, ctx);
 		return;
 	}
 
@@ -984,7 +1047,10 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			 * The pane doesn't fill the entire line, the linefeed
 			 * will already have happened, so just move the cursor.
 			 */
-			tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
+			if (ctx->ocy != wp->yoff + wp->screen->rlower)
+				tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
+			else
+				tty_cursor_pane(tty, ctx, 0, ctx->ocy);
 		} else if (tty->cx < tty->sx) {
 			/*
 			 * The cursor isn't in the last position already, so

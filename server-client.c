@@ -31,7 +31,6 @@ void	server_client_check_mouse(struct client *c,
 void	server_client_handle_key(int, struct mouse_event *, void *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
-void	server_client_check_backoff(struct client *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
 void	server_client_reset_state(struct client *);
@@ -153,11 +152,13 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 
-	evtimer_del(&c->identify_timer);
+	if (event_initialized(&c->identify_timer))
+		evtimer_del(&c->identify_timer);
 
 	if (c->message_string != NULL)
 		xfree(c->message_string);
-	evtimer_del(&c->message_timer);
+	if (event_initialized (&c->message_timer))
+		evtimer_del(&c->message_timer);
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
 		msg = &ARRAY_ITEM(&c->message_log, i);
 		xfree(msg->msg);
@@ -176,7 +177,8 @@ server_client_lost(struct client *c)
 
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
-	event_del(&c->event);
+	if (event_initialized(&c->event))
+		event_del(&c->event);
 
 	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
 		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
@@ -279,16 +281,19 @@ server_client_check_mouse(
 	    options_get_number(oo, "mouse-select-window")) {
 		if (mouse->b == MOUSE_UP && c->last_mouse.b != MOUSE_UP) {
 			status_set_window_at(c, mouse->x);
+			recalculate_sizes();
 			return;
 		}
 		if (mouse->b & MOUSE_45) {
 			if ((mouse->b & MOUSE_BUTTON) == MOUSE_1) {
 				session_previous(c->session, 0);
 				server_redraw_session(s);
+				recalculate_sizes();
 			}
 			if ((mouse->b & MOUSE_BUTTON) == MOUSE_2) {
 				session_next(c->session, 0);
 				server_redraw_session(s);
+				recalculate_sizes();
 			}
 			return;
 		}
