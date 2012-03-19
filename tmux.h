@@ -55,9 +55,6 @@ extern char   **environ;
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
 
-/* Maximum data to buffer for output before suspending writing to a tty. */
-#define BACKOFF_THRESHOLD 16384
-
 /*
  * Maximum sizes of strings in message data. Don't forget to bump
  * PROTOCOL_VERSION if any of these change!
@@ -1030,6 +1027,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	char		*path;
+	u_int		 xterm_version;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1062,7 +1060,6 @@ struct tty {
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
-#define TTY_BACKOFF 0x40
 	int		 flags;
 
 	int		 term_flags;
@@ -1418,6 +1415,16 @@ void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
+/* notify.c */
+void	notify_window_layout_changed(struct window *);
+void	notify_window_unlinked(struct session *, struct window *);
+void	notify_window_linked(struct session *, struct window *);
+void	notify_window_renamed(struct window *);
+void	notify_attached_session_changed(struct client *);
+void	notify_session_renamed(struct session *);
+void	notify_session_created(struct session *);
+void	notify_session_closed(struct session *);
+
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);
 RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
@@ -1484,8 +1491,9 @@ void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, int, char *);
 int	tty_resize(struct tty *);
-int	tty_set_size(struct tty *tty, u_int sx, u_int sy);
+int	tty_set_size(struct tty *, u_int, u_int);
 void	tty_start_tty(struct tty *);
+void	tty_set_version(struct tty *, u_int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
@@ -1708,7 +1716,7 @@ void	control_broadcast_input(struct window_pane *, const u_char *,
     	   size_t);
 void	control_set_spontaneous_messages_allowed(int);
 void	control_notify_layout_change(struct window *);
-void	control_notify_window_added(u_int);
+void	control_notify_window_added(struct window *w);
 void	control_notify_window_removed(struct window *);
 void	control_broadcast_queue(void);
 void	control_handshake(struct client *);
@@ -1752,7 +1760,7 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 extern struct paste_stack global_buffers;
-int	 server_start(void);
+int	 server_start(int, char *);
 void	 server_update_socket(void);
 
 /* server-client.c */

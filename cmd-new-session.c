@@ -252,10 +252,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (old_s != NULL)
 				ctx->cmdclient->last_session = old_s;
 			ctx->cmdclient->session = s;
-			if (ctx->cmdclient->flags & CLIENT_CONTROL) {
-				control_handshake(ctx->cmdclient);
-				control_notify_attached_session_changed(ctx->cmdclient);
-			}
+			notify_attached_session_changed(ctx->cmdclient);
 			session_update_activity(s);
 			server_redraw_client(ctx->cmdclient);
 		} else {
@@ -263,10 +260,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (old_s != NULL)
 				ctx->curclient->last_session = old_s;
 			ctx->curclient->session = s;
-			if (ctx->curclient->flags & CLIENT_CONTROL) {
-				control_handshake(ctx->curclient);
-				control_notify_attached_session_changed(ctx->curclient);
-			}
+			notify_attached_session_changed(ctx->curclient);
 			session_update_activity(s);
 			server_redraw_client(ctx->curclient);
 		}

@@ -420,10 +420,10 @@ control_notify_window_removed(struct window *w)
 }
 
 void
-control_notify_window_added(u_int id)
+control_notify_window_added(struct window *w)
 {
 	struct window_change	*change = xmalloc(sizeof(struct window_change));
-	change->window_id = id;
+	change->window_id = w->id;
 	change->action = WINDOW_CREATED;
 	TAILQ_INSERT_TAIL(&window_changes, change, entry);
 

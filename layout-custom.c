@@ -172,8 +172,7 @@ layout_parse(struct window *w, const char *layout)
 
 	layout_print_cell(lc, __func__, 0);
 
-	/* Notify control clients of the change. */
-	control_notify_layout_change(w);
+	notify_window_layout_changed(w);
 
 	return (0);
 

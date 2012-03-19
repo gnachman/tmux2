@@ -98,7 +98,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			template = args_get(args, 'F');
 		ft = format_create();
 		if ((c = cmd_find_client(ctx, NULL)) != NULL)
-		    format_client(ft, c);
+			format_client(ft, c);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
 		format_window_pane(ft, wp);

@@ -483,7 +483,7 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	/* Fix cell offsets. */
 	layout_fix_offsets(wp->window->layout_root);
 	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
-	control_notify_layout_change(wp->window);
+	notify_window_layout_changed(wp->window);
 }
 
 void
@@ -743,5 +743,5 @@ layout_close_pane(struct window_pane *wp)
 		layout_fix_offsets(wp->window->layout_root);
 		layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
 	}
-	control_notify_layout_change(wp->window);
+	notify_window_layout_changed(wp->window);
 }

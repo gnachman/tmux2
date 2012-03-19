@@ -154,6 +154,7 @@ dist_tmux_SOURCES = \
 	log.c \
 	mode-key.c \
 	names.c \
+	notify.c \
 	options-table.c \
 	options.c \
 	paste.c \

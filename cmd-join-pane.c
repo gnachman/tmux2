@@ -148,7 +148,7 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	if (window_count_panes(src_w) == 0)
 		server_kill_window(src_w);
 	else
-		control_notify_layout_change(src_w);
+		notify_window_layout_changed(src_w);
 
 	src_wp->window = dst_w;
 	TAILQ_INSERT_AFTER(&dst_w->panes, dst_wp, src_wp, entry);
@@ -166,6 +166,6 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	} else
 		server_status_session(dst_s);
 
-	control_notify_layout_change(dst_w);
+	notify_window_layout_changed(dst_w);
 	return (0);
 }

@@ -347,7 +347,8 @@ window_destroy(struct window *w)
 	if (w->layout_root != NULL)
 		layout_free(w);
 
-	evtimer_del(&w->name_timer);
+	if (event_initialized(&w->name_timer))
+		evtimer_del(&w->name_timer);
 
 	options_free(&w->options);
 
@@ -364,7 +365,7 @@ window_set_name(struct window *w, const char *new_name)
 	if (w->name != NULL)
 		xfree(w->name);
 	w->name = xstrdup(new_name);
-	control_notify_window_renamed(w);
+	notify_window_renamed(w);
 }
 
 void
