@@ -1344,7 +1344,6 @@ ARRAY_DECL(causelist, char *);
 #define CMD_TARGET_PANE_USAGE "[-t target-pane]"
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
 #define CMD_TARGET_SESSION_USAGE "[-t target-session]"
-#define CMD_TARGET_SESSION_OR_WINDOW_USAGE "[-t target]"
 #define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
 #define CMD_SRCDST_PANE_USAGE "[-s src-pane] [-t dst-pane]"
 #define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
@@ -1587,9 +1586,6 @@ struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
-struct winlink	*cmd_find_session_or_window(
-		    struct cmd_ctx *ctx, const char *arg, struct session **sp,
-		    int prefer_unattached);
 struct winlink	*cmd_find_window(
 		     struct cmd_ctx *, const char *, struct session **);
 int		 cmd_find_index(

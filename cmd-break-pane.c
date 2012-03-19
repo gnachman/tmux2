@@ -30,8 +30,8 @@ int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
-	"dPF:t:", 0, 0,
-	"[-dP] [-F format] " CMD_TARGET_PANE_USAGE,
+	"dt:", 0, 0,
+	"[-d] " CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -49,10 +49,6 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*name;
 	char			*cause;
 	int			 base_idx;
-	struct client		*c;
-	struct format_tree	*ft;
-	const char		*template;
-	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
 		return (-1);

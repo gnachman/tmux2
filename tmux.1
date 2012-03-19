@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28lquvVC
+.Op Fl 28ClquvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -116,6 +116,10 @@ This option is for compatibility with
 when
 .Nm
 is used as a login shell.
+.It Fl C
+Operate in
+.Ic control mode ,
+which allows compatible terminal emulators to offer a native user interface for tmux.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
@@ -205,10 +209,6 @@ is the PID of the server or client process.
 Report the
 .Nm
 version.
-.It Fl C
-Operate in
-.Ic control mode ,
-which allows compatible terminal emulators to offer a native user interface for tmux.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -1004,8 +1004,7 @@ from which the layout was originally defined.
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
 .It Xo Ic break-pane
-.Op Fl dP
-.Op Fl F Ar format
+.Op Fl d
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic breakp )
@@ -1015,13 +1014,6 @@ off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
-The
-.Fl P
-option prints information about the new window after it has been created.
-By default, it uses the format
-.Ql #{session_name}:#{window_index}
-but a different format may be specified with
-.Fl F .
 .It Xo Ic capture-pane
 .Op Fl b Ar buffer-index
 .Op Fl E Ar end-line
@@ -1219,18 +1211,14 @@ section.
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
-.Op Fl t Ar target
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic lsw )
 If
 .Fl a
 is given, list all windows on the server.
-Otherwise, list windows in the current session or, if
-.Ar target
-names a session, list all the windows in that session.
-If
-.Ar target
-names a session and window, list only that window.
+Otherwise, list windows in the current session or in
+.Ar target-session .
 For the meaning of the
 .Fl F
 flag, see the
@@ -1694,7 +1682,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
-.Op Fl lhR
+.Op Fl lR
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -1712,15 +1700,6 @@ The
 .Fl l
 flag disables key name lookup and sends the keys literally.
 All arguments are sent sequentially from first to last.
-.Pp
-If
-.Fl h
-is present, the
-.Ar key
-arguments should each be formatted as a string of two-digit
-hexadecimal values. They must encode a valid sequence of bytes for the character
-encoding used by
-.Ar target-pane .
 The
 .Fl R
 flag causes the terminal state to be reset.
@@ -2720,7 +2699,6 @@ is used.
 .El
 .Sh FORMATS
 The
-.Ic display-message ,
 .Ic list-clients ,
 .Ic list-sessions ,
 .Ic list-windows
@@ -3052,7 +3030,6 @@ This command works only from inside
 .Op Fl p
 .Op Fl c Ar target-client
 .Op Fl t Ar target-pane
-.Op Fl F format
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
@@ -3062,14 +3039,7 @@ If
 is given, the output is printed to stdout, otherwise it is displayed in the
 .Ar target-client
 status line.
-If
-.Fl F
-is given, then
-.Ar format
-is defines the message as described in the 
-.Sx FORMATS
-section.
-Otherwise, the format of
+The format of
 .Ar message
 is described in the
 .Sx FORMATS

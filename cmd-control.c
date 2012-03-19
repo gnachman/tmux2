@@ -23,14 +23,20 @@
 
 #include "tmux.h"
 
+/* Space needed to store the hex representation of a UTF-8 cell. */
 #define CONTROL_HISTORY_UTF8_BUFFER_SIZE ((UTF8_SIZE) * 2 + 1)
+
+/* Number of bytes needed to encode a cell's metadata. */
 #define CONTROL_HISTORY_CONTEXT_SIZE 4
+
+/* Max size of a control client's screen. Prevents a broken client
+ * from crashing the tmux server. */
 #define MAX_CONTROL_CLIENT_HEIGHT 20000
 #define MAX_CONTROL_CLIENT_WIDTH 20000
 
 int cmd_control_exec(struct cmd *, struct cmd_ctx *);
 
-/*
+/* The subcommands are:
  * get-emulator: Output emulator state. -t gives pane.
  * get-history: Output history. -t gives pane. -l gives lines.
  *   -a means alternate screen.
@@ -107,9 +113,8 @@ control_print_hex(
 {
 	struct dstring	ds;
 	ds_init(&ds);
-	for (size_t i = 0; i < length; i++) {
-		ds_appendf(&ds, "%02x", ((int) bytes[i]) % 0xff);
-	}
+	for (size_t i = 0; i < length; i++)
+	    ds_appendf(&ds, "%02x", ((int) bytes[i]) % 0xff);
 
 	ctx->print(ctx, "%s=%s", name, ds.buffer);
 	ds_free(&ds);
@@ -167,9 +172,8 @@ control_history_append_char(struct grid_cell *celldata,
 		control_history_encode_utf8(utf8data, temp);
 		ds_appendf(&ds, "[%s]",
 			   control_history_encode_utf8(utf8data, temp));
-	} else {
-		ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
-	}
+	} else
+	    ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
 	if (last_char->used > 0 && !strcmp(ds.buffer, last_char->buffer)) {
 		/* Last character repeated */
 		(*repeats)++;
@@ -233,6 +237,32 @@ control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 	ds_free(&output);
 }
 
+/* This command prints the contents of the screen plus its history.
+ * The encoding includes not just the text but also the per-cell
+ * context, such as colors, bold flags, etc. To encode this efficiently,
+ * a runlength encoding scheme is used.
+ * Each row is output on one line, terminated with a newline.
+ * The context is output as four comma-separated hex values preceded by
+ * a colon and terminated with a comma. Output begins with context and
+ * is followed by characters. New context may be output at any time after
+ * the end of a character.
+ * The cells' characters are encoded as either two-digit hex values
+ * (for example, 61 for 'A') or, for UTF-8 cells, a sequence of concatenated
+ * two-digit hex values inside square brackets (for example, [65cc81] for
+ * LATIN SMALL LETTER E followed by COMBINING ACUTE ACCENT).
+ *
+ * Example:
+ *   :0,0,8,8,6120[c3a9]:1,0,8,8,67
+ * Interpretation:
+ *   First comes a context with normal foreground and background and no
+ *   character attributes (:0,0,8,8,). Then characters:
+ *   LATIN SMALL LETTER A (61)
+ *   SPACE (20)
+ *   LATIN SMALL LETTER E WITH ACUTE ([c3a9])
+ *   Then a new context with the bold flag on (:1,0,8,8,), followed by the
+ *     character:
+ *   LATIN SMALL LETTER G (67)
+ */
 static int
 control_history_command(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -257,7 +287,7 @@ control_history_command(struct cmd *self, struct cmd_ctx *ctx)
 	temp = atoi(max_lines_str);
 	if (temp <= 0)
 		return (-1);
-	max_lines = temp;  /* assign to unsigned to do comparisons later */
+	max_lines = temp;  /* assign to unsigned int to do comparisons later */
 
 	if (args_has(args, 'a')) {
 		grid = wp->saved_grid;
@@ -343,7 +373,7 @@ control_kvp_command(
  * *h will be populated with the first and second ints, respectively and 0 is
  * returned. If an error is encountered, -1 is returned. */
 static int
-parse_size(const char *size, u_int *w, u_int *h)
+control_parse_size(const char *size, u_int *w, u_int *h)
 {
 	char	*endptr, *temp;
 
@@ -380,7 +410,7 @@ control_set_client_size_command(struct cmd_ctx *ctx, const char *value)
 	if (!c)
 		return (-1);
 	u_int	w, h;
-	if (parse_size(value, &w, &h))
+	if (control_parse_size(value, &w, &h))
 		return (-1);
 	/* Prevent a broken client from making us use crazy amounts of
 	 * memory */
