@@ -1189,6 +1189,7 @@ struct client {
 #define CLIENT_CONTROL_READY 0x4000	/* control client ready for messages */
 #define CLIENT_SESSION_CHANGED 0x8000  /* needs session-changed notification */
 #define CLIENT_SESSION_HANDSHAKE 0x10000  /* has sent handshake */
+#define CLIENT_EXITING 0x20000  /* MSG_EXIT recvd, send MSG_EXITED on ack */
 	int		flags;
 
 	struct event	 identify_timer;
@@ -1715,6 +1716,7 @@ void	control_notify_layout_change(struct window *);
 void	control_notify_window_added(struct window *w);
 void	control_notify_window_removed(struct window *);
 void	control_broadcast_queue(void);
+void	control_force_write_str(struct client *c, const char *str);
 void	control_handshake(struct client *);
 void	control_print_session_layouts(struct session *session,
 	    struct cmd_ctx *);
@@ -1765,6 +1767,7 @@ void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
 void	 server_client_loop(void);
+void	 server_client_exit(struct client *c);
 
 /* server-window.c */
 void	 server_window_loop(void);

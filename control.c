@@ -130,33 +130,39 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	/* Read all available input lines. */
 	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_ANY);
 	while (line) {
-	    /* Parse command. */
-	    ctx.msgdata = NULL;
-	    ctx.cmdclient = NULL;
-	    ctx.curclient = c;
-
-	    ctx.error = control_msg_error;
-	    ctx.print = control_msg_print;
-	    ctx.info = control_msg_info;
-
-	    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
-		    /* Error */
-		    if (cause != NULL) {
-			    /* cause should always be set if there's an
-			     * error.  */
-			    evbuffer_add_printf(out->output,
-						"%%error in line \"%s\": %s",
-						line, cause);
-			    bufferevent_write(out, "\n", 1);
-			    xfree(cause);
-		    } else {
-			    evbuffer_add_printf(out->output, "%%error");
-			    bufferevent_write(out, "\n", 1);
-                    }
+	    if (c->flags & CLIENT_EXITING) {
+		    if (!strcmp(line, "#ack-exit")) {
+			    server_client_exit(c);
+		    }
 	    } else {
-		    /* Parsed ok. Run command. */
-		    cmd_list_exec(cmdlist, &ctx);
-		    cmd_list_free(cmdlist);
+		    /* Parse command. */
+		    ctx.msgdata = NULL;
+		    ctx.cmdclient = NULL;
+		    ctx.curclient = c;
+
+		    ctx.error = control_msg_error;
+		    ctx.print = control_msg_print;
+		    ctx.info = control_msg_info;
+
+		    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
+			    /* Error */
+			    if (cause != NULL) {
+				    /* cause should always be set if there's an
+				     * error.  */
+				    evbuffer_add_printf(out->output,
+							"%%error in line \"%s\": %s",
+							line, cause);
+				    bufferevent_write(out, "\n", 1);
+				    xfree(cause);
+			    } else {
+				    evbuffer_add_printf(out->output, "%%error");
+				    bufferevent_write(out, "\n", 1);
+			    }
+		    } else {
+			    /* Parsed ok. Run command. */
+			    cmd_list_exec(cmdlist, &ctx);
+			    cmd_list_free(cmdlist);
+		    }
 	    }
 
 	    xfree(line);
@@ -221,8 +227,16 @@ control_write_hex(struct client *c, const char *buf, int len)
 }
 
 void
+control_force_write_str(struct client *c, const char *str)
+{
+	evbuffer_add(c->stdout_event->output, str, strlen(str));
+}
+
+void
 control_write(struct client *c, const char *buf, int len)
 {
+    	if (c->flags & CLIENT_EXITING)
+		return;
 	if (c->session) {
 		/* Only write to control clients that have an attached session.
 		 * This indicates that the initial setup performed by the local

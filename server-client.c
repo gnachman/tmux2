@@ -814,8 +814,11 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("bad MSG_EXITING size");
 
 			c->session = NULL;
-			tty_close(&c->tty);
-			server_write_client(c, MSG_EXITED, NULL, 0);
+			if ((c->flags & CLIENT_CONTROL)) {
+			    	control_force_write_str(c, "%exit\n");
+			    	c->flags |= CLIENT_EXITING;
+			} else
+			        server_client_exit(c);
 			break;
 		case MSG_WAKEUP:
 		case MSG_UNLOCK:
@@ -856,6 +859,13 @@ server_client_msg_dispatch(struct client *c)
 
 		imsg_free(&imsg);
 	}
+}
+
+void
+server_client_exit(struct client *c)
+{
+	tty_close(&c->tty);
+	server_write_client(c, MSG_EXITED, NULL, 0);
 }
 
 /* Callback to send error message to client. */

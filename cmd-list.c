@@ -97,6 +97,8 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	retval = 0;
 	control_set_spontaneous_messages_allowed(0);
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
+	    	if (c != NULL && (c->flags & CLIENT_EXITING))
+			return (retval);
 		if (print_guards)
 			ctx->print(ctx, "%%begin");
 		if ((n = cmd_exec(cmd, ctx)) == -1) {

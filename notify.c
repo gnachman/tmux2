@@ -33,7 +33,7 @@ notify_window_unlinked(unused struct session *s, unused struct window *w)
 void
 notify_window_linked(unused struct session *s, unused struct window *w)
 {
-    control_notify_window_added(w);
+	control_notify_window_added(w);
 }
 
 void

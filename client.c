@@ -35,7 +35,16 @@
 
 struct imsgbuf	client_ibuf;
 struct event	client_event;
-const char     *client_exitmsg;
+enum {
+    EXIT_NONE,
+    EXIT_DETACHED,
+    EXIT_DETACHED_AND_SIGHUP,
+    EXIT_LOST_TTY,
+    EXIT_TERMINATED,
+    EXIT_LOST_SERVER,
+    EXIT_EXITED,
+    EXIT_SERVER_EXITED,
+} client_exitreason = EXIT_NONE;
 int		client_exitval;
 enum msgtype	client_exittype;
 int		client_attached;
@@ -51,6 +60,8 @@ void		client_signal(int, short, void *);
 void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
+const char	*client_exitmsg(void);
+void		client_wait_for_exit_confirmation(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
@@ -122,27 +133,44 @@ failed:
 	return (-1);
 }
 
-/* Sleep and then read any pending input. This tries to handle a problem
- * in control mode where the client is unexpectedly detached while commands it
- * has sent are on the wire. We'd like to read those commands and throw them
- * away rather than have them sent to the shell after tmux quits.
- */
-static void
-read_stray_input(int fd)
+/* Read lines from stdin until #ack-exit is read, then return. */
+void
+client_wait_for_exit_confirmation(void)
 {
-	int	 saved_flags;
-	int	 n;
 	char	 buffer[100];
 
-	sleep(2);
-	saved_flags = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, saved_flags | O_NONBLOCK);
-	do {
-	    n = read(fd, buffer, sizeof(buffer));
-	    if (n == -1 && errno != EINTR) {
+	setblocking(fileno(stdin), 1);
+	while (1) {
+	    if (!fgets(buffer, sizeof(buffer), stdin))
+		    break;
+	    if (!strcmp(buffer, "#ack-exit\n") ||
+		!strcmp(buffer, "#ack-exit\r\n"))
+		    break;
+	}
+}
+
+const char *
+client_exitmsg(void)
+{
+	switch (client_exitreason) {
+	case EXIT_NONE:
 		break;
-	    }
-	} while (n > 0);
+	case EXIT_DETACHED:
+		return "detached";
+	case EXIT_DETACHED_AND_SIGHUP:
+		return "detached and SIGHUP";
+	case EXIT_LOST_TTY:
+		return "lost tty";
+	case EXIT_TERMINATED:
+		return "terminated";
+	case EXIT_LOST_SERVER:
+		return "lost server";
+	case EXIT_EXITED:
+		return "exited";
+	case EXIT_SERVER_EXITED:
+		return "server exited";
+	}
+	return "unknown reason";
 }
 
 /* Client main loop. */
@@ -269,15 +297,18 @@ client_main(int argc, char **argv, int flags)
 
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
-		if (client_exitmsg != NULL && !login_shell) {
+		if (client_exitreason != EXIT_NONE && !login_shell) {
 			if (flags & IDENTIFY_CONTROL) {
-				printf("%%exit %s\n", client_exitmsg);
-				/* Exit messages other than "detached" are
-				 * not client-initiated. */
-				if (strcmp("detached", client_exitmsg))
-					read_stray_input(fileno(stdin));
-			} else
-			    printf("[%s]\n", client_exitmsg);
+				if (client_exitreason == EXIT_LOST_SERVER) {
+				    	/* The server died without being able to
+					 * send %exit. Shut the control client
+					 * down cleanly. */
+					printf("%%exit %s\n", client_exitmsg());
+					client_wait_for_exit_confirmation();
+				}
+			} else {
+				printf("[%s]\n", client_exitmsg());
+			}
 		}
 
 		ppid = getppid();
@@ -382,12 +413,12 @@ client_signal(int sig, unused short events, unused void *data)
 	} else {
 		switch (sig) {
 		case SIGHUP:
-			client_exitmsg = "lost tty";
+			client_exitreason = EXIT_LOST_TTY;
 			client_exitval = 1;
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case SIGTERM:
-			client_exitmsg = "terminated";
+			client_exitreason = EXIT_TERMINATED;
 			client_exitval = 1;
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
@@ -439,7 +470,7 @@ client_callback(unused int fd, short events, void *data)
 	return;
 
 lost_server:
-	client_exitmsg = "lost server";
+	client_exitreason = EXIT_LOST_SERVER;
 	client_exitval = 1;
 	event_loopexit(NULL);
 }
@@ -536,9 +567,9 @@ client_dispatch_attached(void)
 
 			client_exittype = imsg.hdr.type;
 			if (imsg.hdr.type == MSG_DETACHKILL)
-				client_exitmsg = "detached and SIGHUP";
+				client_exitreason = EXIT_DETACHED_AND_SIGHUP;
 			else
-				client_exitmsg = "detached";
+				client_exitreason = EXIT_DETACHED;
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case MSG_EXIT:
@@ -547,7 +578,7 @@ client_dispatch_attached(void)
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
-			client_exitmsg = "exited";
+			client_exitreason = EXIT_EXITED;
 			break;
 		case MSG_EXITED:
 			if (datalen != 0)
@@ -560,7 +591,7 @@ client_dispatch_attached(void)
 				fatalx("bad MSG_SHUTDOWN size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
-			client_exitmsg = "server exited";
+			client_exitreason = EXIT_SERVER_EXITED;
 			client_exitval = 1;
 			break;
 		case MSG_SUSPEND:
