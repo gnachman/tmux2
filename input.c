@@ -701,7 +701,7 @@ void
 input_free(unused struct window_pane *wp)
 {
 	if (wp) {
-		evbuffer_free(ictx.input_since_ground);
+		evbuffer_free(wp->ictx.input_since_ground);
 	}
 }
 

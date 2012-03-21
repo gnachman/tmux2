@@ -151,9 +151,7 @@ static void
 control_history_output_last_char(struct evbuffer *last_char,
 				 struct evbuffer *output, int *repeats)
 {
-	char		*temp;
-	
-	if (last_char->used > 0) {
+	if (evbuffer_get_length(last_char) > 0) {
 		evbuffer_add_buffer(output, last_char);
 		if (*repeats == 2 && evbuffer_get_length(last_char) <= 3)
 			/* If an ASCII code repeats once then it's shorter to
@@ -174,8 +172,8 @@ control_evbuffer_strcmp(struct evbuffer *a, struct evbuffer *b)
 {
 	char	*temp_a;
 	char	*temp_b;
-	temp_a = xmalloc(evbuffer_get_length(a) + 1)
-	temp_b = xmalloc(evbuffer_get_length(b) + 1)
+	temp_a = xmalloc(evbuffer_get_length(a) + 1);
+	temp_b = xmalloc(evbuffer_get_length(b) + 1);
 	evbuffer_copyout(a, temp_a, evbuffer_get_length(a));
 	evbuffer_copyout(b, temp_b, evbuffer_get_length(b));
 	temp_a[evbuffer_get_length(a)] = 0;
@@ -192,25 +190,25 @@ control_history_append_char(struct grid_cell *celldata,
 			       struct evbuffer *last_char, int *repeats,
 			       struct evbuffer *output)
 {
-	struct evbuffer	*temp = evbuffer_new();
+	struct evbuffer	*buffer = evbuffer_new();
 
 	if (celldata->flags & GRID_FLAG_UTF8) {
 		char temp[CONTROL_HISTORY_UTF8_BUFFER_SIZE + 3];
 		control_history_encode_utf8(utf8data, temp);
 		evbuffer_add_printf(
-		    temp, "[%s]", control_history_encode_utf8(utf8data, temp));
+		    buffer, "[%s]", control_history_encode_utf8(utf8data, temp));
 	} else
-		evbuffer_add_printf(temp, "%x", ((int) celldata->data) & 0xff);
-	if (last_char->used > 0 && !control_evbuffer_strcmp(temp, last_char)) {
+		evbuffer_add_printf(buffer, "%x", ((int) celldata->data) & 0xff);
+	if (evbuffer_get_length(last_char) > 0 && !control_evbuffer_strcmp(buffer, last_char)) {
 		/* Last character repeated */
 		(*repeats)++;
 	} else {
 		/* Not a repeat */
 		control_history_output_last_char(last_char, output, repeats);
-		evbuffer_add_buffer(last_char, temp);
+		evbuffer_add_buffer(last_char, buffer);
 		*repeats = 1;
 	}
-	evbuffer_free(temp);
+	evbuffer_free(buffer);
 }
 
 static void
@@ -251,17 +249,22 @@ control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 	struct evbuffer	*last_char;
 	struct evbuffer	*output;
 	int		 repeats = 0;
+        char		*temp;
 
 	output = evbuffer_new();
 	last_char = evbuffer_new();
 	for (i = 0; i < linedata->cellsize; i++)
 	    control_history_cell(
-		&output, linedata->celldata + i, linedata->utf8data + i,
-		dump_context, &last_char, &repeats);
-	control_history_output_last_char(&last_char, &output, &repeats);
+		output, linedata->celldata + i, linedata->utf8data + i,
+		dump_context, last_char, &repeats);
+	control_history_output_last_char(last_char, output, &repeats);
 	if (linedata->flags & GRID_LINE_WRAPPED)
 	    evbuffer_add(output, "+", 1);
-	ctx->print(ctx, "%s", output.buffer);
+        temp = xmalloc(evbuffer_get_length(output) + 1);
+        temp[evbuffer_get_length(output)] = '\0';
+        evbuffer_copyout(output, temp, evbuffer_get_length(output));
+	ctx->print(ctx, "%s", temp);
+        xfree(temp);
 	evbuffer_free(output);
 	evbuffer_free(last_char);
 }
@@ -340,6 +343,7 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct window_pane	*wp;
 	struct session		*s;
+        char			*temp;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
@@ -375,11 +379,18 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	/* This is the saved cursor position from CSI DECSC. */
 	control_print_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
 	control_print_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
-	if (wp->ictx.input_since_ground.used)
+	if (evbuffer_get_length(wp->ictx.input_since_ground)) {
+		temp = xmalloc(evbuffer_get_length(wp->ictx.input_since_ground) + 1);
+		evbuffer_copyout(wp->ictx.input_since_ground,
+				 temp,
+				 evbuffer_get_length(wp->ictx.input_since_ground));
+		temp[evbuffer_get_length(wp->ictx.input_since_ground)] = '\0';
 		control_print_hex(ctx,
-			wp->ictx.input_since_ground.buffer,
-			wp->ictx.input_since_ground.used,
+			temp,
+			evbuffer_get_length(wp->ictx.input_since_ground),
 			"pending_output");
+		xfree(temp);
+	}
 	return (0);
 }
 
