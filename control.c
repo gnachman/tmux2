@@ -313,12 +313,8 @@ control_write_attached_session_change_cb(
     struct client *c, unused void *user_data)
 {
 	if (c->flags & CLIENT_SESSION_CHANGED) {
-		struct dstring ds;
-		ds_init(&ds);
-		ds_appendf(&ds, "%%session-changed %d %s\n",
-				   c->session->id, c->session->name);
-		control_write_str(c, ds.buffer);
-		ds_free(&ds);
+		control_write_printf(c, "%%session-changed %d %s\n",
+				    c->session->id, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
 	if (session_changed_flags &

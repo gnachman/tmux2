@@ -693,7 +693,7 @@ input_init(struct window_pane *wp)
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
 
-	ds_init(&ictx->input_since_ground);
+	ictx->input_since_ground = evbuffer_new();
 }
 
 /* Destroy input parser. */
@@ -701,7 +701,7 @@ void
 input_free(unused struct window_pane *wp)
 {
 	if (wp) {
-		ds_free(&wp->ictx.input_since_ground);
+		evbuffer_free(ictx.input_since_ground);
 	}
 }
 
@@ -768,7 +768,8 @@ input_parse(struct window_pane *wp)
 			if (ictx->state != &input_state_ground &&
 				itr->state == &input_state_ground) {
 				/* Entering ground state. */
-				ds_truncate(&ictx->input_since_ground, 0);
+				evbuffer_drain(ictx->input_since_ground,
+				    evbuffer_get_length(ictx->input_since_ground));
 			}
 			ictx->state = itr->state;
 			if (ictx->state->enter != NULL)
@@ -776,7 +777,9 @@ input_parse(struct window_pane *wp)
 		}
 		if (ictx->state != &input_state_ground) {
 			/* Not in ground state, so save input. */
-			ds_appendl(&ictx->input_since_ground, (const char *) &ictx->ch, 1);
+			evbuffer_add(
+			    ictx->input_since_ground, (const char *) &ictx->ch,
+			    1);
 		}
 	}
 

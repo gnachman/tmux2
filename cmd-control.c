@@ -79,45 +79,54 @@ static void
 control_print_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
 		const char *name)
 {
-	struct dstring	ds;
-	int		separator = 0;
+	struct evbuffer	*buffer;
+	int		 separator = 0;
+	char		*temp;
 
-	ds_init(&ds);
+	buffer = evbuffer_new();
 	for (int i = 0; i < length; i++) {
 		if (bit_test(value, i)) {
 			if (separator) {
-				ds_append(&ds, ",");
+				evbuffer_add(buffer, ",", 1);
 			} else {
 				separator = 1;
 			}
-			ds_appendf(&ds, "%d", i);
+			evbuffer_add_printf(buffer, "%d", i);
 		}
 	}
-	ctx->print(ctx, "%s=%s", name, ds.buffer);
-	ds_free(&ds);
+	temp = xmalloc(evbuffer_get_length(buffer) + 1);
+	evbuffer_copyout(buffer, temp, evbuffer_get_length(buffer));
+	temp[evbuffer_get_length(buffer)] = '\0';
+
+	ctx->print(ctx, "%s=%s", name, temp);
+	xfree(temp);
+	evbuffer_free(buffer);
 }
 
 static void
 control_print_string(struct cmd_ctx *ctx, char *str, const char *name)
 {
-	struct dstring	ds;
-	ds_init(&ds);
-
 	ctx->print(ctx, "%s=%s", name, str);
-	ds_free(&ds);
 }
 
 static void
 control_print_hex(
     struct cmd_ctx *ctx, const char *bytes, size_t length, const char *name)
 {
-	struct dstring	ds;
-	ds_init(&ds);
-	for (size_t i = 0; i < length; i++)
-	    ds_appendf(&ds, "%02x", ((int) bytes[i]) % 0xff);
+	struct evbuffer	*buffer = evbuffer_new();
+	char		*temp;
 
-	ctx->print(ctx, "%s=%s", name, ds.buffer);
-	ds_free(&ds);
+	for (size_t i = 0; i < length; i++)
+		evbuffer_add_printf(buffer, "%02x", ((int) bytes[i]) % 0xff);
+
+	temp = xmalloc(evbuffer_get_length(buffer) + 1);
+	evbuffer_copyout(buffer, temp, evbuffer_get_length(buffer));
+	temp[evbuffer_get_length(buffer)] = '\0';
+
+	ctx->print(ctx, "%s=%s", name, temp);
+
+	xfree(temp);
+	evbuffer_free(buffer);
 }
 
 /* Return a hex-encoded version of utf8data. */
@@ -139,56 +148,75 @@ control_history_encode_utf8(struct grid_utf8 *utf8data, char *buffer)
 }
 
 static void
-control_history_output_last_char(struct dstring *last_char,
-				    struct dstring *output, int *repeats)
+control_history_output_last_char(struct evbuffer *last_char,
+				 struct evbuffer *output, int *repeats)
 {
+	char		*temp;
+	
 	if (last_char->used > 0) {
-		ds_append(output, last_char->buffer);
-		if (*repeats == 2 && last_char->used <= 3)
-		    /* If an ASCII code repeats once then it's shorter to
-		     * print it twice than to use the run-length encoding.
-		     */
-		    ds_append(output, last_char->buffer);
+		evbuffer_add_buffer(output, last_char);
+		if (*repeats == 2 && evbuffer_get_length(last_char) <= 3)
+			/* If an ASCII code repeats once then it's shorter to
+			 * print it twice than to use the run-length encoding.
+			 */
+			evbuffer_add_buffer(output, last_char);
 		else if (*repeats > 1)
-		    /* Output "*<n> " to indicate that the last character
-		     * repeats <n> times. For instance, "AAA" is
-		     * represented as "61*3". */
-		    ds_appendf(output, "*%d ", *repeats);
-		ds_truncate(last_char, 0);
+			/* Output "*<n> " to indicate that the last character
+			 * repeats <n> times. For instance, "AAA" is
+			 * represented as "61*3". */
+			evbuffer_add_printf(output, "*%d ", *repeats);
+		evbuffer_drain(last_char, evbuffer_get_length(last_char));
 	}
+}
+
+static int
+control_evbuffer_strcmp(struct evbuffer *a, struct evbuffer *b)
+{
+	char	*temp_a;
+	char	*temp_b;
+	temp_a = xmalloc(evbuffer_get_length(a) + 1)
+	temp_b = xmalloc(evbuffer_get_length(b) + 1)
+	evbuffer_copyout(a, temp_a, evbuffer_get_length(a));
+	evbuffer_copyout(b, temp_b, evbuffer_get_length(b));
+	temp_a[evbuffer_get_length(a)] = 0;
+	temp_b[evbuffer_get_length(b)] = 0;
+	int rc = strcmp(temp_a, temp_b);
+	xfree(temp_a);
+	xfree(temp_b);
+	return rc;
 }
 
 static void
 control_history_append_char(struct grid_cell *celldata,
 			       struct grid_utf8 *utf8data,
-			       struct dstring *last_char, int *repeats,
-			       struct dstring *output)
+			       struct evbuffer *last_char, int *repeats,
+			       struct evbuffer *output)
 {
-	struct dstring	ds;
-	ds_init(&ds);
+	struct evbuffer	*temp = evbuffer_new();
 
 	if (celldata->flags & GRID_FLAG_UTF8) {
 		char temp[CONTROL_HISTORY_UTF8_BUFFER_SIZE + 3];
 		control_history_encode_utf8(utf8data, temp);
-		ds_appendf(&ds, "[%s]",
-			   control_history_encode_utf8(utf8data, temp));
+		evbuffer_add_printf(
+		    temp, "[%s]", control_history_encode_utf8(utf8data, temp));
 	} else
-	    ds_appendf(&ds, "%x", ((int) celldata->data) & 0xff);
-	if (last_char->used > 0 && !strcmp(ds.buffer, last_char->buffer)) {
+		evbuffer_add_printf(temp, "%x", ((int) celldata->data) & 0xff);
+	if (last_char->used > 0 && !control_evbuffer_strcmp(temp, last_char)) {
 		/* Last character repeated */
 		(*repeats)++;
 	} else {
 		/* Not a repeat */
 		control_history_output_last_char(last_char, output, repeats);
-		ds_append(last_char, ds.buffer);
+		evbuffer_add_buffer(last_char, temp);
 		*repeats = 1;
 	}
+	evbuffer_free(temp);
 }
 
 static void
-control_history_cell(struct dstring *output, struct grid_cell *celldata,
-			struct grid_utf8 *utf8data, int *dump_context,
-			struct dstring *last_char, int *repeats)
+control_history_cell(struct evbuffer *output, struct grid_cell *celldata,
+		     struct grid_utf8 *utf8data, int *dump_context,
+		     struct evbuffer *last_char, int *repeats)
 {
 	int	flags;
 
@@ -208,7 +236,7 @@ control_history_cell(struct dstring *output, struct grid_cell *celldata,
 		dump_context[3] = celldata->bg;
 
 		control_history_output_last_char(last_char, output, repeats);
-		ds_appendf(output, ":%x,%x,%x,%x,", celldata->attr,
+		evbuffer_add_printf(output, ":%x,%x,%x,%x,", celldata->attr,
 			   celldata->flags, celldata->fg, celldata->bg);
 	}
 	control_history_append_char(celldata, utf8data, last_char, repeats,
@@ -217,24 +245,25 @@ control_history_cell(struct dstring *output, struct grid_cell *celldata,
 
 static void
 control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
-			int *dump_context)
+		     int *dump_context)
 {
-	unsigned int	i;
-	struct dstring	last_char;
-	struct dstring	output;
-	int		repeats = 0;
+	unsigned int	 i;
+	struct evbuffer	*last_char;
+	struct evbuffer	*output;
+	int		 repeats = 0;
 
-	ds_init(&output);
-	ds_init(&last_char);
+	output = evbuffer_new();
+	last_char = evbuffer_new();
 	for (i = 0; i < linedata->cellsize; i++)
 	    control_history_cell(
 		&output, linedata->celldata + i, linedata->utf8data + i,
 		dump_context, &last_char, &repeats);
 	control_history_output_last_char(&last_char, &output, &repeats);
 	if (linedata->flags & GRID_LINE_WRAPPED)
-	    ds_appendf(&output, "+");
+	    evbuffer_add(output, "+", 1);
 	ctx->print(ctx, "%s", output.buffer);
-	ds_free(&output);
+	evbuffer_free(output);
+	evbuffer_free(last_char);
 }
 
 /* This command prints the contents of the screen plus its history.

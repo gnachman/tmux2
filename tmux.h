@@ -744,16 +744,6 @@ struct screen_write_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
-/* dstring is a dynamic string. It is null terminated. It allocates memory as
- * needed and has an amortized O(n) cost of appending. */
-struct dstring {
-	char	*buffer;	/* always points at the current buffer. */
-	int	 used;		/* this does not include the trailing nul. */
-	int	 available;	/* amount of allocated space in buffer. */
-#define DSTRING_STATIC_BUFFER_SIZE 1024
-	char	 staticbuffer[DSTRING_STATIC_BUFFER_SIZE];
-};
-
 /* Input parser context. */
 struct input_ctx {
 	struct window_pane     *wp;
@@ -788,7 +778,7 @@ struct input_ctx {
 	/* All input received since we were last in the ground state. Sent to
 	 * control clients on connection so their vt100 state can be the same as
 	 * ours. */
-	struct dstring		 input_since_ground;
+	struct evbuffer	 	*input_since_ground;
 };
 
 /*
@@ -1727,14 +1717,6 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_window_renamed(struct window *w);
-
-/* dstring.c */
-void	ds_init(struct dstring *ds);
-void	ds_free(struct dstring *ds);
-void	ds_appendf(struct dstring *ds, const char *fmt, ...);
-void	ds_append(struct dstring *ds, const char *str);
-void	ds_appendl(struct dstring *ds, const char *str, int len);
-void	ds_truncate(struct dstring *ds, int new_length);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
