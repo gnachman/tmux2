@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/file.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -358,7 +359,6 @@ client_send_identify(int flags)
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
-	/* For control clients, this has to be the last message. */
 	imsg_compose(&client_ibuf,
 	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
 }

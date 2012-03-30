@@ -1107,6 +1107,7 @@ to
 .Ql 9
 keys.
 .It Xo Ic find-window
+.Op Fl CNT
 .Op Fl t Ar target-window
 .Ar match-string
 .Xc
@@ -1116,8 +1117,17 @@ Search for the
 pattern
 .Ar match-string
 in window names, titles, and visible content (but not history).
-If only one window is matched, it'll be automatically selected, otherwise a
-choice list is shown.
+The flags control matching behavior:
+.Fl C
+matches only visible window contents,
+.Fl N
+matches only the window name and
+.Fl T
+matches only the window title.
+The default is
+.Fl CNT .
+If only one window is matched, it'll be automatically selected,
+otherwise a choice list is shown.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
@@ -2471,6 +2481,24 @@ It may be switched off globally with:
 set-window-option -g automatic-rename off
 .Ed
 .Pp
+.It Ic c0-change-interval Ar interval
+.It Ic c0-change-trigger Ar trigger
+These two options configure a simple form of rate limiting for a pane.
+If
+.Nm
+sees more than
+.Ar trigger
+C0 sequences that modify the screen (for example, carriage returns, linefeeds
+or backspaces) in one millisecond, it will stop updating the pane immediately and
+instead redraw it entirely every
+.Ar interval
+milliseconds.
+This helps to prevent fast output (such as
+.Xr yes 1
+overwhelming the terminal).
+The default is a trigger of 250 and an interval of 100.
+A trigger of zero disables the rate limiting.
+.Pp
 .It Ic clock-mode-colour Ar colour
 Set clock colour.
 .Pp
@@ -2888,12 +2916,16 @@ new process.
 .It Xo Ic show-environment
 .Op Fl g
 .Op Fl t Ar target-session
+.Op Ar variable
 .Xc
 .D1 (alias: Ic showenv )
 Display the environment for
 .Ar target-session
 or the global environment with
 .Fl g .
+If
+.Ar variable
+is omitted, all variables are shown.
 Variables removed from the environment are prefixed with
 .Ql - .
 .El
