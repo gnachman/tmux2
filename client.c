@@ -138,14 +138,20 @@ void
 client_wait_for_exit_confirmation(void)
 {
 	char	 buffer[100];
+	char	*newline;
 
 	setblocking(fileno(stdin), 1);
 	while (1) {
-	    if (!fgets(buffer, sizeof(buffer), stdin))
-		    break;
-	    if (!strcmp(buffer, "#ack-exit\n") ||
-		!strcmp(buffer, "#ack-exit\r\n"))
-		    break;
+		if (!fgets(buffer, sizeof(buffer), stdin))
+			break;
+		newline = strchr(buffer, '\n');
+		if (newline)
+		    	*newline = '\0';
+		newline = strchr(buffer, '\r');
+		if (newline)
+		    	*newline = '\0';
+		if (control_command_is_ack_exit(buffer))
+			break;
 	}
 }
 

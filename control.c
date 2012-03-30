@@ -116,6 +116,12 @@ control_msg_info(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
+int
+control_command_is_ack_exit(char *line)
+{
+    return !strcmp(line, "#ack-exit");
+}
+
 /* Control input callback. */
 void
 control_read_callback(unused struct bufferevent *bufev, void *data)
@@ -131,7 +137,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_ANY);
 	while (line) {
 	    if (c->flags & CLIENT_EXITING) {
-		    if (!strcmp(line, "#ack-exit")) {
+		    if (control_command_is_ack_exit(line)) {
 			    server_client_exit(c);
 		    }
 	    } else {

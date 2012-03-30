@@ -1717,6 +1717,7 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_window_renamed(struct window *w);
+int	control_command_is_ack_exit(char *);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
