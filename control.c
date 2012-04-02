@@ -45,13 +45,8 @@ struct window_change {
 };
 TAILQ_HEAD(, window_change) window_changes;
 
-/* A client-defined key-value pair. */
-struct kvp {
-	char *name;
-	char *value;
-	TAILQ_ENTRY(kvp) entry;
-};
-TAILQ_HEAD(, kvp) kvps;
+/* Global key-value pairs. */
+struct options	 control_options;
 
 /* Stored text to send control clients. */
 struct control_input_ctx {
@@ -655,40 +650,23 @@ control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
 void
 control_set_kvp(const char *name, const char *value)
 {
-	struct kvp	*new_kvp;
-	struct kvp	*old_kvp;
-
-	/* Search for an existing kvp with this name and replace the value if
-	 * found. */
-	TAILQ_FOREACH(old_kvp, &kvps, entry) {
-		if (!strcmp(old_kvp->name, name)) {
-			xfree(old_kvp->value);
-			old_kvp->value = xstrdup(value);
-			return;
-		}
-	}
-
-	/* Add a new kvp. */
-	new_kvp = xmalloc(sizeof(struct kvp));
-	new_kvp->name = xstrdup(name);
-	new_kvp->value = xstrdup(value);
-	TAILQ_INSERT_TAIL(&kvps, new_kvp, entry);
+	options_set_string(&control_options, name, "%s", value);
 }
 
 char *
 control_get_kvp_value(const char *name)
 {
-	struct kvp	*current;
+    	struct options_entry	*o;
 
-	TAILQ_FOREACH(current, &kvps, entry) {
-		if (!strcmp(current->name, name))
-		    return current->value;
-	}
-	return NULL;
+	o = options_find(&control_options, name);
+	if (o == NULL || o->type != OPTIONS_STRING)
+	    	return NULL;
+
+	return o->str;
 }
 
 void control_init(void)
 {
 	TAILQ_INIT(&window_changes);
-	TAILQ_INIT(&kvps);
+	options_init(&control_options, NULL);
 }
