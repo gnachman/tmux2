@@ -268,6 +268,8 @@ void
 control_write_input(struct client *c, struct window_pane *wp,
 			const u_char *buf, int len)
 {
+	if (!c->session)
+	    return;
 	/* Only write input if the window pane is linked to a window belonging
 	 * to the client's session. */
 	if (winlink_find_by_window(&c->session->windows, wp->window)) {
@@ -313,7 +315,7 @@ static void
 control_write_attached_session_change_cb(
     struct client *c, unused void *user_data)
 {
-	if (c->flags & CLIENT_SESSION_CHANGED) {
+	if (c->session && (c->flags & CLIENT_SESSION_CHANGED)) {
 		control_write_printf(c, "%%session-changed %d %s\n",
 				    c->session->id, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
@@ -323,7 +325,8 @@ control_write_attached_session_change_cb(
 		control_write_str(c, "%sessions-changed\n");
 	}
 	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
-		(c->session->flags & SESSION_RENAMED)) {
+	    c->session &&
+	    (c->session->flags & SESSION_RENAMED)) {
 		control_write_printf(c, "%%session-renamed %s\n",
 				     c->session->name);
 	}
@@ -346,6 +349,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 	for (int i = 0; i < num_layouts_changed; i++) {
 		struct window	*w = layouts_changed[i];
 		if (w &&
+		    c->session &&
 		    winlink_find_by_window_id(&c->session->windows, w->id)) {
 			/* When the last pane in a window is closed it won't
 			 * have a layout root and we don't need to inform the
