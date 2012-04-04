@@ -306,12 +306,26 @@ client_main(int argc, char **argv, int flags)
 	if (client_attached) {
 		if (client_exitreason != EXIT_NONE && !login_shell) {
 			if (flags & IDENTIFY_CONTROL) {
-				if (client_exitreason == EXIT_LOST_SERVER) {
+				switch (client_exitreason) {
+				case EXIT_LOST_SERVER:
 				    	/* The server died without being able to
 					 * send %exit. Shut the control client
 					 * down cleanly. */
 					printf("%%exit %s\n", client_exitmsg());
 					client_wait_for_exit_confirmation();
+					break;
+
+				case EXIT_LOST_TTY:
+				case EXIT_TERMINATED:
+					/* The client is being killed. Try to
+					 * shut down cleanly although it's not
+					 * likely to make it to the client in
+					 * the case of a lost TTY. */
+					printf("%%exit %s\n", client_exitmsg());
+					break;
+
+				default:
+					break;
 				}
 			} else {
 				printf("[%s]\n", client_exitmsg());
@@ -420,13 +434,21 @@ client_signal(int sig, unused short events, unused void *data)
 		switch (sig) {
 		case SIGHUP:
 			client_exitreason = EXIT_LOST_TTY;
-			client_exitval = 1;
-			client_write_server(MSG_EXITING, NULL, 0);
+			if (is_control_client) {
+				event_loopexit(NULL);
+			} else {
+				client_exitval = 1;
+				client_write_server(MSG_EXITING, NULL, 0);
+			}
 			break;
 		case SIGTERM:
 			client_exitreason = EXIT_TERMINATED;
-			client_exitval = 1;
-			client_write_server(MSG_EXITING, NULL, 0);
+			if (is_control_client) {
+				event_loopexit(NULL);
+			} else {
+				client_exitval = 1;
+				client_write_server(MSG_EXITING, NULL, 0);
+			}
 			break;
 		case SIGWINCH:
 			client_write_server(MSG_RESIZE, NULL, 0);
