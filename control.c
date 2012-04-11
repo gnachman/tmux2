@@ -135,6 +135,8 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 		    if (control_command_is_ack_exit(line)) {
 			    server_client_exit(c);
 		    }
+	    } else if (!line[0]) {
+		server_client_exit(c);
 	    } else {
 		    /* Parse command. */
 		    ctx.msgdata = NULL;
@@ -202,7 +204,8 @@ control_start(struct client *c)
 	c->stdin_event = bufferevent_new(c->stdin_fd,
 					 control_read_callback,
 					 NULL,
-					 control_error_callback, c);
+					 control_error_callback,
+					 c);
 	if (c->stdin_event == NULL)
 		fatalx("failed to create stdin event");
 	bufferevent_enable(c->stdin_event, EV_READ);
@@ -626,9 +629,8 @@ control_handshake(struct client *c)
 		    c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
 		    "\033\\%noop If you can see this message, "
 		    "your terminal emulator does not support tmux mode "
-		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Type "
-		    "\"detach\" and press the enter key to return to your "
-		    "shell.\n");
+		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Press "
+		    "enter to return to your shell.\n");
 		c->flags |= CLIENT_SESSION_HANDSHAKE;
 	}
 }
