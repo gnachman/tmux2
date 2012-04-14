@@ -33,6 +33,14 @@
  */
 #define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "1.0"
 
+/* When the output buffer grows beyond this limit, pause the PTYs in this
+ * session. */
+#define OUTPUT_BUFFER_PAUSE_THRESHOLD 256
+
+/* When a paused session's output buffer is drained to less than this size,
+ * unpause the PTYs in this session. */
+#define OUTPUT_BUFFER_UNPAUSE_THRESHOLD 128
+
 typedef void control_write_cb(struct client *c, void *user_data);
 
 /* A pending change related to a window's state. */
@@ -81,6 +89,7 @@ void	control_read_callback(unused struct bufferevent *bufev, void *data);
 void	control_error_callback(unused struct bufferevent *bufev,
 		unused short what, void *data);
 void	control_write_hex(struct client *c, const char *buf, int len);
+void	control_update_window_paused(struct window *w);
 
 void printflike2
 control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
@@ -115,6 +124,23 @@ int
 control_command_is_ack_exit(char *line)
 {
     return !strcmp(line, "#ack-exit");
+}
+
+/* Control write buffer fell under low water mark */
+void
+control_write_callback(unused struct bufferevent *bufev, void *data)
+{
+	struct client		*c = data;
+
+	if (c->session != NULL) {
+		session_unpause(c->session);
+
+		/* Stop calling the write callback. */
+		bufferevent_setwatermark(c->stdout_event,
+					 EV_WRITE,
+					 (size_t)-1,
+					 (size_t)-1);
+	}
 }
 
 /* Control input callback. */
@@ -281,6 +307,13 @@ control_write_input(struct client *c, struct window_pane *wp,
 		control_write_str(c, " ");
 		control_write_hex(c, buf, len);
 		control_write_str(c, "\n");
+		if (EVBUFFER_LENGTH(c->stdout_event->output) > OUTPUT_BUFFER_PAUSE_THRESHOLD) {
+		    	bufferevent_setwatermark(c->stdout_event,
+						 EV_WRITE,
+						 OUTPUT_BUFFER_UNPAUSE_THRESHOLD,
+						 (size_t)-1);
+		    	session_pause(c->session);
+		}
 	}
 }
 
@@ -376,8 +409,19 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 }
 
 void
+control_update_window_paused(struct window *w)
+{
+	struct session *s;
+
+	RB_FOREACH(s, sessions, &sessions) {
+		session_update_window_paused(s, w);
+	}
+}
+
+void
 control_notify_layout_change(struct window *w)
 {
+    	control_update_window_paused(w);
 	for (int i = 0; i < num_layouts_changed; i++) {
 		if (layouts_changed[i] == w) {
 			// Don't add a duplicate
@@ -450,6 +494,8 @@ void
 control_notify_window_added(struct window *w)
 {
 	struct window_change	*change = xmalloc(sizeof(struct window_change));
+
+    	control_update_window_paused(w);
 	change->window_id = w->id;
 
 	change->action = WINDOW_CREATED;

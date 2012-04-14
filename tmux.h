@@ -978,6 +978,7 @@ struct session {
 
 #define SESSION_UNATTACHED	0x1	/* not attached to any clients */
 #define SESSION_RENAMED		0x2	/* notify control clients */
+#define SESSION_PAUSED		0x4	/* don't read ptys until stdout drains */
 	int		 flags;
 
 	struct termios	*tio;
@@ -1723,6 +1724,8 @@ void	control_notify_session_created(struct session *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_window_renamed(struct window *w);
 int	control_command_is_ack_exit(char *);
+void	control_write_callback(unused struct bufferevent *bufev, void *data);
+void	control_update_window_paused(struct window *w);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
@@ -2141,6 +2144,9 @@ void		 session_group_remove(struct session *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
 void		 session_group_synchronize1(struct session *, struct session *);
+void		 session_pause(struct session *s);
+void		 session_unpause(struct session *s);
+void		 session_update_window_paused(struct session *s, struct window *w);
 
 /* utf8.c */
 void	utf8_build(void);
