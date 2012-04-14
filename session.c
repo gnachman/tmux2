@@ -592,3 +592,54 @@ session_group_synchronize1(struct session *target, struct session *s)
 		winlink_remove(&old_windows, wl);
 	}
 }
+
+void
+session_pause(struct session *s)
+{
+	struct winlink	*wl;
+	struct window_pane	*wp;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl->window != NULL) {
+			TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+			    bufferevent_disable(wp->event, EV_READ);
+			}
+		}
+	}
+	s->flags |= SESSION_PAUSED;
+}
+
+void
+session_unpause(struct session *s)
+{
+	struct winlink	*wl;
+	struct window_pane	*wp;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl->window != NULL) {
+			TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+			    bufferevent_enable(wp->event, EV_READ);
+			}
+		}
+	}
+	s->flags &= ~SESSION_PAUSED;
+}
+
+/* Pause or unpause the PTYs in a single window. */
+void
+session_update_window_paused(struct session *s, struct window *w)
+{
+    	struct winlink		*wl;
+	struct window_pane	*wp;
+
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl->window == w) {
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+			    if (s->flags & SESSION_PAUSED)
+				    bufferevent_disable(wp->event, EV_READ);
+			    else
+				    bufferevent_enable(wp->event, EV_READ);
+		    }
+		}
+	}
+}
