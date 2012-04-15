@@ -79,28 +79,21 @@ static void
 control_print_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
 		const char *name)
 {
-	struct evbuffer	*buffer;
 	int		 separator = 0;
-	char		*temp;
 
-	buffer = evbuffer_new();
+	evbuffer_add(ctx->curclient->stdout_event->output, name, strlen(name));
+	evbuffer_add(ctx->curclient->stdout_event->output, "=", 1);
 	for (int i = 0; i < length; i++) {
 		if (bit_test(value, i)) {
 			if (separator) {
-				evbuffer_add(buffer, ",", 1);
+				evbuffer_add(ctx->curclient->stdout_event->output, ",", 1);
 			} else {
 				separator = 1;
 			}
-			evbuffer_add_printf(buffer, "%d", i);
+			evbuffer_add_printf(ctx->curclient->stdout_event->output, "%d", i);
 		}
 	}
-	temp = xmalloc(evbuffer_get_length(buffer) + 1);
-	evbuffer_copyout(buffer, temp, evbuffer_get_length(buffer));
-	temp[evbuffer_get_length(buffer)] = '\0';
-
-	ctx->print(ctx, "%s=%s", name, temp);
-	xfree(temp);
-	evbuffer_free(buffer);
+	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
 }
 
 static void
@@ -113,20 +106,11 @@ static void
 control_print_hex(
     struct cmd_ctx *ctx, const char *bytes, size_t length, const char *name)
 {
-	struct evbuffer	*buffer = evbuffer_new();
-	char		*temp;
-
+	evbuffer_add(ctx->curclient->stdout_event->output, name, strlen(name));
+	evbuffer_add(ctx->curclient->stdout_event->output, "=", 1);
 	for (size_t i = 0; i < length; i++)
-		evbuffer_add_printf(buffer, "%02x", ((int) bytes[i]) % 0xff);
-
-	temp = xmalloc(evbuffer_get_length(buffer) + 1);
-	evbuffer_copyout(buffer, temp, evbuffer_get_length(buffer));
-	temp[evbuffer_get_length(buffer)] = '\0';
-
-	ctx->print(ctx, "%s=%s", name, temp);
-
-	xfree(temp);
-	evbuffer_free(buffer);
+		evbuffer_add_printf(ctx->curclient->stdout_event->output, "%02x", ((int) bytes[i]) % 0xff);
+	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
 }
 
 /* Return a hex-encoded version of utf8data. */
@@ -151,9 +135,9 @@ static void
 control_history_output_last_char(struct evbuffer *last_char,
 				 struct evbuffer *output, int *repeats)
 {
-	if (evbuffer_get_length(last_char) > 0) {
+	if (EVBUFFER_LENGTH(last_char) > 0) {
 		evbuffer_add_buffer(output, last_char);
-		if (*repeats == 2 && evbuffer_get_length(last_char) <= 3)
+		if (*repeats == 2 && EVBUFFER_LENGTH(last_char) <= 3)
 			/* If an ASCII code repeats once then it's shorter to
 			 * print it twice than to use the run-length encoding.
 			 */
@@ -163,26 +147,8 @@ control_history_output_last_char(struct evbuffer *last_char,
 			 * repeats <n> times. For instance, "AAA" is
 			 * represented as "61*3". */
 			evbuffer_add_printf(output, "*%d ", *repeats);
-		evbuffer_drain(last_char, evbuffer_get_length(last_char));
+		evbuffer_drain(last_char, EVBUFFER_LENGTH(last_char));
 	}
-}
-
-static int
-control_evbuffer_strcmp(struct evbuffer *a, struct evbuffer *b)
-{
-	char	*temp_a;
-	char	*temp_b;
-
-	temp_a = xmalloc(evbuffer_get_length(a) + 1);
-	temp_b = xmalloc(evbuffer_get_length(b) + 1);
-	evbuffer_copyout(a, temp_a, evbuffer_get_length(a));
-	evbuffer_copyout(b, temp_b, evbuffer_get_length(b));
-	temp_a[evbuffer_get_length(a)] = 0;
-	temp_b[evbuffer_get_length(b)] = 0;
-	int rc = strcmp(temp_a, temp_b);
-	xfree(temp_a);
-	xfree(temp_b);
-	return rc;
 }
 
 static void
@@ -200,8 +166,10 @@ control_history_append_char(struct grid_cell *celldata,
 		    buffer, "[%s]", control_history_encode_utf8(utf8data, temp));
 	} else
 		evbuffer_add_printf(buffer, "%x", ((int) celldata->data) & 0xff);
-	if (evbuffer_get_length(last_char) > 0 &&
-	    !control_evbuffer_strcmp(buffer, last_char)) {
+	if (EVBUFFER_LENGTH(last_char) > 0 &&
+            !memcmp(EVBUFFER_DATA(buffer),
+		    EVBUFFER_DATA(last_char),
+		    EVBUFFER_LENGTH(last_char))) {
 		/* Last character repeated */
 		(*repeats)++;
 	} else {
@@ -249,26 +217,19 @@ control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 {
 	unsigned int	 i;
 	struct evbuffer	*last_char;
-	struct evbuffer	*output;
 	int		 repeats = 0;
-	char		*temp;
 
-	output = evbuffer_new();
 	last_char = evbuffer_new();
 	for (i = 0; i < linedata->cellsize; i++)
 	    control_history_cell(
-		output, linedata->celldata + i, linedata->utf8data + i,
-		dump_context, last_char, &repeats);
-	control_history_output_last_char(last_char, output, &repeats);
+		ctx->curclient->stdout_event->output, linedata->celldata + i,
+		linedata->utf8data + i, dump_context, last_char, &repeats);
+	control_history_output_last_char(
+		last_char, ctx->curclient->stdout_event->output, &repeats);
 	if (linedata->flags & GRID_LINE_WRAPPED)
-	    evbuffer_add(output, "+", 1);
-	temp = xmalloc(evbuffer_get_length(output) + 1);
-	temp[evbuffer_get_length(output)] = '\0';
-	evbuffer_copyout(output, temp, evbuffer_get_length(output));
-	ctx->print(ctx, "%s", temp);
-	xfree(temp);
+	    evbuffer_add(ctx->curclient->stdout_event->output, "+", 1);
+	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
 
-	evbuffer_free(output);
 	evbuffer_free(last_char);
 }
 
@@ -346,7 +307,6 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct window_pane	*wp;
 	struct session		*s;
-	char			*temp;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
@@ -382,17 +342,12 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	/* This is the saved cursor position from CSI DECSC. */
 	control_print_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
 	control_print_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
-	if (evbuffer_get_length(wp->ictx.input_since_ground)) {
-		temp = xmalloc(evbuffer_get_length(wp->ictx.input_since_ground) + 1);
-		evbuffer_copyout(wp->ictx.input_since_ground,
-				 temp,
-				 evbuffer_get_length(wp->ictx.input_since_ground));
-		temp[evbuffer_get_length(wp->ictx.input_since_ground)] = '\0';
-		control_print_hex(ctx,
-			temp,
-			evbuffer_get_length(wp->ictx.input_since_ground),
+	if (EVBUFFER_LENGTH(wp->ictx.input_since_ground)) {
+		control_print_hex(
+			ctx,
+			EVBUFFER_DATA(wp->ictx.input_since_ground),
+			EVBUFFER_LENGTH(wp->ictx.input_since_ground),
 			"pending_output");
-		xfree(temp);
 	}
 	return (0);
 }

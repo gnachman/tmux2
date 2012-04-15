@@ -769,7 +769,7 @@ input_parse(struct window_pane *wp)
 				itr->state == &input_state_ground) {
 				/* Entering ground state. */
 				evbuffer_drain(ictx->input_since_ground,
-				    evbuffer_get_length(ictx->input_since_ground));
+				    EVBUFFER_LENGTH(ictx->input_since_ground));
 			}
 			ictx->state = itr->state;
 			if (ictx->state->enter != NULL)

@@ -259,7 +259,7 @@ control_write_hex(struct client *c, const char *buf, int len)
 void
 control_force_write_str(struct client *c, const char *str)
 {
-	evbuffer_add(c->stdout_event->output, str, strlen(str));
+	bufferevent_write(c->stdout_event, str, strlen(str));
 }
 
 void
@@ -272,7 +272,7 @@ control_write(struct client *c, const char *buf, int len)
 		 * This indicates that the initial setup performed by the local
 		 * client is complete and the remote client is expecting to
 		 * send and receive commands. */
-		evbuffer_add(c->stdout_event->output, buf, len);
+		bufferevent_write(c->stdout_event, buf, len);
 	}
 }
 
@@ -307,6 +307,7 @@ control_write_input(struct client *c, struct window_pane *wp,
 		control_write_str(c, " ");
 		control_write_hex(c, buf, len);
 		control_write_str(c, "\n");
+#if 0
 		if (EVBUFFER_LENGTH(c->stdout_event->output) > OUTPUT_BUFFER_PAUSE_THRESHOLD) {
 		    	bufferevent_setwatermark(c->stdout_event,
 						 EV_WRITE,
@@ -314,6 +315,7 @@ control_write_input(struct client *c, struct window_pane *wp,
 						 (size_t)-1);
 		    	session_pause(c->session);
 		}
+#endif
 	}
 }
 
