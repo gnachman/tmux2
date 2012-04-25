@@ -1723,7 +1723,6 @@ void	control_notify_session_closed(struct session *);
 void	control_notify_session_created(struct session *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_window_renamed(struct window *w);
-int	control_command_is_ack_exit(char *);
 void	control_write_callback(unused struct bufferevent *bufev, void *data);
 void	control_update_window_paused(struct window *w);
 

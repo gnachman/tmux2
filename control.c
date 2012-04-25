@@ -120,19 +120,13 @@ control_msg_info(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
-int
-control_command_is_ack_exit(char *line)
-{
-    return !strcmp(line, "#ack-exit");
-}
-
 /* Control write buffer fell under low water mark */
 void
 control_write_callback(unused struct bufferevent *bufev, void *data)
 {
 	struct client		*c = data;
 
-	if (c->session != NULL) {
+	if (c->session != NULL && (c->session->flags & SESSION_PAUSED)) {
 		session_unpause(c->session);
 
 		/* Stop calling the write callback. */
@@ -157,11 +151,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	/* Read all available input lines. */
 	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_ANY);
 	while (line) {
-	    if (c->flags & CLIENT_EXITING) {
-		    if (control_command_is_ack_exit(line)) {
-			    server_client_exit(c);
-		    }
-	    } else if (!line[0]) {
+	    if (!line[0]) {
 		server_client_exit(c);
 	    } else {
 		    /* Parse command. */
@@ -307,7 +297,6 @@ control_write_input(struct client *c, struct window_pane *wp,
 		control_write_str(c, " ");
 		control_write_hex(c, buf, len);
 		control_write_str(c, "\n");
-#if 0
 		if (EVBUFFER_LENGTH(c->stdout_event->output) > OUTPUT_BUFFER_PAUSE_THRESHOLD) {
 		    	bufferevent_setwatermark(c->stdout_event,
 						 EV_WRITE,
@@ -315,7 +304,6 @@ control_write_input(struct client *c, struct window_pane *wp,
 						 (size_t)-1);
 		    	session_pause(c->session);
 		}
-#endif
 	}
 }
 

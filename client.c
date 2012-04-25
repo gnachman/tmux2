@@ -134,7 +134,7 @@ failed:
 	return (-1);
 }
 
-/* Read lines from stdin until #ack-exit is read, then return. */
+/* Read lines from stdin until an empty line is read, then return. */
 void
 client_wait_for_exit_confirmation(void)
 {
@@ -151,7 +151,7 @@ client_wait_for_exit_confirmation(void)
 		newline = strchr(buffer, '\r');
 		if (newline)
 		    	*newline = '\0';
-		if (control_command_is_ack_exit(buffer))
+		if (!buffer[0])
 			break;
 	}
 }
