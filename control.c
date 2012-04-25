@@ -149,11 +149,11 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	char			*cause;
 
 	/* Read all available input lines. */
-	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_ANY);
+	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_CRLF);
 	while (line) {
 	    if (!line[0]) {
 		server_client_exit(c);
-	    } else {
+	    } else if (!(c->flags & CLIENT_EXITING)) {
 		    /* Parse command. */
 		    ctx.msgdata = NULL;
 		    ctx.cmdclient = NULL;
@@ -187,7 +187,7 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 	    xfree(line);
 	    /* Read input line. */
 	    line = evbuffer_readln(c->stdin_event->input, NULL,
-				   EVBUFFER_EOL_ANY);
+				   EVBUFFER_EOL_CRLF);
 	}
 }
 
