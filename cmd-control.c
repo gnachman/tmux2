@@ -342,11 +342,11 @@ control_emulator_command(struct cmd *self, struct cmd_ctx *ctx)
 	/* This is the saved cursor position from CSI DECSC. */
 	control_print_int(ctx, wp->ictx.old_cx, "decsc_cursor_x");
 	control_print_int(ctx, wp->ictx.old_cy, "decsc_cursor_y");
-	if (EVBUFFER_LENGTH(wp->ictx.input_since_ground)) {
+	if (EVBUFFER_LENGTH(wp->ictx.since_ground)) {
 		control_print_hex(
 			ctx,
-			EVBUFFER_DATA(wp->ictx.input_since_ground),
-			EVBUFFER_LENGTH(wp->ictx.input_since_ground),
+			EVBUFFER_DATA(wp->ictx.since_ground),
+			EVBUFFER_LENGTH(wp->ictx.since_ground),
 			"pending_output");
 	}
 	return (0);

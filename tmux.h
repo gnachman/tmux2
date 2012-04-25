@@ -774,11 +774,10 @@ struct input_ctx {
 #define INPUT_DISCARD 0x1
 
 	const struct input_state *state;
-
 	/* All input received since we were last in the ground state. Sent to
-	 * control clients on connection so their vt100 state can be the same as
-	 * ours. */
-	struct evbuffer	 	*input_since_ground;
+	 * control clients on connection.
+	 */
+	struct evbuffer	 	*since_ground;
 };
 
 /*
