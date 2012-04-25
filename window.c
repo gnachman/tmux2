@@ -112,7 +112,7 @@ winlink_find_by_window_id(struct winlinks *wwl, u_int id)
 		if (wl->window->id == id)
 			return (wl);
 	}
-	return NULL;
+	return (NULL);
 }
 
 int
@@ -270,7 +270,7 @@ window_find_by_id(u_int id)
 		if (w->id == id)
 			return (w);
 	}
-	return NULL;
+	return (NULL);
 }
 
 struct window *
@@ -289,13 +289,14 @@ window_create1(u_int sx, u_int sy)
 
 	w->lastlayout = -1;
 	w->layout_root = NULL;
+	TAILQ_INIT(&w->layout_list);
 
 	w->sx = sx;
 	w->sy = sy;
 
-	queue_window_name(w);
-
 	options_init(&w->options, &global_w_options);
+	if (options_get_number(&w->options, "automatic-rename"))
+		queue_window_name(w);
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if (ARRAY_ITEM(&windows, i) == NULL) {

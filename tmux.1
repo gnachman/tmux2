@@ -1165,11 +1165,18 @@ The
 .Fl a
 option kills all but the pane given with
 .Fl t .
-.It Ic kill-window Op Fl t Ar target-window
+.It Xo Ic kill-window
+.Op Fl a
+.Op Fl t Ar target-window
+.Xc
 .D1 (alias: Ic killw )
 Kill the current window or the window at
 .Ar target-window ,
 removing it from any sessions to which it is linked.
+The
+.Fl a
+option kills all but the window given with
+.Fl t .
 .It Ic last-pane Op Fl t Ar target-window
 .D1 (alias: Ic lastp )
 Select the last (previously selected) pane.
@@ -1459,7 +1466,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl np
+.Op Fl npUu
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1476,6 +1483,13 @@ are equivalent to the
 and
 .Ic previous-layout
 commands.
+.Pp
+.Fl U
+and
+.Fl u
+step forward and back through previous layouts, up to the maximum set by the
+.Ic layout-history-limit
+option.
 .It Xo Ic select-pane
 .Op Fl lDLRU
 .Op Fl t Ar target-pane
@@ -2517,6 +2531,13 @@ or
 .Ar height .
 A value of zero restores the default unlimited setting.
 .Pp
+.It Ic layout-history-limit Ar limit
+Set the number of previous layouts stored for recovery with
+.Ic select-layout
+.Fl U
+and
+.Fl u .
+.Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
@@ -2687,6 +2708,10 @@ option for details of special character sequences available.
 The default is
 .Ql #I:#W#F .
 .Pp
+.It Ic window-status-separator Ar string
+Sets the separator drawn between windows in the status line.
+The default is a single space character.
+.Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off
 .Xc
@@ -2787,6 +2812,7 @@ The following variables are available, where appropriate:
 .It Li "host" Ta "Hostname of local host"
 .It Li "line" Ta "Line number in the list"
 .It Li "pane_active" Ta "1 if active pane"
+.It Li "pane_current_path" Ta "Current path if available"
 .It Li "pane_dead" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "Height of pane"
 .It Li "pane_id" Ta "Unique pane ID"

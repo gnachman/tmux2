@@ -37,15 +37,15 @@
 struct imsgbuf	client_ibuf;
 struct event	client_event;
 enum {
-    EXIT_NONE,
-    EXIT_DETACHED,
-    EXIT_DETACHED_AND_SIGHUP,
-    EXIT_LOST_TTY,
-    EXIT_TERMINATED,
-    EXIT_LOST_SERVER,
-    EXIT_EXITED,
-    EXIT_SERVER_EXITED,
-} client_exitreason = EXIT_NONE;
+	CLIENT_EXIT_NONE,
+	CLIENT_EXIT_DETACHED,
+	CLIENT_EXIT_DETACHED_HUP,
+	CLIENT_EXIT_LOST_TTY,
+	CLIENT_EXIT_TERMINATED,
+	CLIENT_EXIT_LOST_SERVER,
+	CLIENT_EXIT_EXITED,
+	CLIENT_EXIT_SERVER_EXITED,
+} client_exitreason = CLIENT_EXIT_NONE;
 int		client_exitval;
 enum msgtype	client_exittype;
 int		client_attached;
@@ -61,7 +61,7 @@ void		client_signal(int, short, void *);
 void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
-const char	*client_exitmsg(void);
+const char	*client_exit_message(void);
 void		client_wait_for_exit_confirmation(void);
 
 /*
@@ -156,28 +156,29 @@ client_wait_for_exit_confirmation(void)
 	}
 }
 
+/* Get exit string from reason number. */
 const char *
-client_exitmsg(void)
+client_exit_message(void)
 {
 	switch (client_exitreason) {
-	case EXIT_NONE:
+	case CLIENT_EXIT_NONE:
 		break;
-	case EXIT_DETACHED:
-		return "detached";
-	case EXIT_DETACHED_AND_SIGHUP:
-		return "detached and SIGHUP";
-	case EXIT_LOST_TTY:
-		return "lost tty";
-	case EXIT_TERMINATED:
-		return "terminated";
-	case EXIT_LOST_SERVER:
-		return "lost server";
-	case EXIT_EXITED:
-		return "exited";
-	case EXIT_SERVER_EXITED:
-		return "server exited";
+	case CLIENT_EXIT_DETACHED:
+		return ("detached");
+	case CLIENT_EXIT_DETACHED_HUP:
+		return ("detached and SIGHUP");
+	case CLIENT_EXIT_LOST_TTY:
+		return ("lost tty");
+	case CLIENT_EXIT_TERMINATED:
+		return ("terminated");
+	case CLIENT_EXIT_LOST_SERVER:
+		return ("lost server");
+	case CLIENT_EXIT_EXITED:
+		return ("exited");
+	case CLIENT_EXIT_SERVER_EXITED:
+		return ("server exited");
 	}
-	return "unknown reason";
+	return ("unknown reason");
 }
 
 /* Client main loop. */
@@ -230,7 +231,8 @@ client_main(int argc, char **argv, int flags)
 	 * if the socket path matches $TMUX, this is probably the same server.
 	 */
 	if (shell_cmd == NULL && environ_path != NULL &&
-	    cmdflags & CMD_CANTNEST && strcmp(socket_path, environ_path) == 0) {
+	    (cmdflags & CMD_CANTNEST) &&
+	    strcmp(socket_path, environ_path) == 0) {
 		log_warnx("sessions should be nested with care. "
 		    "unset $TMUX to force.");
 		return (1);
@@ -304,31 +306,31 @@ client_main(int argc, char **argv, int flags)
 
 	/* Print the exit message, if any, and exit. */
 	if (client_attached) {
-		if (client_exitreason != EXIT_NONE && !login_shell) {
+		if (client_exitreason != CLIENT_EXIT_NONE && !login_shell) {
 			if (flags & IDENTIFY_CONTROL) {
 				switch (client_exitreason) {
-				case EXIT_LOST_SERVER:
+				case CLIENT_EXIT_LOST_SERVER:
 				    	/* The server died without being able to
 					 * send %exit. Shut the control client
 					 * down cleanly. */
-					printf("%%exit %s\n", client_exitmsg());
+					printf("%%exit %s\n", client_exit_message());
 					client_wait_for_exit_confirmation();
 					break;
 
-				case EXIT_LOST_TTY:
-				case EXIT_TERMINATED:
+				case CLIENT_EXIT_LOST_TTY:
+				case CLIENT_EXIT_TERMINATED:
 					/* The client is being killed. Try to
 					 * shut down cleanly although it's not
 					 * likely to make it to the client in
 					 * the case of a lost TTY. */
-					printf("%%exit %s\n", client_exitmsg());
+					printf("%%exit %s\n", client_exit_message());
 					break;
 
 				default:
 					break;
 				}
 			} else {
-				printf("[%s]\n", client_exitmsg());
+				printf("[%s]\n", client_exit_message());
 			}
 		}
 
@@ -433,7 +435,7 @@ client_signal(int sig, unused short events, unused void *data)
 	} else {
 		switch (sig) {
 		case SIGHUP:
-			client_exitreason = EXIT_LOST_TTY;
+			client_exitreason = CLIENT_EXIT_LOST_TTY;
 			if (is_control_client) {
 				event_loopexit(NULL);
 			} else {
@@ -442,7 +444,7 @@ client_signal(int sig, unused short events, unused void *data)
 			}
 			break;
 		case SIGTERM:
-			client_exitreason = EXIT_TERMINATED;
+			client_exitreason = CLIENT_EXIT_TERMINATED;
 			if (is_control_client) {
 				event_loopexit(NULL);
 			} else {
@@ -498,7 +500,7 @@ client_callback(unused int fd, short events, void *data)
 	return;
 
 lost_server:
-	client_exitreason = EXIT_LOST_SERVER;
+	client_exitreason = CLIENT_EXIT_LOST_SERVER;
 	client_exitval = 1;
 	event_loopexit(NULL);
 }
@@ -595,9 +597,9 @@ client_dispatch_attached(void)
 
 			client_exittype = imsg.hdr.type;
 			if (imsg.hdr.type == MSG_DETACHKILL)
-				client_exitreason = EXIT_DETACHED_AND_SIGHUP;
+				client_exitreason = CLIENT_EXIT_DETACHED_HUP;
 			else
-				client_exitreason = EXIT_DETACHED;
+				client_exitreason = CLIENT_EXIT_DETACHED;
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case MSG_EXIT:
@@ -606,7 +608,7 @@ client_dispatch_attached(void)
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
-			client_exitreason = EXIT_EXITED;
+			client_exitreason = CLIENT_EXIT_EXITED;
 			break;
 		case MSG_EXITED:
 			if (datalen != 0)
@@ -619,7 +621,7 @@ client_dispatch_attached(void)
 				fatalx("bad MSG_SHUTDOWN size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
-			client_exitreason = EXIT_SERVER_EXITED;
+			client_exitreason = CLIENT_EXIT_SERVER_EXITED;
 			client_exitval = 1;
 			break;
 		case MSG_SUSPEND:

@@ -805,14 +805,14 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 
 	key &= KEYC_MASK_KEY;
 	if (key < '0' || key > '9')
-		return 1;
+		return (1);
 
 	if (data->numprefix >= 100) 	/* no more than three digits */
-		return 0;
+		return (0);
 	data->numprefix = data->numprefix * 10 + key - '0';
 
 	window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
-	return 0;
+	return (0);
 }
 
 /* ARGSUSED */
@@ -822,7 +822,7 @@ window_copy_mouse(
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 i, old_cy;
+	u_int				 i;
 
 	if (m->x >= screen_size_x(s))
 		return;
@@ -835,10 +835,9 @@ window_copy_mouse(
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_up(wp, 0);
 		} else if ((m->b & MOUSE_BUTTON) == MOUSE_2) {
-			old_cy = data->cy;
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_down(wp, 0);
-			if (old_cy == data->cy)
+			if (data->oy == 0)
 				goto reset_mode;
 		}
 		return;

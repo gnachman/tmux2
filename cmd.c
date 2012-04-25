@@ -304,11 +304,10 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 	if (off < len) {
 		used = args_print(cmd->args, buf + off, len - off);
 		if (used == 0)
-			buf[off - 1] = '\0';
-		else {
+			off--;
+		else
 			off += used;
-			buf[off] = '\0';
-		}
+		buf[off] = '\0';
 	}
 	return (off);
 }
@@ -1326,8 +1325,10 @@ find_home:
 		return (s->cwd);
 
 complete_path:
-	if (root[skip] == '\0')
-		return (root);
+	if (root[skip] == '\0') {
+		strlcpy(path, root, sizeof path);
+		return (path);
+	}
 	n = snprintf(path, sizeof path, "%s/%s", root, cwd + skip);
 	if (n > 0 && (size_t)n < sizeof path)
 		return (path);
