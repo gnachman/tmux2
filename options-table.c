@@ -504,6 +504,13 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "layout-history-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 1,
+	  .maximum = USHRT_MAX,
+	  .default_num = 20
+	},
+
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 1,
@@ -681,6 +688,11 @@ const struct options_table_entry window_options_table[] = {
 	{ .name = "window-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "#I:#W#F"
+	},
+
+	{ .name = "window-status-separator",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = " "
 	},
 
 	{ .name = "wrap-search",

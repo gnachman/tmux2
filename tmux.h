@@ -847,6 +847,13 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
+/* Window last layout. */
+struct last_layout {
+	char	*layout;
+
+	TAILQ_ENTRY(last_layout) entry;
+};
+
 /* Window structure. */
 struct window {
 	u_int		 id;
@@ -860,6 +867,9 @@ struct window {
 
 	int		 lastlayout;
 	struct layout_cell *layout_root;
+	TAILQ_HEAD(last_layouts, last_layout) layout_list;
+	u_int		 layout_list_size;
+	struct last_layout *layout_list_last;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1088,14 +1098,11 @@ struct tty_ctx {
 };
 
 /*
- * xterm mouse mode is fairly silly. Buttons are in the bottom two
- * bits: 0 button 1; 1 button 2; 2 button 3; 3 buttons released.
- *
- * Bit 3 is shift; bit 4 is meta; bit 5 control.
- *
- * Bit 6 is added for mouse buttons 4 and 5.
+ * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
+ * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
+ * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
+ * and 5.
  */
-/* Mouse input. */
 struct mouse_event {
 	u_int	b;
 #define MOUSE_1 0
@@ -1103,6 +1110,9 @@ struct mouse_event {
 #define MOUSE_3 2
 #define MOUSE_UP 3
 #define MOUSE_BUTTON 3
+#define MOUSE_SHIFT 4
+#define MOUSE_ESCAPE 8
+#define MOUSE_CTRL 16
 #define MOUSE_DRAG 32
 #define MOUSE_45 64
 #define MOUSE_RESIZE_PANE 128 /* marker for resizing */
@@ -1699,6 +1709,7 @@ extern struct clients dead_clients;
 extern struct paste_stack global_buffers;
 int	 server_start(int, char *);
 void	 server_update_socket(void);
+void	 server_add_accept(int);
 
 /* server-client.c */
 void	 server_client_create(int);
@@ -1994,7 +2005,8 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
+void		 layout_destroy_cell(
+		     struct layout_cell *, struct layout_cell **);
 void		 layout_set_size(
 		     struct layout_cell *, u_int, u_int, u_int, u_int);
 void		 layout_make_leaf(
@@ -2016,6 +2028,9 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
+void		 layout_list_add(struct window *);
+const char	*layout_list_redo(struct window *);
+const char	*layout_list_undo(struct window *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *);

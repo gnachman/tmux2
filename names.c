@@ -49,9 +49,12 @@ window_name_callback(unused int fd, unused short events, void *data)
 	struct window	*w = data;
 	char		*name, *wname;
 
-	queue_window_name(w);	/* XXX even if the option is off? */
-	if (!options_get_number(&w->options, "automatic-rename"))
+	if (!options_get_number(&w->options, "automatic-rename")) {
+		if (event_initialized(&w->name_timer))
+			event_del(&w->name_timer);
 		return;
+	}
+	queue_window_name(w);
 
 	if (w->active->screen != &w->active->base)
 		name = NULL;
