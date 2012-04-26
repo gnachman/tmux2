@@ -1668,7 +1668,6 @@ extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
-extern const struct cmd_entry cmd_set_control_client_attr_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
