@@ -100,7 +100,7 @@ control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
 }
 
 void printflike2
@@ -112,7 +112,7 @@ control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
 }
 
 void printflike2
@@ -171,11 +171,11 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 				    evbuffer_add_printf(out->output,
 							"%%error in line \"%s\": %s",
 							line, cause);
-				    bufferevent_write(out, "\n", 1);
+				    bufferevent_write(out, "\r\n", 2);
 				    xfree(cause);
 			    } else {
 				    evbuffer_add_printf(out->output, "%%error");
-				    bufferevent_write(out, "\n", 1);
+				    bufferevent_write(out, "\r\n", 2);
 			    }
 		    } else {
 			    /* Parsed ok. Run command. */
@@ -296,7 +296,7 @@ control_write_input(struct client *c, struct window_pane *wp,
 		control_write_window_pane(c, wp);
 		control_write_str(c, " ");
 		control_write_hex(c, buf, len);
-		control_write_str(c, "\n");
+		control_write_str(c, "\r\n");
 		if (EVBUFFER_LENGTH(c->stdout_event->output) > OUTPUT_BUFFER_PAUSE_THRESHOLD) {
 		    	bufferevent_setwatermark(c->stdout_event,
 						 EV_WRITE,
@@ -342,18 +342,18 @@ control_write_attached_session_change_cb(
     struct client *c, unused void *user_data)
 {
 	if (c->session && (c->flags & CLIENT_SESSION_CHANGED)) {
-		control_write_printf(c, "%%session-changed %d %s\n",
+		control_write_printf(c, "%%session-changed %d %s\r\n",
 				    c->session->id, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
 	if (session_changed_flags &
 	    (SESSION_CHANGE_ADDREMOVE | SESSION_CHANGE_RENAME)) {
-		control_write_str(c, "%sessions-changed\n");
+		control_write_str(c, "%sessions-changed\r\n");
 	}
 	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
 	    c->session &&
 	    (c->session->flags & SESSION_RENAMED)) {
-		control_write_printf(c, "%%session-renamed %s\n",
+		control_write_printf(c, "%%session-renamed %s\r\n",
 				     c->session->name);
 	}
 }
@@ -384,7 +384,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 			if (w && w->layout_root) {
 				const char *template =
 				    "%layout-change #{window_id} "
-				    "#{window_layout}\n";
+				    "#{window_layout}\r\n";
 				ft = format_create();
 				wl = winlink_find_by_window(
 				    &c->session->windows, w);
@@ -582,12 +582,12 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		    prefix = "unlinked-";
 		switch (change->action) {
 			case WINDOW_CREATED:
-				control_write_printf(c, "%%%swindow-add %u\n",
+				control_write_printf(c, "%%%swindow-add %u\r\n",
 						     prefix, change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
-				control_write_printf(c, "%%window-close %u\n",
+				control_write_printf(c, "%%window-close %u\r\n",
 						     change->window_id);
 				break;
 
@@ -597,7 +597,7 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 				if (wl) {
 					w = wl->window;
 					control_write_printf(
-					     c, "%%window-renamed %u %s\n",
+					     c, "%%window-renamed %u %s\r\n",
 					     change->window_id, w->name);
 				}
 				break;
@@ -666,7 +666,7 @@ control_handshake(struct client *c)
 		    "\033\\%noop If you can see this message, "
 		    "your terminal emulator does not support tmux mode "
 		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Press "
-		    "enter to return to your shell.\n");
+		    "enter to return to your shell.\r\n");
 		c->flags |= CLIENT_SESSION_HANDSHAKE;
 	}
 }
