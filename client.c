@@ -313,7 +313,7 @@ client_main(int argc, char **argv, int flags)
 				    	/* The server died without being able to
 					 * send %exit. Shut the control client
 					 * down cleanly. */
-					printf("%%exit %s\n", client_exit_message());
+					printf("%%exit %s\r\n", client_exit_message());
 					client_wait_for_exit_confirmation();
 					break;
 
@@ -323,7 +323,7 @@ client_main(int argc, char **argv, int flags)
 					 * shut down cleanly although it's not
 					 * likely to make it to the client in
 					 * the case of a lost TTY. */
-					printf("%%exit %s\n", client_exit_message());
+					printf("%%exit %s\r\n", client_exit_message());
 					break;
 
 				default:
