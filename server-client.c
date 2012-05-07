@@ -993,7 +993,7 @@ server_client_msg_identify(
 	 */
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->flags |= CLIENT_CONTROL;
-		tty_init_termios(fd, &dummy_termios, NULL);
+		tty_init_termios(fd, &dummy_termios, NULL, 1);
 		control_start(c);
 	}
 

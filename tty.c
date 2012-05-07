@@ -175,7 +175,8 @@ tty_error_callback(
 }
 
 void
-tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
+tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev,
+		 int is_control)
 {
 	struct termios	tio;
 
@@ -190,6 +191,8 @@ tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 	memcpy(&tio, orig_tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
 	tio.c_iflag |= IGNBRK;
+	if (is_control)
+		tio.c_iflag |= ICRNL;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
@@ -202,7 +205,7 @@ tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 void
 tty_start_tty(struct tty *tty)
 {
-	tty_init_termios(tty->fd, &tty->tio, tty->event);
+	tty_init_termios(tty->fd, &tty->tio, tty->event, 0);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
