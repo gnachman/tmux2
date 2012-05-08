@@ -970,7 +970,6 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	u_int		 idx;
-	u_int		 id;
 
 	char		*name;
 	char		*cwd;
@@ -989,7 +988,6 @@ struct session {
 
 #define SESSION_UNATTACHED	0x1	/* not attached to any clients */
 #define SESSION_RENAMED		0x2	/* notify control clients */
-#define SESSION_PAUSED		0x4	/* don't read ptys until stdout drains */
 	int		 flags;
 
 	struct termios	*tio;
@@ -1480,7 +1478,7 @@ void	environ_update(const char *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 
 /* tty.c */
-void	tty_init_termios(int, struct termios *, struct bufferevent *);
+void	tty_init_termios(int, struct termios *, struct bufferevent *, int);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
@@ -1701,10 +1699,6 @@ int	cmd_string_parse(const char *, struct cmd_list **, char **);
 /* client.c */
 int	client_main(int, char **, int);
 
-/* cmd-join-pane.c */
-int	join_pane(
-    struct cmd *self, struct cmd_ctx *ctx, int require_diff_windows);
-
 /* control.c */
 void	control_init(void);
 void	control_start(struct client *);
@@ -1734,7 +1728,6 @@ void	control_notify_session_created(struct session *);
 void	control_notify_session_renamed(struct session *);
 void	control_notify_window_renamed(struct window *w);
 void	control_write_callback(unused struct bufferevent *bufev, void *data);
-void	control_update_window_paused(struct window *w);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;

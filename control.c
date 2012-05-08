@@ -33,14 +33,6 @@
  */
 #define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "1.0"
 
-/* When the output buffer grows beyond this limit, pause the PTYs in this
- * session. */
-#define OUTPUT_BUFFER_PAUSE_THRESHOLD 256
-
-/* When a paused session's output buffer is drained to less than this size,
- * unpause the PTYs in this session. */
-#define OUTPUT_BUFFER_UNPAUSE_THRESHOLD 128
-
 typedef void control_write_cb(struct client *c, void *user_data);
 
 /* A pending change related to a window's state. */
@@ -89,7 +81,6 @@ void	control_read_callback(unused struct bufferevent *bufev, void *data);
 void	control_error_callback(unused struct bufferevent *bufev,
 		unused short what, void *data);
 void	control_write_hex(struct client *c, const char *buf, int len);
-void	control_update_window_paused(struct window *w);
 
 void printflike2
 control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
@@ -100,7 +91,7 @@ control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
 }
 
 void printflike2
@@ -112,29 +103,12 @@ control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
 }
 
 void printflike2
 control_msg_info(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
-}
-
-/* Control write buffer fell under low water mark */
-void
-control_write_callback(unused struct bufferevent *bufev, void *data)
-{
-	struct client		*c = data;
-
-	if (c->session != NULL && (c->session->flags & SESSION_PAUSED)) {
-		session_unpause(c->session);
-
-		/* Stop calling the write callback. */
-		bufferevent_setwatermark(c->stdout_event,
-					 EV_WRITE,
-					 (size_t)-1,
-					 (size_t)-1);
-	}
 }
 
 /* Control input callback. */
@@ -171,11 +145,11 @@ control_read_callback(unused struct bufferevent *bufev, void *data)
 				    evbuffer_add_printf(out->output,
 							"%%error in line \"%s\": %s",
 							line, cause);
-				    bufferevent_write(out, "\n", 1);
+				    bufferevent_write(out, "\r\n", 2);
 				    xfree(cause);
 			    } else {
 				    evbuffer_add_printf(out->output, "%%error");
-				    bufferevent_write(out, "\n", 1);
+				    bufferevent_write(out, "\r\n", 2);
 			    }
 		    } else {
 			    /* Parsed ok. Run command. */
@@ -196,18 +170,7 @@ control_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
 {
 	struct client	*c = data;
-
-	c->references--;
-	if (c->flags & CLIENT_DEAD)
-		return;
-
-	bufferevent_disable(c->stdin_event, EV_READ|EV_WRITE);
-	setblocking(c->stdin_fd, 1);
-	close(c->stdin_fd);
-	c->stdin_fd = -1;
-
-	if (c->stdin_callback != NULL)
-		c->stdin_callback(c, c->stdin_data);
+	server_client_lost(c);
 }
 
 /* Initialise as a control client. */
@@ -296,14 +259,7 @@ control_write_input(struct client *c, struct window_pane *wp,
 		control_write_window_pane(c, wp);
 		control_write_str(c, " ");
 		control_write_hex(c, buf, len);
-		control_write_str(c, "\n");
-		if (EVBUFFER_LENGTH(c->stdout_event->output) > OUTPUT_BUFFER_PAUSE_THRESHOLD) {
-		    	bufferevent_setwatermark(c->stdout_event,
-						 EV_WRITE,
-						 OUTPUT_BUFFER_UNPAUSE_THRESHOLD,
-						 (size_t)-1);
-		    	session_pause(c->session);
-		}
+		control_write_str(c, "\r\n");
 	}
 }
 
@@ -342,18 +298,18 @@ control_write_attached_session_change_cb(
     struct client *c, unused void *user_data)
 {
 	if (c->session && (c->flags & CLIENT_SESSION_CHANGED)) {
-		control_write_printf(c, "%%session-changed %d %s\n",
-				    c->session->id, c->session->name);
+		control_write_printf(c, "%%session-changed %d %s\r\n",
+				    c->session->idx, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
 	if (session_changed_flags &
 	    (SESSION_CHANGE_ADDREMOVE | SESSION_CHANGE_RENAME)) {
-		control_write_str(c, "%sessions-changed\n");
+		control_write_str(c, "%sessions-changed\r\n");
 	}
 	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
 	    c->session &&
 	    (c->session->flags & SESSION_RENAMED)) {
-		control_write_printf(c, "%%session-renamed %s\n",
+		control_write_printf(c, "%%session-renamed %s\r\n",
 				     c->session->name);
 	}
 }
@@ -384,7 +340,7 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 			if (w && w->layout_root) {
 				const char *template =
 				    "%layout-change #{window_id} "
-				    "#{window_layout}\n";
+				    "#{window_layout}\r\n";
 				ft = format_create();
 				wl = winlink_find_by_window(
 				    &c->session->windows, w);
@@ -399,19 +355,8 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 }
 
 void
-control_update_window_paused(struct window *w)
-{
-	struct session *s;
-
-	RB_FOREACH(s, sessions, &sessions) {
-		session_update_window_paused(s, w);
-	}
-}
-
-void
 control_notify_layout_change(struct window *w)
 {
-    	control_update_window_paused(w);
 	for (int i = 0; i < num_layouts_changed; i++) {
 		if (layouts_changed[i] == w) {
 			// Don't add a duplicate
@@ -485,7 +430,6 @@ control_notify_window_added(struct window *w)
 {
 	struct window_change	*change = xmalloc(sizeof(struct window_change));
 
-    	control_update_window_paused(w);
 	change->window_id = w->id;
 
 	change->action = WINDOW_CREATED;
@@ -582,12 +526,12 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		    prefix = "unlinked-";
 		switch (change->action) {
 			case WINDOW_CREATED:
-				control_write_printf(c, "%%%swindow-add %u\n",
+				control_write_printf(c, "%%%swindow-add %u\r\n",
 						     prefix, change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
-				control_write_printf(c, "%%window-close %u\n",
+				control_write_printf(c, "%%window-close %u\r\n",
 						     change->window_id);
 				break;
 
@@ -597,7 +541,7 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 				if (wl) {
 					w = wl->window;
 					control_write_printf(
-					     c, "%%window-renamed %u %s\n",
+					     c, "%%window-renamed %u %s\r\n",
 					     change->window_id, w->name);
 				}
 				break;
@@ -666,7 +610,7 @@ control_handshake(struct client *c)
 		    "\033\\%noop If you can see this message, "
 		    "your terminal emulator does not support tmux mode "
 		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Press "
-		    "enter to return to your shell.\n");
+		    "enter to return to your shell.\r\n");
 		c->flags |= CLIENT_SESSION_HANDSHAKE;
 	}
 }

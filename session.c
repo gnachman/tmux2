@@ -34,7 +34,6 @@ struct session_groups session_groups;
 
 struct winlink *session_next_alert(struct winlink *);
 struct winlink *session_previous_alert(struct winlink *);
-u_int		next_session_id = 0;
 
 RB_GENERATE(sessions, session, entry, session_cmp);
 
@@ -92,7 +91,6 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	struct session	*s;
 
 	s = xmalloc(sizeof *s);
-	s->id = next_session_id++;
 	s->references = 0;
 	s->flags = 0;
 

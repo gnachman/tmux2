@@ -36,7 +36,6 @@ void	server_client_set_title(struct client *);
 void	server_client_reset_state(struct client *);
 void	server_client_in_callback(struct bufferevent *, short, void *);
 void	server_client_out_callback(struct bufferevent *, short, void *);
-void	server_client_out_write_callback(struct bufferevent *bufev, void *data);
 void	server_client_err_callback(struct bufferevent *, short, void *);
 
 int	server_client_msg_dispatch(struct client *);
@@ -696,16 +695,6 @@ server_client_in_callback(
 		c->stdin_callback(c, c->stdin_data);
 }
 
-/* Water mark callback for client stdout. */
-void
-server_client_out_write_callback(struct bufferevent *bufev, void *data)
-{
-	struct client	*c = data;
-
-	if (c->flags & CLIENT_CONTROL)
-	    	control_write_callback(bufev, data);
-}
-
 /* Error callback for client stdout. */
 void
 server_client_out_callback(
@@ -792,8 +781,7 @@ server_client_msg_dispatch(struct client *c)
 
 			c->stdout_fd = imsg.fd;
 			c->stdout_event = bufferevent_new(c->stdout_fd,
-			    NULL, server_client_out_write_callback,
-			    server_client_out_callback, c);
+			    NULL, NULL, server_client_out_callback, c);
 			if (c->stdout_event == NULL)
 				fatalx("failed to create stdout event");
 			setblocking(c->stdout_fd, 0);
@@ -993,7 +981,7 @@ server_client_msg_identify(
 	 */
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->flags |= CLIENT_CONTROL;
-		tty_init_termios(fd, &dummy_termios, NULL);
+		tty_init_termios(fd, &dummy_termios, NULL, 1);
 		control_start(c);
 	}
 

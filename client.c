@@ -274,13 +274,9 @@ client_main(int argc, char **argv, int flags)
 		client_send_environ();
 	client_send_identify(flags);
 
-	if (is_control_client) {
-		/* Save termios and restore it on exit. Can't count on the
-		 * server to do that because it might crash. */
-		struct termios tio;
-		tcgetattr(fileno(stdout), &tio);
-		saved_termios = tio;
-	}
+	/* Save termios and restore it on exit. Can't count on the
+	 * server to do that because it might crash. */
+	tcgetattr(fileno(stdout), &saved_termios);
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
@@ -313,7 +309,7 @@ client_main(int argc, char **argv, int flags)
 				    	/* The server died without being able to
 					 * send %exit. Shut the control client
 					 * down cleanly. */
-					printf("%%exit %s\n", client_exit_message());
+					printf("%%exit %s\r\n", client_exit_message());
 					client_wait_for_exit_confirmation();
 					break;
 
@@ -323,7 +319,7 @@ client_main(int argc, char **argv, int flags)
 					 * shut down cleanly although it's not
 					 * likely to make it to the client in
 					 * the case of a lost TTY. */
-					printf("%%exit %s\n", client_exit_message());
+					printf("%%exit %s\r\n", client_exit_message());
 					break;
 
 				default:
@@ -338,10 +334,7 @@ client_main(int argc, char **argv, int flags)
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
 	}
-	if (is_control_client)
-	    /* Turn off echo in control mode (we only get here if stdout is
-	     * a tty so it's ok to do). */
-	    tcsetattr(fileno(stdout), TCSANOW, &saved_termios);
+	tcsetattr(fileno(stdout), TCSANOW, &saved_termios);
 	return (client_exitval);
 }
 
