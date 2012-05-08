@@ -196,18 +196,7 @@ control_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
 {
 	struct client	*c = data;
-
-	c->references--;
-	if (c->flags & CLIENT_DEAD)
-		return;
-
-	bufferevent_disable(c->stdin_event, EV_READ|EV_WRITE);
-	setblocking(c->stdin_fd, 1);
-	close(c->stdin_fd);
-	c->stdin_fd = -1;
-
-	if (c->stdin_callback != NULL)
-		c->stdin_callback(c, c->stdin_data);
+	server_client_lost(c);
 }
 
 /* Initialise as a control client. */
