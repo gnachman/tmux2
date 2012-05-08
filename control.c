@@ -332,7 +332,7 @@ control_write_attached_session_change_cb(
 {
 	if (c->session && (c->flags & CLIENT_SESSION_CHANGED)) {
 		control_write_printf(c, "%%session-changed %d %s\r\n",
-				    c->session->id, c->session->name);
+				    c->session->idx, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
 	if (session_changed_flags &
