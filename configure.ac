@@ -1,4 +1,4 @@
-# $Id$
+# $Id: configure.ac 2681 2012-01-23 13:20:14Z tcunha $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.7)

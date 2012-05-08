@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id$
+# $Id: autogen.sh 2553 2011-07-09 09:42:33Z tcunha $
 
 [ -z "$AUTOMAKE_VERSION" ] && export AUTOMAKE_VERSION=1.10
 [ -z "$AUTOCONF_VERSION" ] && export AUTOCONF_VERSION=2.65

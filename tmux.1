@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28ClquvV
+.Op Fl 28lquvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -116,10 +116,6 @@ This option is for compatibility with
 when
 .Nm
 is used as a login shell.
-.It Fl C
-Operate in
-.Ic control mode ,
-which allows compatible terminal emulators to offer a native user interface for tmux.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
@@ -1266,7 +1262,7 @@ and
 .Ar dst-pane
 may belong to the same window.
 .It Xo Ic move-window
-.Op Fl dk
+.Op Fl rdk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
@@ -1277,6 +1273,12 @@ except the window at
 .Ar src-window
 is moved to
 .Ar dst-window .
+With
+.Fl r ,
+all windows in the session are renumbered in sequential order, respecting
+the
+.Ic base-index
+option.
 .It Xo Ic new-window
 .Op Fl adkP
 .Op Fl c Ar start-directory
@@ -1946,16 +1948,10 @@ Set the default working directory for new panes.
 If empty (the default), the working directory is determined from the process
 running in the active pane, from the command line environment or from the
 working directory where the session was created.
-If
-.Ar path
-is "$HOME" or "~", the value of the
-.Ev HOME
-environment variable is used.
-If
-.Ar path
-is ".", the working directory when
-.Nm
-was started is used.
+Otherwise the same options are available as for the
+.Fl c
+flag to
+.Ic new-window .
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
@@ -2130,6 +2126,15 @@ Set the pane border colour for panes aside from the active pane.
 Set the key accepted as a prefix key.
 .It Ic prefix2 Ar key
 Set a secondary key accepted as a prefix key.
+.It Xo Ic renumber-windows
+.Op Ic on | off
+.Xc
+If on, when a window is closed in a session, automatically renumber the other
+windows in numerical order.
+This respects the
+.Ic base-index
+option if it has been set.
+If off, do not renumber the windows.
 .It Ic repeat-time Ar time
 Allow multiple commands to be entered without pressing the prefix-key again
 in the specified
