@@ -773,6 +773,12 @@ struct input_ctx {
 #define INPUT_DISCARD 0x1
 
 	const struct input_state *state;
+
+	/*
+	 * All input received since we were last in the ground state. Sent to
+	 * control clients on connection.
+	 */
+	struct evbuffer	 	*since_ground;
 };
 
 /*
@@ -2106,6 +2112,7 @@ void		 session_group_remove(struct session *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
 void		 session_group_synchronize1(struct session *, struct session *);
+void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
 void	utf8_build(void);

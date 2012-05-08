@@ -1,4 +1,4 @@
-# $Id$
+# $Id: Makefile.am 2748 2012-03-18 02:24:33Z tcunha $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
