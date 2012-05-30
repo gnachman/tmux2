@@ -83,7 +83,9 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 {
 	struct cmd	*cmd;
 	int		 n, retval, guards;
+	struct client	*c;
 
+	c = ctx->curclient;
 	guards = 0;
 	if (c != NULL && c->session != NULL)
 		guards = c->flags & CLIENT_CONTROL;
