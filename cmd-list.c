@@ -81,24 +81,12 @@ bad:
 int
 cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 {
-	struct client   *c = ctx->curclient;
 	struct cmd	*cmd;
-	int	      n, retval, guards;
-
-	guards = 0;
-	if (c != NULL && c->session != NULL)
-		guards = c->flags & CLIENT_CONTROL;
+	int		 n, retval;
 
 	retval = 0;
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
-		if (guards)
-			ctx->print(ctx, "%%begin");
-		n = cmd_exec(cmd, ctx);
-		if (guards)
-			ctx->print(ctx, "%%end");
-
-		/* Return of -1 is an error. */
-		if (n == -1)
+		if ((n = cmd_exec(cmd, ctx)) == -1)
 			return (-1);
 
 		/*

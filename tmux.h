@@ -1232,7 +1232,6 @@ struct client {
 #define CLIENT_BORDERS 0x400
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
-#define CLIENT_CONTROL 0x2000
 	int		 flags;
 
 	struct event	 identify_timer;

@@ -236,14 +236,22 @@ client_main(int argc, char **argv, int flags)
 	setblocking(STDIN_FILENO, 0);
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
+
 	if (flags & IDENTIFY_TERMIOS) {
 		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
-			log_warn("tcgetattr failed");
+			fprintf(stderr, "tcgetattr failed: %s\n",
+			    strerror(errno));
 			return (1);
 		}
-		memcpy(&tio, &saved_tio, sizeof tio);
-		tio.c_iflag |= ICRNL;
-		tio.c_lflag &= ~ECHO;
+		cfmakeraw(&tio);
+		tio.c_iflag = ICRNL|IXANY;
+		tio.c_oflag = OPOST|ONLCR;
+		tio.c_lflag = NOKERNINFO;
+		tio.c_cflag = CREAD|CS8|HUPCL;
+		tio.c_cc[VMIN] = 1;
+		tio.c_cc[VTIME] = 0;
+		cfsetispeed(&tio, cfgetispeed(&saved_tio));
+		cfsetospeed(&tio, cfgetospeed(&saved_tio));
 		tcsetattr(STDIN_FILENO, TCSANOW, &tio);
 	}
 
