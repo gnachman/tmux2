@@ -48,7 +48,13 @@ enum {
 } client_exitreason = CLIENT_EXIT_NONE;
 int		client_exitval;
 enum msgtype	client_exittype;
-int		client_attached;
+enum {
+    CLIENT_MODE_ATTACHED,
+    CLIENT_MODE_WAITING,
+    CLIENT_MODE_EXITING
+} client_mode = CLIENT_MODE_WAITING;
+struct evbuffer	*client_input_buffer = NULL;
+int		client_must_ack_exit;
 
 int		client_get_lock(char *);
 int		client_connect(char *, int);
@@ -62,6 +68,8 @@ void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
 const char     *client_exit_message(void);
+int		client_route_stdin(void);
+int		client_wait_for_blank_line(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
@@ -245,6 +253,8 @@ client_main(int argc, char **argv, int flags)
 		tio.c_iflag |= ICRNL;
 		tio.c_lflag &= ~ECHO;
 		tcsetattr(STDIN_FILENO, TCSANOW, &tio);
+		if (flags & IDENTIFY_CONTROL)
+		    	client_must_ack_exit = 1;
 	}
 
 	/* Establish signal handlers. */
@@ -279,7 +289,7 @@ client_main(int argc, char **argv, int flags)
 	event_dispatch();
 
 	/* Print the exit message, if any, and exit. */
-	if (client_attached) {
+	if (client_mode == CLIENT_MODE_ATTACHED) {
 		if (client_exitreason != CLIENT_EXIT_NONE && !login_shell)
 			printf("[%s]\n", client_exit_message());
 
@@ -362,7 +372,7 @@ client_signal(int sig, unused short events, unused void *data)
 	struct sigaction sigact;
 	int		 status;
 
-	if (!client_attached) {
+	if (client_mode != CLIENT_MODE_ATTACHED) {
 		switch (sig) {
 		case SIGCHLD:
 			waitpid(WAIT_ANY, &status, WNOHANG);
@@ -407,17 +417,27 @@ void
 client_callback(unused int fd, short events, void *data)
 {
 	ssize_t	n;
-	int	retval;
+	int	retval = 0;
 
 	if (events & EV_READ) {
 		if ((n = imsg_read(&client_ibuf)) == -1 || n == 0)
 			goto lost_server;
-		if (client_attached)
+		switch (client_mode) {
+		case CLIENT_MODE_ATTACHED:
 			retval = client_dispatch_attached();
-		else
+			break;
+		case CLIENT_MODE_WAITING:
 			retval = client_dispatch_wait(data);
+			break;
+		case CLIENT_MODE_EXITING:
+			break;
+		}
 		if (retval != 0) {
-			event_loopexit(NULL);
+			if (client_must_ack_exit) {
+			    	client_mode = CLIENT_MODE_EXITING;
+				fwrite("%exit\r\n", sizeof("%exit\r\n"), 1, stdout);
+			} else
+				event_loopexit(NULL);
 			return;
 		}
 	}
@@ -436,21 +456,71 @@ lost_server:
 	event_loopexit(NULL);
 }
 
+int
+client_route_stdin(void)
+{
+	struct msg_stdin_data	 data;
+
+	data.size = read(STDIN_FILENO, data.data, sizeof data.data);
+	if (data.size < 0 && (errno == EINTR || errno == EAGAIN))
+		return 1;
+
+	client_write_server(MSG_STDIN, &data, sizeof data);
+	if (data.size <= 0)
+		event_del(&client_stdin);
+	return 0;
+}
+
+int
+client_wait_for_blank_line(void)
+{
+    	int	 n;
+	char	*line;
+
+	if (client_input_buffer == NULL)
+		client_input_buffer = evbuffer_new();
+	n = evbuffer_read(client_input_buffer, STDIN_FILENO, 1024);
+	if (n < 0)
+	    	goto found;
+	else if (n == 0)
+	    	return 0;
+
+	line = evbuffer_readln(client_input_buffer, NULL, EVBUFFER_EOL_CRLF);
+	while (line) {
+		if (!line[0]) {
+		    	goto found;
+		}
+		line = evbuffer_readln(client_input_buffer, NULL, EVBUFFER_EOL_CRLF);
+	}
+	return 0;
+
+	log_debug("  no blank line");
+found:
+	log_debug("  found one");
+	evbuffer_free(client_input_buffer);
+	return 1;
+}
+
 /* Callback for client stdin read events. */
 /* ARGSUSED */
 void
 client_stdin_callback(unused int fd, unused short events, unused void *data1)
 {
-	struct msg_stdin_data	data;
-
-	data.size = read(STDIN_FILENO, data.data, sizeof data.data);
-	if (data.size < 0 && (errno == EINTR || errno == EAGAIN))
-		return;
-
-	client_write_server(MSG_STDIN, &data, sizeof data);
-	if (data.size <= 0)
-		event_del(&client_stdin);
-	client_update_event();
+   	switch (client_mode) {
+	case CLIENT_MODE_WAITING:
+	    	if (!client_route_stdin())
+			client_update_event();
+		break;
+	case CLIENT_MODE_EXITING:
+		if (client_wait_for_blank_line()) {
+			event_del(&client_stdin);
+			event_loopexit(NULL);
+		}
+		client_update_event();
+	       break;
+	case CLIENT_MODE_ATTACHED:
+	       fatalx("stdin callback while attached");
+	}
 }
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
@@ -490,7 +560,7 @@ client_dispatch_wait(void *data)
 				fatalx("bad MSG_READY size");
 
 			event_del(&client_stdin);
-			client_attached = 1;
+			client_mode = CLIENT_MODE_ATTACHED;
 			break;
 		case MSG_STDOUT:
 			if (datalen != sizeof stdoutdata)
@@ -527,6 +597,15 @@ client_dispatch_wait(void *data)
 
 			shell_exec(shelldata.shell, shellcmd);
 			/* NOTREACHED */
+
+		case MSG_DETACH:
+			client_write_server(MSG_EXITING, NULL, 0);
+			break;
+
+		case MSG_EXITED:
+			imsg_free(&imsg);
+			return (-1);
+
 		default:
 			fatalx("unexpected message");
 		}

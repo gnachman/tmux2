@@ -71,6 +71,11 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	memset(tty, 0, sizeof *tty);
 	tty->log_fd = -1;
 
+	if (c == NULL) {
+	    	tty->fd = -1;
+	    	return;
+	}
+
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
 	else

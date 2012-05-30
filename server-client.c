@@ -899,6 +899,7 @@ server_client_msg_identify(
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
 		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+		tty_init(&c->tty, NULL, -1, NULL);
 
 		close(fd);
 		return;
