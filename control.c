@@ -1,7 +1,8 @@
 /* $Id$ */
 
 /*
- * Copyright (c) 2011 George Nachman <tmux@georgester.com>
+ * Copyright (c) 2012 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2012 George Nachman <tmux@georgester.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -69,101 +70,54 @@ static int	    	  spontaneous_message_allowed;
  * of. */
 static int	    	  session_changed_flags;
 
-void	control_read_callback(struct bufferevent *, void *);
 void	control_error_callback(struct bufferevent *, short, void *);
-void printflike2	control_msg_error(struct cmd_ctx *ctx, const char *fmt,
-					  ...);
-void printflike2	control_msg_print(struct cmd_ctx *ctx, const char *fmt,
-					  ...);
-void printflike2	control_msg_info(unused struct cmd_ctx *ctx,
-				unused const char *fmt, ...);
-void	control_read_callback(unused struct bufferevent *bufev, void *data);
+void printflike2 control_msg_error(struct cmd_ctx *, const char *, ...);
+void printflike2 control_msg_print(struct cmd_ctx *, const char *, ...);
+void printflike2 control_msg_info(struct cmd_ctx *, const char *, ...);
+void printflike2 control_write(struct client *, const char *, ...);
+void	control_callback(struct client *c, int closed, unused void *data);
 void	control_error_callback(unused struct bufferevent *bufev,
 		unused short what, void *data);
-void	control_write_hex(struct client *c, const char *buf, int len);
+void	control_hex_encode_buffer(const char *buf, int len,
+		struct evbuffer *output);
 
+/* Command error callback. */
 void printflike2
 control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	va_list	ap;
+	struct client	*c = ctx->curclient;
+	va_list		 ap;
 
 	va_start(ap, fmt);
-	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
+	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
+	evbuffer_add(c->stdout_data, "\n", 1);
+	server_push_stdout(c);
 }
 
+/* Command print callback. */
 void printflike2
 control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	va_list	ap;
+	struct client	*c = ctx->curclient;
+	va_list		 ap;
 
 	va_start(ap, fmt);
-	evbuffer_add_vprintf(ctx->curclient->stdout_event->output, fmt, ap);
+	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
 	va_end(ap);
 
-	bufferevent_write(ctx->curclient->stdout_event, "\r\n", 2);
+	evbuffer_add(c->stdout_data, "\n", 1);
+	server_push_stdout(c);
 }
 
+/* Command info callback. */
 void printflike2
 control_msg_info(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
 /* Control input callback. */
-void
-control_read_callback(unused struct bufferevent *bufev, void *data)
-{
-	struct client		*c = data;
-	struct bufferevent	*out = c->stdout_event;
-	char			*line;
-	struct cmd_ctx		 ctx;
-	struct cmd_list		*cmdlist;
-	char			*cause;
-
-	/* Read all available input lines. */
-	line = evbuffer_readln(c->stdin_event->input, NULL, EVBUFFER_EOL_CRLF);
-	while (line) {
-	    if (!line[0]) {
-		server_client_exit(c);
-	    } else if (!(c->flags & CLIENT_EXITING)) {
-		    /* Parse command. */
-		    ctx.msgdata = NULL;
-		    ctx.cmdclient = NULL;
-		    ctx.curclient = c;
-
-		    ctx.error = control_msg_error;
-		    ctx.print = control_msg_print;
-		    ctx.info = control_msg_info;
-
-		    if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
-			    /* Error */
-			    if (cause != NULL) {
-				    /* cause should always be set if there's an
-				     * error.  */
-				    evbuffer_add_printf(out->output,
-							"%%error in line \"%s\": %s",
-							line, cause);
-				    bufferevent_write(out, "\r\n", 2);
-				    xfree(cause);
-			    } else {
-				    evbuffer_add_printf(out->output, "%%error");
-				    bufferevent_write(out, "\r\n", 2);
-			    }
-		    } else {
-			    /* Parsed ok. Run command. */
-			    cmd_list_exec(cmdlist, &ctx);
-			    cmd_list_free(cmdlist);
-		    }
-	    }
-
-	    xfree(line);
-	    /* Read input line. */
-	    line = evbuffer_readln(c->stdin_event->input, NULL,
-				   EVBUFFER_EOL_CRLF);
-	}
-}
 
 void
 control_error_callback(
@@ -173,93 +127,51 @@ control_error_callback(
 	server_client_lost(c);
 }
 
-/* Initialise as a control client. */
 void
-control_start(struct client *c)
-{
-	/* Enable reading from stdin. */
-	if (c->stdin_event != NULL)
-		bufferevent_free(c->stdin_event);
-	c->stdin_event = bufferevent_new(c->stdin_fd,
-					 control_read_callback,
-					 NULL,
-					 control_error_callback,
-					 c);
-	if (c->stdin_event == NULL)
-		fatalx("failed to create stdin event");
-	bufferevent_enable(c->stdin_event, EV_READ);
-
-	/* Write the protocol identifier and version. */
-	bufferevent_enable(c->stdout_event, EV_WRITE);
-}
-
-void
-control_write_str(struct client *c, const char *str)
-{
-	control_write(c, str, strlen(str));
-}
-
-void
-control_write_hex(struct client *c, const char *buf, int len)
+control_hex_encode_buffer(const char *buf, int len, struct evbuffer *output)
 {
 	for (int i = 0; i < len; i++) {
-		char temp[3];
-		snprintf(temp, sizeof(temp), "%02x", ((int) buf[i]) & 0xff);
-		control_write(c, temp, 2);
+	    	evbuffer_add_printf(output, "%02x", ((int) buf[i]) & 0xff);
 	}
 }
 
 void
 control_force_write_str(struct client *c, const char *str)
 {
-	bufferevent_write(c->stdout_event, str, strlen(str));
+	evbuffer_add(c->stdout_data, str, strlen(str));
 }
 
-void
-control_write(struct client *c, const char *buf, int len)
+/* Write a line. */
+void printflike2
+control_write(struct client *c, const char *fmt, ...)
 {
-    	if (c->flags & CLIENT_EXITING)
-		return;
-	if (c->session) {
-		/* Only write to control clients that have an attached session.
-		 * This indicates that the initial setup performed by the local
-		 * client is complete and the remote client is expecting to
-		 * send and receive commands. */
-		bufferevent_write(c->stdout_event, buf, len);
-	}
-}
+	va_list		 ap;
 
-void
-control_write_printf(struct client *c, const char *format, ...)
-{
-	va_list	argp;
-	va_start(argp, format);
+	va_start(ap, fmt);
+	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
+	va_end(ap);
 
-	evbuffer_add_vprintf(c->stdout_event->output, format, argp);
-
-	va_end(argp);
-}
-
-void
-control_write_window_pane(struct client *c, struct window_pane *wp)
-{
-	control_write_printf(c, "%%%u", wp->id);
+	evbuffer_add(c->stdout_data, "\n", 1);
+	server_push_stdout(c);
 }
 
 void
 control_write_input(struct client *c, struct window_pane *wp,
 			const u_char *buf, int len)
 {
+    	struct evbuffer	*hex_output;
+
 	if (!c->session)
 	    return;
 	/* Only write input if the window pane is linked to a window belonging
 	 * to the client's session. */
 	if (winlink_find_by_window(&c->session->windows, wp->window)) {
-		control_write_str(c, "%output ");
-		control_write_window_pane(c, wp);
-		control_write_str(c, " ");
-		control_write_hex(c, buf, len);
-		control_write_str(c, "\r\n");
+	    	hex_output = evbuffer_new();
+	    	control_hex_encode_buffer(buf, len, hex_output);
+		evbuffer_add(hex_output, "\0", 1);  /* Null terminate */
+		control_write(c, "%%output %%%u %s", wp->id,
+			      EVBUFFER_DATA(hex_output));
+		evbuffer_free(hex_output);
 	}
 }
 
@@ -298,19 +210,18 @@ control_write_attached_session_change_cb(
     struct client *c, unused void *user_data)
 {
 	if (c->session && (c->flags & CLIENT_SESSION_CHANGED)) {
-		control_write_printf(c, "%%session-changed %d %s\r\n",
-				    c->session->idx, c->session->name);
+		control_write(c, "%%session-changed %d %s",
+			      c->session->idx, c->session->name);
 		c->flags &= ~CLIENT_SESSION_CHANGED;
 	}
 	if (session_changed_flags &
 	    (SESSION_CHANGE_ADDREMOVE | SESSION_CHANGE_RENAME)) {
-		control_write_str(c, "%sessions-changed\r\n");
+		control_write(c, "%%sessions-changed");
 	}
 	if ((session_changed_flags & SESSION_CHANGE_RENAME) &&
 	    c->session &&
 	    (c->session->flags & SESSION_RENAMED)) {
-		control_write_printf(c, "%%session-renamed %s\r\n",
-				     c->session->name);
+		control_write(c, "%%session-renamed %s", c->session->name);
 	}
 }
 
@@ -340,14 +251,14 @@ control_write_layout_change_cb(struct client *c, unused void *user_data)
 			if (w && w->layout_root) {
 				const char *template =
 				    "%layout-change #{window_id} "
-				    "#{window_layout}\r\n";
+				    "#{window_layout}";
 				ft = format_create();
 				wl = winlink_find_by_window(
 				    &c->session->windows, w);
 				if (wl) {
 					format_winlink(ft, c->session, wl);
-					control_write_str(
-					    c, format_expand(ft, template));
+					control_write(c, "%s",
+						      format_expand(ft, template));
 				}
 			}
 		}
@@ -526,13 +437,13 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 		    prefix = "unlinked-";
 		switch (change->action) {
 			case WINDOW_CREATED:
-				control_write_printf(c, "%%%swindow-add %u\r\n",
-						     prefix, change->window_id);
+				control_write(c, "%%%swindow-add %u",
+					      prefix, change->window_id);
 				break;
 
 			case WINDOW_CLOSED:
-				control_write_printf(c, "%%window-close %u\r\n",
-						     change->window_id);
+				control_write(c, "%%window-close %u",
+					      change->window_id);
 				break;
 
 			case WINDOW_RENAMED:
@@ -540,8 +451,8 @@ control_write_windows_change_cb(struct client *c, unused void *user_data)
 				    &c->session->windows, change->window_id);
 				if (wl) {
 					w = wl->window;
-					control_write_printf(
-					     c, "%%window-renamed %u %s\r\n",
+					control_write(
+					     c, "%%window-renamed %u %s",
 					     change->window_id, w->name);
 				}
 				break;
@@ -590,7 +501,7 @@ control_set_spontaneous_messages_allowed(int allowed)
 void
 control_handshake(struct client *c)
 {
-	if (!(c->flags & CLIENT_SESSION_HANDSHAKE)) {
+	if ((c->flags & CLIENT_SESSION_NEEDS_HANDSHAKE)) {
 		/* If additional capabilities are added to tmux that do not
 		 * break backward compatibility, they can be advertised
 		 * after the protocol version. A semicolon should separate
@@ -605,13 +516,13 @@ control_handshake(struct client *c)
 		 * implementers should document or link to client requirements
 		 * for such features here.
 		 */
-		control_write_str(
-		    c, "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
+		control_write(
+		    c, "%s", "\033_tmux" CURRENT_TMUX_CONTROL_PROTOCOL_VERSION
 		    "\033\\%noop If you can see this message, "
 		    "your terminal emulator does not support tmux mode "
 		    "version " CURRENT_TMUX_CONTROL_PROTOCOL_VERSION ". Press "
-		    "enter to return to your shell.\r\n");
-		c->flags |= CLIENT_SESSION_HANDSHAKE;
+		    "enter to return to your shell.");
+		c->flags &= ~CLIENT_SESSION_NEEDS_HANDSHAKE;
 	}
 }
 
@@ -655,4 +566,45 @@ void control_init(void)
 {
 	TAILQ_INIT(&window_changes);
 	options_init(&control_options, NULL);
+}
+
+/* Control input callback. Read lines and fire commands. */
+void
+control_callback(struct client *c, int closed, unused void *data)
+{
+	char		*line, *cause;
+	struct cmd_ctx	 ctx;
+	struct cmd_list	*cmdlist;
+
+	if (closed)
+		c->flags |= CLIENT_EXIT;
+
+	for (;;) {
+		line = evbuffer_readln(c->stdin_data, NULL, EVBUFFER_EOL_LF);
+		if (line == NULL)
+			break;
+		if (*line == '\0') { /* empty line exit */
+			c->flags |= CLIENT_EXIT;
+			break;
+		}
+
+		ctx.msgdata = NULL;
+		ctx.cmdclient = NULL;
+		ctx.curclient = c;
+
+		ctx.error = control_msg_error;
+		ctx.print = control_msg_print;
+		ctx.info = control_msg_info;
+
+		if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
+			control_write(c, "%%error in line \"%s\": %s", line,
+			    cause);
+			xfree(cause);
+		} else {
+			cmd_list_exec(cmdlist, &ctx);
+			cmd_list_free(cmdlist);
+		}
+
+		xfree(line);
+	}
 }

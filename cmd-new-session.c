@@ -63,8 +63,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct termios		 tio, *tiop;
 	struct passwd		*pw;
 	const char		*newname, *target, *update, *cwd, *errstr;
-	char			*overrides, *cmd, *cause;
-	int			 detached, idx, hastty;
+	char			*cmd, *cause;
+	int			 detached, idx;
 	u_int			 sx, sy, i;
 
 	newname = args_get(args, 's');
@@ -110,14 +110,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
 		detached = 1;
 
-	/* Control clients don't have a tty, so avoid doing tty-ish things in
-	 * that case. */
-	if ((ctx->cmdclient && (ctx->cmdclient->flags & CLIENT_CONTROL)) ||
-		(ctx->curclient && (ctx->curclient->flags & CLIENT_CONTROL)))
-	    hastty = 0;
-	else
-	    hastty = 1;
-
 	/*
 	 * Save the termios settings, part of which is used for new windows in
 	 * this session.
@@ -135,15 +127,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		tiop = NULL;
 
 	/* Open the terminal if necessary. */
-	if (hastty && !detached && ctx->cmdclient != NULL) {
-		if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
-			ctx->error(ctx, "not a terminal");
-			return (-1);
-		}
-
-		overrides =
-		    options_get_string(&global_s_options, "terminal-overrides");
-		if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
+	if (!detached && ctx->cmdclient != NULL) {
+		if (server_client_open(ctx->cmdclient, NULL, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
 			xfree(cause);
 			return (-1);
@@ -246,7 +231,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (!detached) {
 		if (ctx->cmdclient != NULL) {
-			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+			server_write_ready(ctx->cmdclient);
 
 			old_s = ctx->cmdclient->session;
 			if (old_s != NULL)

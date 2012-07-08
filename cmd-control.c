@@ -81,19 +81,20 @@ control_print_bits(struct cmd_ctx *ctx, bitstr_t *value, int length,
 {
 	int		 separator = 0;
 
-	evbuffer_add(ctx->curclient->stdout_event->output, name, strlen(name));
-	evbuffer_add(ctx->curclient->stdout_event->output, "=", 1);
+	evbuffer_add(ctx->curclient->stdout_data, name, strlen(name));
+	evbuffer_add(ctx->curclient->stdout_data, "=", 1);
 	for (int i = 0; i < length; i++) {
 		if (bit_test(value, i)) {
 			if (separator) {
-				evbuffer_add(ctx->curclient->stdout_event->output, ",", 1);
+				evbuffer_add(ctx->curclient->stdout_data, ",", 1);
 			} else {
 				separator = 1;
 			}
-			evbuffer_add_printf(ctx->curclient->stdout_event->output, "%d", i);
+			evbuffer_add_printf(ctx->curclient->stdout_data, "%d", i);
 		}
 	}
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	evbuffer_add(ctx->curclient->stdout_data, "\n", 1);
+	server_push_stdout(ctx->curclient);
 }
 
 static void
@@ -106,11 +107,12 @@ static void
 control_print_hex(
     struct cmd_ctx *ctx, const char *bytes, size_t length, const char *name)
 {
-	evbuffer_add(ctx->curclient->stdout_event->output, name, strlen(name));
-	evbuffer_add(ctx->curclient->stdout_event->output, "=", 1);
+	evbuffer_add(ctx->curclient->stdout_data, name, strlen(name));
+	evbuffer_add(ctx->curclient->stdout_data, "=", 1);
 	for (size_t i = 0; i < length; i++)
-		evbuffer_add_printf(ctx->curclient->stdout_event->output, "%02x", ((int) bytes[i]) % 0xff);
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+		evbuffer_add_printf(ctx->curclient->stdout_data, "%02x", ((int) bytes[i]) % 0xff);
+	evbuffer_add(ctx->curclient->stdout_data, "\n", 1);
+	server_push_stdout(ctx->curclient);
 }
 
 /* Return a hex-encoded version of utf8data. */
@@ -222,13 +224,14 @@ control_history_line(struct cmd_ctx *ctx, struct grid_line *linedata,
 	last_char = evbuffer_new();
 	for (i = 0; i < linedata->cellsize; i++)
 	    control_history_cell(
-		ctx->curclient->stdout_event->output, linedata->celldata + i,
+		ctx->curclient->stdout_data, linedata->celldata + i,
 		linedata->utf8data + i, dump_context, last_char, &repeats);
 	control_history_output_last_char(
-		last_char, ctx->curclient->stdout_event->output, &repeats);
+		last_char, ctx->curclient->stdout_data, &repeats);
 	if (linedata->flags & GRID_LINE_WRAPPED)
-	    evbuffer_add(ctx->curclient->stdout_event->output, "+", 1);
-	bufferevent_write(ctx->curclient->stdout_event, "\n", 1);
+	    evbuffer_add(ctx->curclient->stdout_data, "+", 1);
+	evbuffer_add(ctx->curclient->stdout_data, "\n", 1);
+	server_push_stdout(ctx->curclient);
 
 	evbuffer_free(last_char);
 }

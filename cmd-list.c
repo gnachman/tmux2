@@ -81,33 +81,26 @@ bad:
 int
 cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 {
+	struct client	*c = ctx->curclient;
 	struct cmd	*cmd;
-	int		 n, retval;
-	struct client	*c;
-	int		 print_guards;
+	int		 n, retval, guards;
 
-	c = ctx->curclient;
-	/* print %begin...%end guards around command output only if the client
-	 * is a control client that has an attached session. The requirement
-	 * for an attached session exists because the local client may issue an
-	 * attach-session or new-session command on startup that the remote
-	 * client is unaware of. Only after attaching to a session does the
-	 * remote client take charge.*/
-	print_guards = c && (c->flags & CLIENT_CONTROL) && c->session;
+	guards = 0;
+	if (c != NULL && c->session != NULL)
+		guards = c->flags & CLIENT_CONTROL;
+
 	retval = 0;
 	control_set_spontaneous_messages_allowed(0);
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
-	    	if (c != NULL && (c->flags & CLIENT_EXITING))
-			return (retval);
-		if (print_guards)
+		if (guards)
 			ctx->print(ctx, "%%begin");
-		if ((n = cmd_exec(cmd, ctx)) == -1) {
-			if (print_guards)
-				ctx->print(ctx, "%%end");
-			return (-1);
-		}
-		if (print_guards)
+		n = cmd_exec(cmd, ctx);
+		if (guards)
 			ctx->print(ctx, "%%end");
+
+		/* Return of -1 is an error. */
+		if (n == -1)
+			return (-1);
 
 		/*
 		 * A 1 return value means the command client is being attached
