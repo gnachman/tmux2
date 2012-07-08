@@ -28,34 +28,28 @@
 
 int	cmd_choose_session_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_choose_session_callback(void *, int);
-void	cmd_choose_session_free(void *);
+void	cmd_choose_session_callback(struct window_choose_data *);
+void	cmd_choose_session_free(struct window_choose_data *);
 
 const struct cmd_entry cmd_choose_session_entry = {
 	"choose-session", NULL,
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [template]",
+	"F:t:", 0, 1,
+	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
 	NULL,
 	cmd_choose_session_exec
 };
 
-struct cmd_choose_session_data {
-	struct client	*client;
-	char   		*template;
-};
-
 int
 cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
-	struct cmd_choose_session_data	*cdata;
 	struct winlink			*wl;
 	struct session			*s;
-	struct session_group		*sg;
-	u_int			 	 idx, sgidx, cur;
-	char				 tmp[64];
+	char				*action;
+	const char			*template;
+	u_int			 	 idx, cur;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -68,89 +62,53 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_SESSION_TEMPLATE;
+
+	if (args->argc != 0)
+		action = xstrdup(args->argv[0]);
+	else
+		action = xstrdup("switch-client -t '%%'");
+
 	cur = idx = 0;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (s == ctx->curclient->session)
 			cur = idx;
 		idx++;
 
-		sg = session_group_find(s);
-		if (sg == NULL)
-			*tmp = '\0';
-		else {
-			sgidx = session_group_index(sg);
-			xsnprintf(tmp, sizeof tmp, " (group %u)", sgidx);
-		}
-
-		window_choose_add(wl->window->active, s->idx,
-		    "%s: %u windows [%ux%u]%s%s", s->name,
-		    winlink_count(&s->windows), s->sx, s->sy,
-		    tmp, s->flags & SESSION_UNATTACHED ? "" : " (attached)");
+		window_choose_add_session(wl->window->active,
+		    ctx, s, template, action, idx);
 	}
-
-	cdata = xmalloc(sizeof *cdata);
-	if (args->argc != 0)
-		cdata->template = xstrdup(args->argv[0]);
-	else
-		cdata->template = xstrdup("switch-client -t '%%'");
-	cdata->client = ctx->curclient;
-	cdata->client->references++;
+	xfree(action);
 
 	window_choose_ready(wl->window->active,
-	    cur, cmd_choose_session_callback, cmd_choose_session_free, cdata);
+	    cur, cmd_choose_session_callback, cmd_choose_session_free);
 
 	return (0);
 }
 
 void
-cmd_choose_session_callback(void *data, int idx)
+cmd_choose_session_callback(struct window_choose_data *cdata)
 {
-	struct cmd_choose_session_data	*cdata = data;
-	struct session			*s;
-	struct cmd_list			*cmdlist;
-	struct cmd_ctx			 ctx;
-	char				*template, *cause;
-
-	if (idx == -1)
+	if (cdata == NULL)
 		return;
 	if (cdata->client->flags & CLIENT_DEAD)
 		return;
 
-	s = session_find_by_index(idx);
-	if (s == NULL)
-		return;
-	template = cmd_template_replace(cdata->template, s->name, 1);
-
-	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
-		if (cause != NULL) {
-			*cause = toupper((u_char) *cause);
-			status_message_set(cdata->client, "%s", cause);
-			xfree(cause);
-		}
-		xfree(template);
-		return;
-	}
-	xfree(template);
-
-	ctx.msgdata = NULL;
-	ctx.curclient = cdata->client;
-
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
-
-	ctx.cmdclient = NULL;
-
-	cmd_list_exec(cmdlist, &ctx);
-	cmd_list_free(cmdlist);
+	window_choose_ctx(cdata);
 }
 
 void
-cmd_choose_session_free(void *data)
+cmd_choose_session_free(struct window_choose_data *cdata)
 {
-	struct cmd_choose_session_data	*cdata = data;
+	if (cdata == NULL)
+		return;
 
 	cdata->client->references--;
-	xfree(cdata->template);
+	cdata->session->references--;
+
+	xfree(cdata->command);
+	xfree(cdata->ft_template);
+	format_free(cdata->ft);
 	xfree(cdata);
 }

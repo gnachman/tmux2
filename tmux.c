@@ -73,10 +73,9 @@ logfile(const char *name)
 {
 	char	*path;
 
-	log_close();
 	if (debug_level > 0) {
 		xasprintf(&path, "tmux-%s-%ld.log", name, (long) getpid());
-		log_open_file(debug_level, path);
+		log_open(debug_level, path);
 		xfree(path);
 	}
 }
@@ -245,7 +244,7 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUvV")) != -1) {
+	while ((opt = getopt(argc, argv, "28c:Cdf:lL:qS:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -259,6 +258,12 @@ main(int argc, char **argv)
 			if (shell_cmd != NULL)
 				xfree(shell_cmd);
 			shell_cmd = xstrdup(optarg);
+			break;
+		case 'C':
+			if (flags & IDENTIFY_CONTROL)
+				flags |= IDENTIFY_TERMIOS;
+			else
+				flags |= IDENTIFY_CONTROL;
 			break;
 		case 'V':
 			printf("%s %s\n", __progname, VERSION);
@@ -299,8 +304,6 @@ main(int argc, char **argv)
 
 	if (shell_cmd != NULL && argc != 0)
 		usage();
-
-	log_open_tty(debug_level);
 
 	if (!(flags & IDENTIFY_UTF8)) {
 		/*
@@ -385,7 +388,7 @@ main(int argc, char **argv)
 		/* -L or default set. */
 		if (label != NULL) {
 			if ((path = makesocketpath(label)) == NULL) {
-				log_warn("can't create socket");
+				fprintf(stderr, "can't create socket\n");
 				exit(1);
 			}
 		}
