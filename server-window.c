@@ -83,7 +83,6 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 	action = options_get_number(&s->options, "bell-action");
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		// TODO(georgen): Test this
 		if (c == NULL || c->session != s || (c->flags & CLIENT_CONTROL))
 			continue;
 		if (!visual) {
