@@ -254,7 +254,6 @@ main(int argc, char **argv)
 			flags |= IDENTIFY_88COLOURS;
 			flags &= ~IDENTIFY_256COLOURS;
 			break;
-			break;
 		case 'c':
 			if (shell_cmd != NULL)
 				xfree(shell_cmd);

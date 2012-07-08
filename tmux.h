@@ -1246,7 +1246,7 @@ struct client {
 #define CLIENT_BORDERS 0x400
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
-#define CLIENT_CONTROL 0x2000		/* is a control client */
+#define CLIENT_CONTROL 0x2000
 #define CLIENT_CONTROL_READY 0x4000	/* control client ready for messages */
 #define CLIENT_SESSION_CHANGED 0x8000  /* needs session-changed notification */
 #define CLIENT_SESSION_NEEDS_HANDSHAKE 0x10000  /* a handshake should be sent */
@@ -1535,7 +1535,7 @@ void	environ_update(const char *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 
 /* tty.c */
-void	tty_init_termios(int, struct termios *, struct bufferevent *, int);
+void	tty_init_termios(int, struct termios *, struct bufferevent *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
