@@ -752,10 +752,7 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("bad MSG_EXITING size");
 
 			c->session = NULL;
-			if ((c->flags & CLIENT_CONTROL)) {
-			    	control_force_write_str(c, "%exit\n");
-			} else
-			        server_client_exit(c);
+			server_client_exit(c);
 			break;
 		case MSG_WAKEUP:
 		case MSG_UNLOCK:

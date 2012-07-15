@@ -330,7 +330,7 @@ client_main(int argc, char **argv, int flags)
 	event_dispatch();
 
 	/* Print the exit message, if any, and exit. */
-	if (client_attached) {
+	if (client_attached || is_control_client) {
 		if (client_exitreason != CLIENT_EXIT_NONE && !login_shell) {
 			if (flags & IDENTIFY_CONTROL) {
 				switch (client_exitreason) {
@@ -357,7 +357,8 @@ client_main(int argc, char **argv, int flags)
 			} else {
 				printf("[%s]\n", client_exit_message());
 			}
-		}
+		} else if (is_control_client)
+		    printf("%%exit\r\n");
 
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
