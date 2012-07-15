@@ -1247,10 +1247,9 @@ struct client {
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
 #define CLIENT_CONTROL 0x2000
-#define CLIENT_CONTROL_READY 0x4000	/* control client ready for messages */
-#define CLIENT_SESSION_CHANGED 0x8000  /* needs session-changed notification */
-#define CLIENT_SESSION_NEEDS_HANDSHAKE 0x10000  /* a handshake should be sent */
-#define CLIENT_EXITING 0x20000  /* MSG_EXIT recvd, send MSG_EXITED on ack */
+#define CLIENT_SESSION_CHANGED 0x4000  /* needs session-changed notification */
+#define CLIENT_SESSION_NEEDS_HANDSHAKE 0x8000  /* a handshake should be sent */
+#define CLIENT_CONTROL_READY 0x10000	/* control client ready for messages */
 	int		 flags;
 
 	struct event	 identify_timer;

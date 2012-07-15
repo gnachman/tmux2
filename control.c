@@ -30,9 +30,9 @@
  * Version number history:
  * There may be some binaries in the world with 0.1, 0.2, 0.3, and
  * 0.4. These were pre-release test versions.
- * 1.0: First complete integration.
+ * 0.5: First July release of iTerm for Mountain Lion, plus tmux.
  */
-#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "1.0"
+#define CURRENT_TMUX_CONTROL_PROTOCOL_VERSION "0.5"
 
 typedef void control_write_cb(struct client *c, void *user_data);
 

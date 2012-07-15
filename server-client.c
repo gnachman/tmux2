@@ -754,7 +754,6 @@ server_client_msg_dispatch(struct client *c)
 			c->session = NULL;
 			if ((c->flags & CLIENT_CONTROL)) {
 			    	control_force_write_str(c, "%exit\n");
-			    	c->flags |= CLIENT_EXITING;
 			} else
 			        server_client_exit(c);
 			break;
