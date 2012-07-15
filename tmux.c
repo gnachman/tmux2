@@ -260,10 +260,8 @@ main(int argc, char **argv)
 			shell_cmd = xstrdup(optarg);
 			break;
 		case 'C':
-			if (flags & IDENTIFY_CONTROL)
-				flags |= IDENTIFY_TERMIOS;
-			else
-				flags |= IDENTIFY_CONTROL;
+			flags |= IDENTIFY_TERMIOS;
+			flags |= IDENTIFY_CONTROL;
 			break;
 		case 'V':
 			printf("%s %s\n", __progname, VERSION);
