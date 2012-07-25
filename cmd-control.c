@@ -138,7 +138,9 @@ control_history_output_last_char(struct evbuffer *last_char,
 				 struct evbuffer *output, int *repeats)
 {
 	if (EVBUFFER_LENGTH(last_char) > 0) {
-		evbuffer_add_buffer(output, last_char);
+		evbuffer_add(output,
+			     EVBUFFER_DATA(last_char),
+			     EVBUFFER_LENGTH(last_char));
 		if (*repeats == 2 && EVBUFFER_LENGTH(last_char) <= 3)
 			/* If an ASCII code repeats once then it's shorter to
 			 * print it twice than to use the run-length encoding.
