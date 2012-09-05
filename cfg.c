@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -80,7 +81,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
-	int		 retval;
+	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
 		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
@@ -89,7 +90,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	n = 0;
 
 	line = NULL;
-	retval = 0;
+	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
 		if (buf[len - 1] == '\n')
 			len--;
@@ -117,14 +118,14 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		line = NULL;
 
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
-			xfree(buf);
+			free(buf);
 			if (cause == NULL)
 				continue;
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
-			xfree(cause);
+			free(cause);
 			continue;
 		} else
-			xfree(buf);
+			free(buf);
 		if (cmdlist == NULL)
 			continue;
 		cfg_cause = NULL;
@@ -144,19 +145,29 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		ctx.info = cfg_print;
 
 		cfg_cause = NULL;
-		if (cmd_list_exec(cmdlist, &ctx) == 1)
-			retval = 1;
+		switch (cmd_list_exec(cmdlist, &ctx)) {
+		case CMD_RETURN_YIELD:
+			if (retval != CMD_RETURN_ATTACH)
+				retval = CMD_RETURN_YIELD;
+			break;
+		case CMD_RETURN_ATTACH:
+			retval = CMD_RETURN_ATTACH;
+			break;
+		case CMD_RETURN_ERROR:
+		case CMD_RETURN_NORMAL:
+			break;
+		}
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
 			cfg_add_cause(
 			    causes, "%s: %d: %s", path, n, cfg_cause);
-			xfree(cfg_cause);
+			free(cfg_cause);
 		}
 	}
 	if (line != NULL) {
 		cfg_add_cause(causes,
 		    "%s: %d: line continuation at end of file", path, n);
-		xfree(line);
+		free(line);
 	}
 	fclose(f);
 

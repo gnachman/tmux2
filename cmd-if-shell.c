@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -28,7 +29,7 @@
  * Executes a tmux command if a shell command returns true or false.
  */
 
-int	cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_if_shell_callback(struct job *);
 void	cmd_if_shell_free(void *);
@@ -49,7 +50,7 @@ struct cmd_if_shell_data {
 	struct cmd_ctx	 ctx;
 };
 
-int
+enum cmd_retval
 cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -71,7 +72,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 
-	return (1);	/* don't let client exit */
+	return (CMD_RETURN_YIELD);	/* don't let client exit */
 }
 
 void
@@ -91,7 +92,7 @@ cmd_if_shell_callback(struct job *job)
 	if (cmd_string_parse(cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			ctx->error(ctx, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		return;
 	}
@@ -105,18 +106,15 @@ cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
 	struct cmd_ctx			*ctx = &cdata->ctx;
-	struct msg_exit_data		 exitdata;
 
 	if (ctx->cmdclient != NULL) {
 		ctx->cmdclient->references--;
-		exitdata.retcode = ctx->cmdclient->retcode;
 		ctx->cmdclient->flags |= CLIENT_EXIT;
 	}
 	if (ctx->curclient != NULL)
 		ctx->curclient->references--;
 
-	if (cdata->cmd_else != NULL)
-		xfree(cdata->cmd_else);
-	xfree(cdata->cmd_if);
-	xfree(cdata);
+	free(cdata->cmd_else);
+	free(cdata->cmd_if);
+	free(cdata);
 }

@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -39,6 +40,11 @@ void	window_choose_write_line(
 void	window_choose_scroll_up(struct window_pane *);
 void	window_choose_scroll_down(struct window_pane *);
 
+enum window_choose_input_type {
+	WINDOW_CHOOSE_NORMAL = -1,
+	WINDOW_CHOOSE_GOTO_ITEM,
+};
+
 const struct window_mode window_choose_mode = {
 	window_choose_init,
 	window_choose_free,
@@ -54,27 +60,37 @@ struct window_choose_mode_data {
 	struct mode_key_data	mdata;
 
 	ARRAY_DECL(, struct window_choose_mode_item) list;
+	int			width;
 	u_int			top;
 	u_int			selected;
+	enum window_choose_input_type input_type;
+	const char		*input_prompt;
+	char			*input_str;
 
 	void 			(*callbackfn)(struct window_choose_data *);
 	void			(*freefn)(struct window_choose_data *);
 };
 
-int	window_choose_key_index(struct window_choose_mode_data *, u_int);
-int	window_choose_index_key(struct window_choose_mode_data *, int);
+int     window_choose_key_index(struct window_choose_mode_data *, u_int);
+int     window_choose_index_key(struct window_choose_mode_data *, int);
+void	window_choose_prompt_input(enum window_choose_input_type,
+	    const char *, struct window_pane *, int);
 
 void
 window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
+	char				 tmp[10];
 
 	ARRAY_EXPAND(&data->list, 1);
 	item = &ARRAY_LAST(&data->list);
 
 	item->name = format_expand(wcd->ft, wcd->ft_template);
 	item->wcd = wcd;
+	item->pos = ARRAY_LENGTH(&data->list) - 1;
+
+	data->width = xsnprintf (tmp, sizeof tmp , "%u", item->pos);
 }
 
 void
@@ -106,6 +122,9 @@ window_choose_init(struct window_pane *wp)
 
 	data->callbackfn = NULL;
 	data->freefn = NULL;
+	data->input_type = WINDOW_CHOOSE_NORMAL;
+	data->input_str = xstrdup("");
+	data->input_prompt = NULL;
 
 	ARRAY_INIT(&data->list);
 	data->top = 0;
@@ -134,6 +153,7 @@ window_choose_data_create(struct cmd_ctx *ctx)
 	wcd->ft = format_create();
 	wcd->ft_template = NULL;
 	wcd->command = NULL;
+	wcd->wl = NULL;
 	wcd->client = ctx->curclient;
 	wcd->session = ctx->curclient->session;
 	wcd->idx = -1;
@@ -152,12 +172,13 @@ window_choose_free(struct window_pane *wp)
 		item = &ARRAY_ITEM(&data->list, i);
 		if (data->freefn != NULL && item->wcd != NULL)
 			data->freefn(item->wcd);
-		xfree(item->name);
+		free(item->name);
 	}
 	ARRAY_FREE(&data->list);
+	free(data->input_str);
 
 	screen_free(&data->screen);
-	xfree(data);
+	free(data);
 }
 
 void
@@ -189,6 +210,24 @@ window_choose_fire_callback(
 	wp->mode = oldmode;
 }
 
+void
+window_choose_prompt_input(enum window_choose_input_type input_type,
+    const char *prompt, struct window_pane *wp, int key)
+{
+	struct window_choose_mode_data	*data = wp->modedata;
+	size_t				 input_len;
+
+	data->input_type = input_type;
+	data->input_prompt = prompt;
+	input_len = strlen(data->input_str) + 2;
+
+	data->input_str = xrealloc(data->input_str, 1, input_len);
+	data->input_str[input_len - 2] = key;
+	data->input_str[input_len - 1] = '\0';
+
+	window_choose_redraw_screen(wp);
+}
+
 /* ARGSUSED */
 void
 window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
@@ -197,10 +236,44 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 	struct window_choose_mode_item	*item;
-	u_int		       		 items;
+	size_t				 input_len;
+	u_int		       		 items, n;
 	int				 idx;
 
 	items = ARRAY_LENGTH(&data->list);
+
+	if (data->input_type == WINDOW_CHOOSE_GOTO_ITEM) {
+		switch (mode_key_lookup(&data->mdata, key)) {
+		case MODEKEYCHOICE_CANCEL:
+			data->input_type = WINDOW_CHOOSE_NORMAL;
+			window_choose_redraw_screen(wp);
+			break;
+		case MODEKEYCHOICE_CHOOSE:
+			n = strtonum(data->input_str, 0, INT_MAX, NULL);
+			if (n > items - 1) {
+				data->input_type = WINDOW_CHOOSE_NORMAL;
+				window_choose_redraw_screen(wp);
+				break;
+			}
+			item = &ARRAY_ITEM(&data->list, n);
+			window_choose_fire_callback(wp, item->wcd);
+			window_pane_reset_mode(wp);
+			break;
+		case MODEKEYCHOICE_BACKSPACE:
+			input_len = strlen(data->input_str);
+			if (input_len > 0)
+				data->input_str[input_len - 1] = '\0';
+			window_choose_redraw_screen(wp);
+			break;
+		default:
+			if (key < '0' || key > '9')
+				break;
+			window_choose_prompt_input(WINDOW_CHOOSE_GOTO_ITEM,
+			    "Goto Item", wp, key);
+			break;
+		}
+		return;
+	}
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCHOICE_CANCEL:
@@ -308,6 +381,19 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 			data->top = data->selected;
 		window_choose_redraw_screen(wp);
 		break;
+	case MODEKEYCHOICE_BACKSPACE:
+		input_len = strlen(data->input_str);
+		if (input_len > 0)
+			data->input_str[input_len - 1] = '\0';
+		window_choose_redraw_screen(wp);
+		break;
+	case MODEKEYCHOICE_STARTNUMBERPREFIX:
+		key &= KEYC_MASK_KEY;
+		if (key < '0' || key > '9')
+			break;
+		window_choose_prompt_input(WINDOW_CHOOSE_GOTO_ITEM,
+		    "Goto Item", wp, key);
+		break;
 	default:
 		idx = window_choose_index_key(data, key);
 		if (idx < 0 || (u_int) idx >= ARRAY_LENGTH(&data->list))
@@ -357,40 +443,56 @@ window_choose_write_line(
 	struct options			*oo = &wp->window->options;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
+	size_t				 last, xoff = 0;
+	char				 hdr[32], label[32];
 	int				 utf8flag, key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
 
+	last = screen_size_y(s) - 1;
 	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	if (data->selected == data->top + py) {
-		colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
-		colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
-		gc.attr |= options_get_number(oo, "mode-attr");
-	}
+	if (data->selected == data->top + py)
+		window_mode_attrs(&gc, oo);
 
 	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		item = &ARRAY_ITEM(&data->list, data->top + py);
-		key = window_choose_key_index(data, data->top + py);
-		if (key != -1) {
-			screen_write_nputs(ctx, screen_size_x(s) - 1,
-			    &gc, utf8flag, "(%c) %s", key, item->name);
-		} else {
-			screen_write_nputs(ctx, screen_size_x(s) - 1,
-			    &gc, utf8flag, "    %s", item->name);
-		}
+		if (item->wcd->wl != NULL &&
+		    item->wcd->wl->flags & WINLINK_ALERTFLAGS)
+			gc.attr |= GRID_ATTR_BRIGHT;
 
+		key = window_choose_key_index(data, data->top + py);
+		if (key != -1)
+			xsnprintf (label, sizeof label, "(%c)", key);
+		else
+			xsnprintf (label, sizeof label, "(%d)", item->pos);
+		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc, utf8flag,
+		    "%*s %s", data->width + 2, label, item->name);
 	}
 	while (s->cx < screen_size_x(s))
 		screen_write_putc(ctx, &gc, ' ');
+
+	if (data->input_type != WINDOW_CHOOSE_NORMAL) {
+		window_mode_attrs(&gc, oo);
+
+		xoff = xsnprintf(hdr, sizeof hdr,
+			"%s: %s", data->input_prompt, data->input_str);
+		screen_write_cursormove(ctx, 0, last);
+		screen_write_puts(ctx, &gc, "%s", hdr);
+		screen_write_cursormove(ctx, xoff, py);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+	}
+
 }
 
 int
 window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
 {
-	static const char	keys[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	static const char	keys[] = "0123456789"
+	                                 "abcdefghijklmnopqrstuvwxyz"
+	                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const char	       *ptr;
 	int			mkey;
 
@@ -407,7 +509,9 @@ window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
 int
 window_choose_index_key(struct window_choose_mode_data *data, int key)
 {
-	static const char	keys[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	static const char	keys[] = "0123456789"
+	                                 "abcdefghijklmnopqrstuvwxyz"
+	                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const char	       *ptr;
 	int			mkey;
 	u_int			idx = 0;
@@ -493,7 +597,7 @@ window_choose_ctx(struct window_choose_data *cdata)
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(cdata->client, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		return;
 	}
@@ -513,7 +617,7 @@ window_choose_ctx(struct window_choose_data *cdata)
 
 struct window_choose_data *
 window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
-	struct session *s, const char *template, char *action, u_int idx)
+    struct session *s, const char *template, char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 
@@ -533,9 +637,41 @@ window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
 }
 
 struct window_choose_data *
+window_choose_add_item(struct window_pane *wp, struct cmd_ctx *ctx,
+    struct winlink *wl, const char *template, char *action, u_int idx)
+{
+	struct window_choose_data	*wcd;
+	char				*action_data;
+
+	wcd = window_choose_data_create(ctx);
+	wcd->idx = wl->idx;
+	wcd->ft_template = xstrdup(template);
+	format_add(wcd->ft, "line", "%u", idx);
+	format_session(wcd->ft, wcd->session);
+	format_winlink(wcd->ft, wcd->session, wl);
+	format_window_pane(wcd->ft, wl->window->active);
+
+	wcd->client->references++;
+	wcd->session->references++;
+
+	window_choose_add(wp, wcd);
+
+	/*
+	 * Interpolate action_data here, since the data we pass back is the
+	 * expanded template itself.
+	 */
+	xasprintf(&action_data, "%s", format_expand(wcd->ft, wcd->ft_template));
+	wcd->command = cmd_template_replace(action, action_data, 1);
+	free(action_data);
+
+	return (wcd);
+
+}
+
+struct window_choose_data *
 window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
-	struct session *s, struct winlink *wl, const char *template,
-	char *action, u_int idx)
+    struct session *s, struct winlink *wl, const char *template,
+    char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 	char				*action_data;
@@ -544,9 +680,10 @@ window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
 
 	xasprintf(&action_data, "%s:%d", s->name, wl->idx);
 	wcd->command = cmd_template_replace(action, action_data, 1);
-	xfree(action_data);
+	free(action_data);
 
 	wcd->idx = wl->idx;
+	wcd->wl = wl;
 	wcd->ft_template = xstrdup(template);
 	format_add(wcd->ft, "line", "%u", idx);
 	format_session(wcd->ft, s);

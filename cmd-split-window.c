@@ -27,8 +27,8 @@
  * Split a window (add a new pane).
  */
 
-void	cmd_split_window_key_binding(struct cmd *, int);
-int	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_split_window_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
@@ -49,7 +49,7 @@ cmd_split_window_key_binding(struct cmd *self, int key)
 		args_set(self->args, 'h', NULL);
 }
 
-int
+enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -70,7 +70,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	environ_init(&env);
@@ -93,7 +93,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			xasprintf(&new_cause, "size %s", cause);
-			xfree(cause);
+			free(cause);
 			cause = new_cause;
 			goto error;
 		}
@@ -101,7 +101,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			xasprintf(&new_cause, "percentage %s", cause);
-			xfree(cause);
+			free(cause);
 			cause = new_cause;
 			goto error;
 		}
@@ -139,7 +139,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = DEFAULT_PANE_INFO_TEMPLATE;
+			template = SPLIT_WINDOW_TEMPLATE;
 
 		ft = format_create();
 		if ((c = cmd_find_client(ctx, NULL)) != NULL)
@@ -150,18 +150,18 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}
 	notify_window_layout_changed(w);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 
 error:
 	environ_free(&env);
 	if (new_wp != NULL)
 		window_remove_pane(w, new_wp);
 	ctx->error(ctx, "create pane failed: %s", cause);
-	xfree(cause);
-	return (-1);
+	free(cause);
+	return (CMD_RETURN_ERROR);
 }

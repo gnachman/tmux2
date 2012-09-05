@@ -88,34 +88,74 @@ extern char   **environ;
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
-/* Default format templates. */
-#define DEFAULT_BUFFER_LIST_TEMPLATE				\
+/* Default template for choose-buffer. */
+#define CHOOSE_BUFFER_TEMPLATE					\
 	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
-#define DEFAULT_CLIENT_TEMPLATE					\
+
+/* Default template for choose-client. */
+#define CHOOSE_CLIENT_TEMPLATE					\
 	"#{client_tty}: #{session_name} "			\
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
 	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
-#define DEFAULT_DISPLAY_MESSAGE_TEMPLATE			\
+
+/* Default templates for choose-tree. */
+#define CHOOSE_TREE_SESSION_TEMPLATE				\
+	"#{session_name}: #{session_windows} windows "		\
+	"#{?session_grouped, (group ,}"				\
+	"#{session_group}#{?session_grouped,),}"		\
+	"#{?session_attached, (attached),}"
+#define CHOOSE_TREE_WINDOW_TEMPLATE				\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"\"#{pane_title}\""
+
+/* Default template for display-message. */
+#define DISPLAY_MESSAGE_TEMPLATE				\
 	"[#{session_name}] #{window_index}:"			\
 	"#{window_name}, current pane #{pane_index} "		\
 	"- (%H:%M %d-%b-%y)"
-#define DEFAULT_FIND_WINDOW_TEMPLATE				\
+
+/* Default template for find-window. */
+#define FIND_WINDOW_TEMPLATE					\
 	"#{window_index}: #{window_name} "			\
 	"[#{window_width}x#{window_height}] "			\
 	"(#{window_panes} panes) #{window_find_matches}"
-#define DEFAULT_SESSION_TEMPLATE \
+
+/* Default template for list-buffers. */
+#define LIST_BUFFERS_TEMPLATE					\
+	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
+
+/* Default template for list-clients. */
+#define LIST_CLIENTS_TEMPLATE					\
+	"#{client_tty}: #{session_name} "			\
+	"[#{client_width}x#{client_height} #{client_termname}]"	\
+	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+
+/* Default template for list-sessions. */
+#define LIST_SESSIONS_TEMPLATE					\
 	"#{session_name}: #{session_windows} windows "		\
 	"(created #{session_created_string}) "			\
 	"[#{session_width}x#{session_height}]"			\
 	"#{?session_grouped, (group ,}"				\
 	"#{session_group}#{?session_grouped,),}"		\
 	"#{?session_attached, (attached),}"
-#define DEFAULT_WINDOW_TEMPLATE					\
+
+/* Default templates for list-windows. */
+#define LIST_WINDOWS_TEMPLATE					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"(#{window_panes} panes) "				\
-	"[#{window_width}x#{window_height}]"
-#define DEFAULT_PANE_INFO_TEMPLATE				\
-	"#{session_name}:#{window_index}.#{pane_index}"
+	"[#{window_width}x#{window_height}] "			\
+	"[layout #{window_layout}] #{window_id}"		\
+	"#{?window_active, (active),}";
+#define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
+	"#{session_name}: "					\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"(#{window_panes} panes) "				\
+	"[#{window_width}x#{window_height}] "
+
+/* Default templates for break-pane, new-window and split-window. */
+#define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+#define NEW_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
+#define SPLIT_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
 
 /* Bell option values. */
 #define BELL_NONE 0
@@ -499,6 +539,7 @@ enum mode_key_cmd {
 	MODEKEYEDIT_TRANSPOSECHARS,
 
 	/* Menu (choice) keys. */
+	MODEKEYCHOICE_BACKSPACE,
 	MODEKEYCHOICE_CANCEL,
 	MODEKEYCHOICE_CHOOSE,
 	MODEKEYCHOICE_DOWN,
@@ -506,6 +547,7 @@ enum mode_key_cmd {
 	MODEKEYCHOICE_PAGEUP,
 	MODEKEYCHOICE_SCROLLDOWN,
 	MODEKEYCHOICE_SCROLLUP,
+	MODEKEYCHOICE_STARTNUMBERPREFIX,
 	MODEKEYCHOICE_UP,
 
 	/* Copy keys. */
@@ -847,14 +889,17 @@ struct window_choose_data {
 	struct client		*client;
 	struct session		*session;
 	struct format_tree	*ft;
+	struct winlink		*wl;
 	char		        *ft_template;
 	char			*command;
 	u_int			 idx;
+	int			 pane_id;
 };
 
 struct window_choose_mode_item {
-    struct window_choose_data   *wcd;
-    char                        *name;
+	struct window_choose_data	*wcd;
+	char				*name;
+	int				 pos;
 };
 
 /* Child window structure. */
@@ -1327,6 +1372,13 @@ struct cmd_list {
 	TAILQ_HEAD(, cmd) 	 list;
 };
 
+enum cmd_retval {
+	CMD_RETURN_ERROR = -1,
+	CMD_RETURN_NORMAL = 0,
+	CMD_RETURN_YIELD,
+	CMD_RETURN_ATTACH
+};
+
 struct cmd_entry {
 	const char	*name;
 	const char	*alias;
@@ -1345,7 +1397,7 @@ struct cmd_entry {
 
 	void		 (*key_binding)(struct cmd *, int);
 	int		 (*check)(struct args *);
-	int		 (*exec)(struct cmd *, struct cmd_ctx *);
+	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_ctx *);
 };
 
 /* Key binding. */
@@ -1473,6 +1525,8 @@ void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* notify.c */
+void	notify_enable(void);
+void	notify_disable(void);
 void	notify_window_layout_changed(struct window *);
 void	notify_window_unlinked(struct session *, struct window *);
 void	notify_window_linked(struct session *, struct window *);
@@ -1637,7 +1691,7 @@ int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char *const *);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
-int		 cmd_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_exec(struct cmd *, struct cmd_ctx *);
 void		 cmd_free(struct cmd *);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_ctx *, int);
@@ -1659,7 +1713,9 @@ extern const struct cmd_entry cmd_break_pane_entry;
 extern const struct cmd_entry cmd_capture_pane_entry;
 extern const struct cmd_entry cmd_choose_buffer_entry;
 extern const struct cmd_entry cmd_choose_client_entry;
+extern const struct cmd_entry cmd_choose_list_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
+extern const struct cmd_entry cmd_choose_tree_entry;
 extern const struct cmd_entry cmd_choose_window_entry;
 extern const struct cmd_entry cmd_clear_history_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
@@ -1740,7 +1796,7 @@ extern const struct cmd_entry cmd_up_pane_entry;
 
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, char **);
-int		 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
 void		 cmd_list_free(struct cmd_list *);
 size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 
@@ -2072,6 +2128,9 @@ struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
 void		 window_set_name(struct window *, const char *);
+void		 window_remove_ref(struct window *);
+void		 winlink_clear_flags(struct winlink *);
+void		 window_mode_attrs(struct grid_cell *, struct options *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -2143,17 +2202,31 @@ struct window_choose_data	*window_choose_add_window(struct window_pane *,
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct cmd_ctx *, struct session *, const char *,
 			char *, u_int);
+struct window_choose_data	*window_choose_add_item(struct window_pane *,
+			struct cmd_ctx *, struct winlink *, const char *,
+			char *, u_int);
 
 /* names.c */
 void		 queue_window_name(struct window *);
 char		*default_window_name(struct window *);
 
 /* signal.c */
-void set_signals(void(*)(int, short, void *));
-void clear_signals(int);
+void	set_signals(void(*)(int, short, void *));
+void	clear_signals(int);
 
 /* control.c */
-void control_callback(struct client *, int, void*);
+void	control_callback(struct client *, int, void*);
+void printflike2 control_write(struct client *, const char *, ...);
+
+/* control-notify.c */
+void	control_notify_window_layout_changed(struct window *);
+void	control_notify_window_unlinked(struct session *, struct window *);
+void	control_notify_window_linked(struct session *, struct window *);
+void	control_notify_window_renamed(struct window *);
+void	control_notify_attached_session_changed(struct client *);
+void	control_notify_session_renamed(struct session *);
+void	control_notify_session_created(struct session *);
+void	control_notify_session_close(struct session *);
 
 /* session.c */
 extern struct sessions sessions;
@@ -2219,7 +2292,6 @@ char		*xstrdup(const char *);
 void		*xcalloc(size_t, size_t);
 void		*xmalloc(size_t);
 void		*xrealloc(void *, size_t, size_t);
-void		 xfree(void *);
 int printflike2	 xasprintf(char **, const char *, ...);
 int		 xvasprintf(char **, const char *, va_list);
 int printflike3	 xsnprintf(char *, size_t, const char *, ...);

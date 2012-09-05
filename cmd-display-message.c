@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <time.h>
 
 #include "tmux.h"
@@ -26,7 +27,7 @@
  * Displays a message in the status line.
  */
 
-int	cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
@@ -38,7 +39,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	cmd_display_message_exec
 };
 
-int
+enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -54,28 +55,28 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t			 len;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 't')) {
 		wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp);
 		if (wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	} else {
 		wl = cmd_find_pane(ctx, NULL, &s, &wp);
 		if (wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	}
 
 	if (args_has(args, 'F') && args->argc != 0) {
 		ctx->error(ctx, "only one of -F or argument must be given");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	template = args_get(args, 'F');
 	if (args->argc != 0)
 		template = args->argv[0];
 	if (template == NULL)
-		template = DEFAULT_DISPLAY_MESSAGE_TEMPLATE;
+		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	ft = format_create();
 	format_client(ft, c);
@@ -93,7 +94,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		status_message_set(c, "%s", msg);
 
-	xfree(msg);
+	free(msg);
 	format_free(ft);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

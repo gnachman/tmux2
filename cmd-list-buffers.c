@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -26,7 +27,7 @@
  * List paste buffers.
  */
 
-int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
@@ -39,7 +40,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 };
 
 /* ARGSUSED */
-int
+enum cmd_retval
 cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -50,7 +51,7 @@ cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	const char		*template;
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_BUFFER_LIST_TEMPLATE;
+		template = LIST_BUFFERS_TEMPLATE;
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
@@ -60,10 +61,10 @@ cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 
 		line = format_expand(ft, template);
 		ctx->print(ctx, "%s", line);
-		xfree(line);
+		free(line);
 
 		format_free(ft);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

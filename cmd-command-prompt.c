@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -30,7 +31,7 @@
 
 void	cmd_command_prompt_key_binding(struct cmd *, int);
 int	cmd_command_prompt_check(struct args *);
-int	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
 
 int	cmd_command_prompt_callback(void *, const char *);
 void	cmd_command_prompt_free(void *);
@@ -83,7 +84,7 @@ cmd_command_prompt_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -94,10 +95,10 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t				 n;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (c->prompt_string != NULL)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->c = c;
@@ -138,9 +139,9 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	status_prompt_set(c, prompt, input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, 0);
-	xfree(prompt);
+	free(prompt);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 int
@@ -157,7 +158,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		return (0);
 
 	new_template = cmd_template_replace(cdata->template, s, cdata->idx);
-	xfree(cdata->template);
+	free(cdata->template);
 	cdata->template = new_template;
 
 	/*
@@ -169,7 +170,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		input = strsep(&cdata->next_input, ",");
 		status_prompt_update(c, prompt, input);
 
-		xfree(prompt);
+		free(prompt);
 		cdata->idx++;
 		return (1);
 	}
@@ -178,7 +179,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(c, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		return (0);
 	}
@@ -205,11 +206,8 @@ cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
 
-	if (cdata->inputs != NULL)
-		xfree(cdata->inputs);
-	if (cdata->prompts != NULL)
-		xfree(cdata->prompts);
-	if (cdata->template != NULL)
-		xfree(cdata->template);
-	xfree(cdata);
+	free(cdata->inputs);
+	free(cdata->prompts);
+	free(cdata->template);
+	free(cdata);
 }

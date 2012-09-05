@@ -30,8 +30,8 @@
  * Loads a paste buffer from a file.
  */
 
-int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_load_buffer_callback(struct client *, int, void *);
+enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_load_buffer_callback(struct client *, int, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	cmd_load_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -62,8 +62,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
-			xfree(cause);
-			return (-1);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -76,10 +76,10 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		    buffer_ptr, &cause);
 		if (error != 0) {
 			ctx->error(ctx, "%s: %s", path, cause);
-			xfree(cause);
-			return (-1);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
-		return (1);
+		return (CMD_RETURN_YIELD);
 	}
 
 	if (c != NULL)
@@ -97,7 +97,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if ((f = fopen(path, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", path, strerror(errno));
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	pdata = NULL;
@@ -123,22 +123,21 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	limit = options_get_number(&global_options, "buffer-limit");
 	if (buffer == -1) {
 		paste_add(&global_buffers, pdata, psize, limit);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
-		xfree(pdata);
-		return (-1);
+		free(pdata);
+		return (CMD_RETURN_ERROR);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 
 error:
-	if (pdata != NULL)
-		xfree(pdata);
+	free(pdata);
 	if (f != NULL)
 		fclose(f);
-	return (-1);
+	return (CMD_RETURN_ERROR);
 }
 
 void
@@ -158,7 +157,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 
 	psize = EVBUFFER_LENGTH(c->stdin_data);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
-		xfree(data);
+		free(data);
 		return;
 	}
 	memcpy(pdata, EVBUFFER_DATA(c->stdin_data), psize);
@@ -174,5 +173,5 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		server_push_stderr(c);
 	}
 
-	xfree(data);
+	free(data);
 }

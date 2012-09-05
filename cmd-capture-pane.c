@@ -27,7 +27,7 @@
  * Write the entire contents of a pane to a buffer.
  */
 
-int	cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	cmd_capture_pane_exec
 };
 
-int
+enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -52,7 +52,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t         		 len, linelen;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	s = &wp->base;
 	gd = s->grid;
 
@@ -62,7 +62,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
 	if (cause != NULL) {
 		top = gd->hsize;
-		xfree(cause);
+		free(cause);
 	} else if (n < 0 && (u_int) -n > gd->hsize)
 		top = 0;
 	else
@@ -73,7 +73,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
 	if (cause != NULL) {
 		bottom = gd->hsize + gd->sy - 1;
-		xfree(cause);
+		free(cause);
 	} else if (n < 0 && (u_int) -n > gd->hsize)
 		bottom = 0;
 	else
@@ -96,29 +96,29 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	       len += linelen;
 	       buf[len++] = '\n';
 
-	       xfree(line);
+	       free(line);
 	}
 
 	limit = options_get_number(&global_options, "buffer-limit");
 
 	if (!args_has(args, 'b')) {
 		paste_add(&global_buffers, buf, len, limit);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
-		xfree(buf);
-		xfree(cause);
-		return (-1);
+		free(buf);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
-		xfree(buf);
-		return (-1);
+		free(buf);
+		return (CMD_RETURN_ERROR);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

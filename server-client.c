@@ -20,6 +20,7 @@
 
 #include <event.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -150,31 +151,25 @@ server_client_lost(struct client *c)
 	status_free_jobs(&c->status_old);
 	screen_free(&c->status);
 
-	if (c->title != NULL)
-		xfree(c->title);
+	free(c->title);
 
 	evtimer_del(&c->repeat_timer);
 
 	if (event_initialized(&c->identify_timer))
 		evtimer_del(&c->identify_timer);
 
-	if (c->message_string != NULL)
-		xfree(c->message_string);
+	free(c->message_string);
 	if (event_initialized (&c->message_timer))
 		evtimer_del(&c->message_timer);
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
 		msg = &ARRAY_ITEM(&c->message_log, i);
-		xfree(msg->msg);
+		free(msg->msg);
 	}
 	ARRAY_FREE(&c->message_log);
 
-	if (c->prompt_string != NULL)
-		xfree(c->prompt_string);
-	if (c->prompt_buffer != NULL)
-		xfree(c->prompt_buffer);
-
-	if (c->cwd != NULL)
-		xfree(c->cwd);
+	free(c->prompt_string);
+	free(c->prompt_buffer);
+	free(c->cwd);
 
 	environ_free(&c->environ);
 
@@ -607,6 +602,9 @@ server_client_check_redraw(struct client *c)
 	struct window_pane	*wp;
 	int		 	 flags, redraw;
 
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
+
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;
 
@@ -661,12 +659,11 @@ server_client_set_title(struct client *c)
 
 	title = status_replace(c, NULL, NULL, NULL, template, time(NULL), 1);
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
-		if (c->title != NULL)
-			xfree(c->title);
+		free(c->title);
 		c->title = xstrdup(title);
 		tty_set_title(&c->tty, c->title);
 	}
-	xfree(title);
+	free(title);
 }
 
 /* Dispatch message from client. */
@@ -873,8 +870,16 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	}
 	cmd_free_argv(argc, argv);
 
-	if (cmd_list_exec(cmdlist, &ctx) != 1)
+	switch (cmd_list_exec(cmdlist, &ctx))
+	{
+	case CMD_RETURN_ERROR:
+	case CMD_RETURN_NORMAL:
 		c->flags |= CLIENT_EXIT;
+		break;
+	case CMD_RETURN_ATTACH:
+	case CMD_RETURN_YIELD:
+		break;
+	}
 	cmd_list_free(cmdlist);
 	return;
 
@@ -897,6 +902,7 @@ server_client_msg_identify(
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
 		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+		server_write_client(c, MSG_STDIN, NULL, 0);
 
 		c->tty.fd = -1;
 		c->tty.log_fd = -1;

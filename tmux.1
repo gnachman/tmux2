@@ -497,7 +497,8 @@ Multiple commands may be specified together as part of a
 .Em command sequence .
 Each command should be separated by spaces and a semicolon;
 commands are executed sequentially from left to right and
-lines ending with a backslash continue on to the next line.
+lines ending with a backslash continue on to the next line,
+except when escaped by another backslash.
 A literal semicolon may be included by escaping it with a backslash (for
 example, when specifying a command sequence to
 .Ic bind-key ) .
@@ -588,6 +589,7 @@ recently used
 session.
 .It Xo Ic detach-client
 .Op Fl P
+.Op Fl a
 .Op Fl s Ar target-session
 .Op Fl t Ar target-client
 .Xc
@@ -596,6 +598,10 @@ Detach the current client if bound to a key, the client specified with
 .Fl t ,
 or all clients currently attached to the session specified by
 .Fl s .
+The
+.Fl a
+option kills all but the client given with
+.Fl t .
 If
 .Fl P
 is given, send SIGHUP to the parent process of the client, typically causing it
@@ -608,9 +614,14 @@ If it does exist, exit with 0.
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Ic kill-session Op Fl t Ar target-session
+.It Ic kill-session
+.Op Fl a
+.Op Fl t Ar target-session
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
+If
+.Fl a
+is given, all sessions but the specified one is killed.
 .It Xo Ic list-clients
 .Op Fl F Ar format
 .Op Fl t Ar target-session
@@ -1036,6 +1047,7 @@ visible pane and negative numbers are lines in the history.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1051,10 +1063,43 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "detach-client -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
+This command works only from inside
+.Nm .
+.It Xo
+.Ic choose-list
+.Op Fl l Ar items
+.Op Fl t Ar target-window
+.Op Ar template
+.Xc
+Put a window into list choice mode, allowing
+.Ar items
+to be selected.
+.Ar items
+can be a comma-separated list to display more than one item.
+If an item has spaces, that entry must be quoted.
+After an item is chosen,
+.Ql %%
+is replaced by the chosen item in the
+.Ar template
+and the result is executed as a command.
+If
+.Ar template
+is not given, "run-shell '%%'" is used.
+.Ar items
+also accepts format specifiers.
+For the meaning of this see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Xo
 .Ic choose-session
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1068,10 +1113,77 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "switch-client -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Xo
+.Ic choose-tree
+.Op Fl s
+.Op Fl w
+.Op Fl b Ar session-template
+.Op Fl c Ar window-template
+.Op Fl S Ar format
+.Op Fl W Ar format
+.Op Fl t Ar target-window
+.Xc
+Put a window into tree choice mode, where either sessions or windows may be
+selected interactively from a list.
+By default, windows belonging to a session are indented to show their
+relationship to a session.
+.Pp
+Note that the
 .Ic choose-window
+and
+.Ic choose-session
+commands are wrappers around
+.Ic choose-tree .
+.Pp
+If
+.Fl s
+is given, will show sessions.
+If
+.Fl w
+is given, will show windows.
+If
+.Fl b
+is given, will override the default session command.
+Note that
+.Ql %%
+can be used, and will be replaced with the session name.
+The default option if not specified is "switch-client -t '%%'".
+If
+.Fl c
+is given, will override the default window command.
+Note that
+.Ql %%
+can be used, and will be replaced with the session name and window index.
+This command will run
+.Ar session-template
+before it.
+If
+.Fl S
+is given will display the specified format instead of the default session
+format.
+If
+.Fl W
+is given will display the specified format instead of the default window
+format.
+For the meaning of the
+.Fl s
+and
+.Fl w
+options, see the
+.Sx FORMATS
+section.
+This command only works from inside
+.Nm .
+.It Xo
+.Ic choose-window
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1085,6 +1197,11 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "select-window -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Ic display-panes Op Fl t Ar target-client
@@ -1104,6 +1221,7 @@ to
 keys.
 .It Xo Ic find-window
 .Op Fl CNT
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Ar match-string
 .Xc
@@ -1124,6 +1242,11 @@ The default is
 .Fl CNT .
 If only one window is matched, it'll be automatically selected,
 otherwise a choice list is shown.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
@@ -1358,7 +1481,7 @@ Move a window to the next layout and rearrange the panes to fit.
 Move to the next window in the session.
 If
 .Fl a
-is used, move to the next window with a bell, activity or content alert.
+is used, move to the next window with an alert.
 .It Xo Ic pipe-pane
 .Op Fl o
 .Op Fl t Ar target-pane
@@ -1401,7 +1524,7 @@ Move to the previous layout in the session.
 Move to the previous window in the session.
 With
 .Fl a ,
-move to the previous window with a bell, activity or content alert.
+move to the previous window with an alert.
 .It Xo Ic rename-window
 .Op Fl t Ar target-window
 .Ar new-name
@@ -1929,7 +2052,7 @@ means only bell in windows other than the current window are ignored.
 .It Xo Ic bell-on-alert
 .Op Ic on | off
 .Xc
-If on, ring the terminal bell when an activity, content or silence alert
+If on, ring the terminal bell when an alert
 occurs.
 .It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
@@ -2234,6 +2357,7 @@ may contain any of the following special character sequences:
 .It Li "#h" Ta "Hostname of local host without the domain name"
 .It Li "#F" Ta "Current window flag"
 .It Li "#I" Ta "Current window index"
+.It Li "#D" Ta "Current pane unique identifier"
 .It Li "#P" Ta "Current pane index"
 .It Li "#S" Ta "Session name"
 .It Li "#T" Ta "Current pane title"
@@ -2764,13 +2888,7 @@ or the global window options if
 is used.
 .El
 .Sh FORMATS
-The
-.Ic list-clients ,
-.Ic list-sessions ,
-.Ic list-windows
-and
-.Ic list-panes
-commands accept the
+Certain commands accept the
 .Fl F
 flag with a
 .Ar format
@@ -2803,6 +2921,8 @@ if it is unattached.
 The following variables are available, where appropriate:
 .Bl -column "session_created_string" "Replaced with" -offset indent
 .It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "buffer_sample" Ta "First 50 characters from the specified buffer"
+.It Li "buffer_size" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "Integer time client last had activity"
 .It Li "client_activity_string" Ta "String time client last had activity"
 .It Li "client_created" Ta "Integer time client created"
@@ -2815,12 +2935,16 @@ The following variables are available, where appropriate:
 .It Li "client_utf8" Ta "1 if client supports utf8"
 .It Li "client_width" Ta "Width of client"
 .It Li "host" Ta "Hostname of local host"
+.It Li "history_bytes" Ta "Number of bytes in window history"
+.It Li "history_limit" Ta "Maximum window history lines"
+.It Li "history_size" Ta "Size of history in bytes"
 .It Li "line" Ta "Line number in the list"
 .It Li "pane_active" Ta "1 if active pane"
 .It Li "pane_current_path" Ta "Current path if available"
 .It Li "pane_dead" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "Height of pane"
 .It Li "pane_id" Ta "Unique pane ID"
+.It Li "pane_index" Ta "Index of pane"
 .It Li "pane_pid" Ta "PID of first process in pane"
 .It Li "pane_start_command" Ta "Command pane started with"
 .It Li "pane_start_path" Ta "Path pane started with"
@@ -2837,11 +2961,14 @@ The following variables are available, where appropriate:
 .It Li "session_width" Ta "Width of session"
 .It Li "session_windows" Ta "Number of windows in session"
 .It Li "window_active" Ta "1 if window active"
+.It Li "window_find_matches" Ta "Matched data from the find-window command if available"
 .It Li "window_flags" Ta "Window flags"
 .It Li "window_height" Ta "Height of window"
+.It Li "window_id" Ta "Unique window ID"
 .It Li "window_index" Ta "Index of window"
 .It Li "window_layout" Ta "Window layout description"
 .It Li "window_name" Ta "Name of window"
+.It Li "window_panes" Ta "Number of panes in window"
 .It Li "window_width" Ta "Width of window"
 .El
 .Sh NAMES AND TITLES
@@ -3148,6 +3275,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -3161,6 +3289,11 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "paste-buffer -b '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Ic clear-history Op Fl t Ar target-pane
@@ -3171,9 +3304,16 @@ Remove and free the history for the specified pane.
 Delete the buffer at
 .Ar buffer-index ,
 or the top buffer if not specified.
-.It Ic list-buffers
+.It Xo Ic list-buffers
+.Op Fl F Ar format
+.Xc
 .D1 (alias: Ic lsb )
 List the global buffers.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Xo Ic load-buffer
 .Op Fl b Ar buffer-index
 .Ar path

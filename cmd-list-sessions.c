@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -27,7 +28,7 @@
  * List all sessions.
  */
 
-int	cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls",
@@ -39,7 +40,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	cmd_list_sessions_exec
 };
 
-int
+enum cmd_retval
 cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -50,7 +51,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*line;
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_SESSION_TEMPLATE;
+		template = LIST_SESSIONS_TEMPLATE;
 
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -60,11 +61,11 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		line = format_expand(ft, template);
 		ctx->print(ctx, "%s", line);
-		xfree(line);
+		free(line);
 
 		format_free(ft);
 		n++;
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

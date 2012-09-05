@@ -18,13 +18,15 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
+
 #include "tmux.h"
 
 /*
  * Sources a configuration file.
  */
 
-int	cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_source_file_entry = {
 	"source-file", "source",
@@ -36,7 +38,7 @@ const struct cmd_entry cmd_source_file_entry = {
 	cmd_source_file_exec
 };
 
-int
+enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -59,13 +61,13 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
 			cause = ARRAY_ITEM(&causes, i);
 			window_copy_add(wp, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 	} else {
 		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
 			cause = ARRAY_ITEM(&causes, i);
 			ctx->print(ctx, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 	}
 	ARRAY_FREE(&causes);
