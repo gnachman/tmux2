@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -28,10 +29,9 @@
  * Runs a command without a window.
  */
 
-int	cmd_run_shell_exec(struct cmd *, struct cmd_ctx *);
-
-void	cmd_run_shell_callback(struct job *);
-void	cmd_run_shell_free(void *);
+enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_run_shell_callback(struct job *);
+void		 cmd_run_shell_free(void *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
@@ -48,7 +48,7 @@ struct cmd_run_shell_data {
 	struct cmd_ctx	 ctx;
 };
 
-int
+enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -66,7 +66,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	job_run(shellcmd, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 
-	return (1);	/* don't let client exit */
+	return (CMD_RETURN_YIELD);	/* don't let client exit */
 }
 
 void
@@ -101,7 +101,7 @@ cmd_run_shell_callback(struct job *job)
 		ctx->print(ctx, "%s", line);
 		lines++;
 
-		xfree(line);
+		free(line);
 	}
 
 	cmd = cdata->cmd;
@@ -119,7 +119,7 @@ cmd_run_shell_callback(struct job *job)
 			ctx->print(ctx, "%s", msg);
 		else
 			ctx->info(ctx, "%s", msg);
-		xfree(msg);
+		free(msg);
 	}
 }
 
@@ -136,6 +136,6 @@ cmd_run_shell_free(void *data)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references--;
 
-	xfree(cdata->cmd);
-	xfree(cdata);
+	free(cdata->cmd);
+	free(cdata);
 }

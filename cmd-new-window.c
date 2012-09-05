@@ -39,7 +39,7 @@ const struct cmd_entry cmd_new_window_entry = {
 	cmd_new_window_exec
 };
 
-int
+enum cmd_retval
 cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -56,7 +56,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'a')) {
 		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
 		if (wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		idx = wl->idx + 1;
 
 		/* Find the next free index. */
@@ -66,7 +66,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		if (last == INT_MAX) {
 			ctx->error(ctx, "no free window indexes");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 
 		/* Move everything from last - 1 to idx up a bit. */
@@ -77,7 +77,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	} else {
 		if ((idx = cmd_find_index(ctx, args_get(args, 't'), &s)) == -2)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	}
 	detached = args_has(args, 'd');
 
@@ -112,8 +112,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
 	if (wl == NULL) {
 		ctx->error(ctx, "create window failed: %s", cause);
-		xfree(cause);
-		return (-1);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
 	if (!detached) {
 		session_select(s, wl->idx);
@@ -123,7 +123,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = DEFAULT_PANE_INFO_TEMPLATE;
+			template = NEW_WINDOW_TEMPLATE;
 
 		ft = format_create();
 		if ((c = cmd_find_client(ctx, NULL)) != NULL)
@@ -134,10 +134,10 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

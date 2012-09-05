@@ -44,10 +44,6 @@ void	tty_colours_fg(struct tty *, const struct grid_cell *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 int	tty_large_region(struct tty *, const struct tty_ctx *);
-void	tty_cra_pane(struct tty *,
-    const struct tty_ctx *, u_int, u_int, u_int, u_int, u_int, u_int);
-void	tty_era_pane(struct tty *,
-    const struct tty_ctx *, u_int, u_int, u_int, u_int);
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
 	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
@@ -57,8 +53,6 @@ void	tty_cell(struct tty *,
 
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
-#define tty_use_rect(tty) \
-	((tty)->xterm_version > 270)
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
@@ -251,19 +245,6 @@ tty_set_version(struct tty *tty, u_int version)
 	if (tty->xterm_version != 0)
 		return;
 	tty->xterm_version = version;
-
-	if (tty->xterm_version > 270) {
-		tty_puts(tty, "\033[65;1\"p");
-
-		tty_putcode(tty, TTYC_RMACS);
-		memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
-
-		tty->cx = UINT_MAX;
-		tty->cy = UINT_MAX;
-
-		tty->rupper = UINT_MAX;
-		tty->rlower = UINT_MAX;
-	}
 }
 
 void
@@ -345,11 +326,11 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 
-	xfree(tty->ccolour);
+	free(tty->ccolour);
 	if (tty->path != NULL)
-		xfree(tty->path);
+		free(tty->path);
 	if (tty->termname != NULL)
-		xfree(tty->termname);
+		free(tty->termname);
 }
 
 void
@@ -468,7 +449,7 @@ tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 		tty_putcode(tty, TTYC_CR);
 	else
 		tty_putcode_ptr1(tty, TTYC_CC, ccolour);
-	xfree(tty->ccolour);
+	free(tty->ccolour);
 	tty->ccolour = xstrdup(ccolour);
 }
 
@@ -667,7 +648,6 @@ tty_write(
 {
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
-	struct session		*s;
 	u_int		 	 i;
 
 	/* wp can be NULL if updating the screen but not the terminal. */
@@ -681,58 +661,20 @@ tty_write(
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+		if (c == NULL || c->session == NULL || c->tty.term == NULL)
 			continue;
-		if (c->flags & CLIENT_SUSPENDED)
+		if (c->flags & (CLIENT_SUSPENDED|TTY_FREEZE))
 			continue;
-		s = c->session;
+		if (c->session->curw->window != wp->window)
+			continue;
 
-		if (s->curw->window == wp->window) {
-			if (c->tty.term == NULL)
-				continue;
-			if (c->tty.flags & TTY_FREEZE)
-				continue;
+		ctx->xoff = wp->xoff;
+		ctx->yoff = wp->yoff;
+		if (status_at_line(c) == 0)
+			ctx->yoff++;
 
-			ctx->xoff = wp->xoff;
-			ctx->yoff = wp->yoff;
-			if (status_at_line(c) == 0)
-				ctx->yoff++;
-
-			cmdfn(&c->tty, ctx);
-		}
+		cmdfn(&c->tty, ctx);
 	}
-}
-
-void
-tty_cra_pane(struct tty *tty, const struct tty_ctx *ctx,
-    u_int t, u_int l, u_int b, u_int r, u_int tt, u_int tl)
-{
-	char	 tmp[64];
-
-	snprintf(tmp, sizeof tmp,
-		 "\033[%u;%u;%u;%u;1;%u;%u;1$v",
-		 ctx->yoff + t + 1,
-		 ctx->xoff + l + 1,
-		 ctx->yoff + b + 1,
-		 ctx->xoff + r + 1,
-		 ctx->yoff + tt + 1,
-		 ctx->xoff + tl + 1);
-	tty_puts(tty, tmp);
-}
-
-void
-tty_era_pane(struct tty *tty, const struct tty_ctx *ctx,
-    u_int t, u_int l, u_int b, u_int r)
-{
-	char	 tmp[64];
-
-	snprintf(tmp, sizeof tmp,
-		 "\033[%u;%u;%u;%u$z",
-		 ctx->yoff + t + 1,
-		 ctx->xoff + l + 1,
-		 ctx->yoff + b + 1,
-		 ctx->xoff + r + 1);
-	tty_puts(tty, tmp);
 }
 
 void
@@ -884,7 +826,6 @@ void
 tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 
 	if (ctx->ocy != ctx->orlower)
 		return;
@@ -893,12 +834,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR)) {
 		if (tty_large_region(tty, ctx))
 			wp->flags |= PANE_REDRAW;
-		else if (tty_use_rect(tty)) {
-			tty_cra_pane (tty, ctx, ctx->orupper + 1, 0,
-			    ctx->orlower, screen_size_x(s) - 1,
-			    ctx->orupper, 0);
-			tty_cmd_clearline(tty, ctx);
-		} else
+		else
 			tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -1099,7 +1035,7 @@ tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
 	b64_ntop(ctx->ptr, ctx->num, buf, off);
 	tty_putcode_ptr2(tty, TTYC_MS, "", buf);
 
-	xfree(buf);
+	free(buf);
 }
 
 void

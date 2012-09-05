@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
@@ -26,7 +27,7 @@
  * Enter choice mode to choose a client.
  */
 
-int	cmd_choose_client_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_client_callback(struct window_choose_data *);
 void	cmd_choose_client_free(struct window_choose_data *);
@@ -46,7 +47,7 @@ struct cmd_choose_client_data {
 	char   		*template;
 };
 
-int
+enum cmd_retval
 cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -59,17 +60,17 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_CLIENT_TEMPLATE;
+		template = CHOOSE_CLIENT_TEMPLATE;
 
 	if (args->argc != 0)
 		action = xstrdup(args->argv[0]);
@@ -98,12 +99,12 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		window_choose_add(wl->window->active, cdata);
 	}
-	xfree(action);
+	free(action);
 
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_client_callback, cmd_choose_client_free);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 void
@@ -133,8 +134,8 @@ cmd_choose_client_free(struct window_choose_data *cdata)
 
 	cdata->client->references--;
 
-	xfree(cdata->ft_template);
-	xfree(cdata->command);
+	free(cdata->ft_template);
+	free(cdata->command);
 	format_free(cdata->ft);
-	xfree(cdata);
+	free(cdata);
 }

@@ -125,7 +125,7 @@ retry:
 		if (unlink(path) != 0 && errno != ENOENT)
 			return (-1);
 		fd = server_start(lockfd, lockfile);
-		xfree(lockfile);
+		free(lockfile);
 		close(lockfd);
 	}
 
@@ -215,7 +215,7 @@ client_main(int argc, char **argv, int flags)
 		 * flag.
 		 */
 		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
-			log_warnx("%s", cause);
+			fprintf(stderr, "%s\n", cause);
 			return (1);
 		}
 		cmdflags &= ~CMD_STARTSERVER;
@@ -326,7 +326,6 @@ client_main(int argc, char **argv, int flags)
 
 	/* Set the event and dispatch. */
 	client_update_event();
-	event_add (&client_stdin, NULL);
 	event_dispatch();
 
 	/* Print the exit message, if any, and exit. */
@@ -594,6 +593,12 @@ client_dispatch_wait(void *data)
 
 			event_del(&client_stdin);
 			client_attached = 1;
+			break;
+		case MSG_STDIN:
+			if (datalen != 0)
+				fatalx("bad MSG_STDIN size");
+
+			event_add(&client_stdin, NULL);
 			break;
 		case MSG_STDOUT:
 			if (datalen != sizeof stdoutdata)

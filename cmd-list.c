@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -78,16 +79,19 @@ bad:
 	return (NULL);
 }
 
-int
+enum cmd_retval
 cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 {
 	struct client	*c = ctx->curclient;
 	struct cmd	*cmd;
-	int		 n, retval, guards;
+	enum cmd_retval	 retval;
+	int		 guards, n;
 
 	guards = 0;
 	if (c != NULL && c->session != NULL)
 		guards = c->flags & CLIENT_CONTROL;
+
+	notify_disable();
 
 	retval = 0;
 	control_set_spontaneous_messages_allowed(0);
@@ -98,21 +102,17 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 		if (guards)
 			ctx->print(ctx, "%%end");
 
-		/* Return of -1 is an error. */
-		if (n == -1)
-			return (-1);
-
-		/*
-		 * A 1 return value means the command client is being attached
-		 * (sent MSG_READY).
-		 */
-		if (n == 1) {
-			retval = 1;
+		switch (n)
+		{
+		case CMD_RETURN_ERROR:
+			return (CMD_RETURN_ERROR);
+		case CMD_RETURN_ATTACH:
+			/* Client is being attached (send MSG_READY). */
+			retval = CMD_RETURN_ATTACH;
 
 			/*
-			 * The command client has been attached, so mangle the
-			 * context to treat any following commands as if they
-			 * were called from inside.
+			 * Mangle the context to treat any following commands
+			 * as if they were called from inside.
 			 */
 			if (ctx->curclient == NULL) {
 				ctx->curclient = ctx->cmdclient;
@@ -122,9 +122,17 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 				ctx->print = key_bindings_print;
 				ctx->info = key_bindings_info;
 			}
+			break;
+		case CMD_RETURN_YIELD:
+			if (retval == CMD_RETURN_NORMAL)
+				retval = CMD_RETURN_YIELD;
+			break;
+		case CMD_RETURN_NORMAL:
+			break;
 		}
 	}
-	control_set_spontaneous_messages_allowed(1);
+
+	notify_enable();
 	return (retval);
 }
 
@@ -141,7 +149,7 @@ cmd_list_free(struct cmd_list *cmdlist)
 		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
 		cmd_free(cmd);
 	}
-	xfree(cmdlist);
+	free(cmdlist);
 }
 
 size_t

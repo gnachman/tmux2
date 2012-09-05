@@ -30,8 +30,8 @@
  * Create a new session and attach to the current terminal unless -d is given.
  */
 
-int	cmd_new_session_check(struct args *);
-int	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_new_session_check(struct args *);
+enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
@@ -44,15 +44,15 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_exec
 };
 
-int
+enum cmd_retval
 cmd_new_session_check(struct args *args)
 {
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n')))
-		return (-1);
-	return (0);
+		return (CMD_RETURN_ERROR);
+	return (CMD_RETURN_NORMAL);
 }
 
-int
+enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -71,11 +71,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (newname != NULL) {
 		if (!session_check_name(newname)) {
 			ctx->error(ctx, "bad session name: %s", newname);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		if (session_find(newname) != NULL) {
 			ctx->error(ctx, "duplicate session: %s", newname);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -83,7 +83,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (target != NULL) {
 		groupwith = cmd_find_session(ctx, target, 0);
 		if (groupwith == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	} else
 		groupwith = NULL;
 
@@ -130,8 +130,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!detached && ctx->cmdclient != NULL) {
 		if (server_client_open(ctx->cmdclient, NULL, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
-			xfree(cause);
-			return (-1);
+			free(cause);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -163,7 +163,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			    args_get(args, 'x'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "width %s", errstr);
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			}
 		}
 		if (args_has(args, 'y')) {
@@ -171,7 +171,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			    args_get(args, 'y'), 1, USHRT_MAX, &errstr);
 			if (errstr != NULL) {
 				ctx->error(ctx, "height %s", errstr);
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			}
 		}
 	}
@@ -201,8 +201,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	s = session_create(newname, cmd, cwd, &env, tiop, idx, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
-		xfree(cause);
-		return (-1);
+		free(cause);
+		return (CMD_RETURN_ERROR);
 	}
 	environ_free(&env);
 
@@ -264,10 +264,10 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
 			cause = ARRAY_ITEM(&cfg_causes, i);
 			window_copy_add(wp, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		ARRAY_FREE(&cfg_causes);
 	}
 
-	return (!detached);	/* 1 means don't tell command client to exit */
+	return (detached ? CMD_RETURN_NORMAL : CMD_RETURN_ATTACH);
 }

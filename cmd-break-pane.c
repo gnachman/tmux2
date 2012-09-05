@@ -26,7 +26,7 @@
  * Break pane off into a window.
  */
 
-int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	cmd_break_pane_exec
 };
 
-int
+enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -55,11 +55,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (window_count_panes(wl->window) == 1) {
 		ctx->error(ctx, "can't break with only one pane");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	w = wl->window;
@@ -81,7 +81,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	w->active = wp;
 	name = default_window_name(w);
 	window_set_name(w, name);
-	xfree(name);
+	free(name);
 	layout_init(w);
 
 	base_idx = options_get_number(&s->options, "base-index");
@@ -95,7 +95,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'P')) {
 
 		if ((template = args_get(args, 'F')) == NULL)
-			template = DEFAULT_PANE_INFO_TEMPLATE;
+			template = BREAK_PANE_TEMPLATE;
 
 		ft = format_create();
 		if ((c = cmd_find_client(ctx, NULL)) != NULL)
@@ -106,9 +106,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

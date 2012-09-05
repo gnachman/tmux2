@@ -90,7 +90,7 @@ key_bindings_clean(void)
 		bd = RB_ROOT(&dead_key_bindings);
 		RB_REMOVE(key_bindings, &dead_key_bindings, bd);
 		cmd_list_free(bd->cmdlist);
-		xfree(bd);
+		free(bd);
 	}
 }
 
@@ -147,7 +147,7 @@ key_bindings_init(void)
 		{ 'p', 			  0, &cmd_previous_window_entry },
 		{ 'q',			  0, &cmd_display_panes_entry },
 		{ 'r', 			  0, &cmd_refresh_client_entry },
-		{ 's', 			  0, &cmd_choose_session_entry },
+		{ 's', 			  0, &cmd_choose_tree_entry },
 		{ 't', 			  0, &cmd_clock_mode_entry },
 		{ 'u',			  1, &cmd_select_layout_entry },
 		{ 'w', 			  0, &cmd_choose_window_entry },
@@ -216,7 +216,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 
 	*msg = toupper((u_char) *msg);
 	status_message_set(ctx->curclient, "%s", msg);
-	xfree(msg);
+	free(msg);
 }
 
 void printflike2
@@ -258,7 +258,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 
 	*msg = toupper((u_char) *msg);
 	status_message_set(ctx->curclient, "%s", msg);
-	xfree(msg);
+	free(msg);
 }
 
 void

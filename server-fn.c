@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -398,7 +399,7 @@ server_destroy_session_group(struct session *s)
 		TAILQ_FOREACH(s, &sg->sessions, gentry)
 			server_destroy_session(s);
 		TAILQ_REMOVE(&session_groups, sg, entry);
-		xfree(sg);
+		free(sg);
 	}
 }
 
@@ -585,5 +586,8 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 
 	if (c->stdin_closed)
 		c->stdin_callback (c, 1, c->stdin_callback_data);
+
+	server_write_client(c, MSG_STDIN, NULL, 0);
+
 	return (0);
 }

@@ -384,7 +384,7 @@ tty_keys_free1(struct tty_key *tk)
 		tty_keys_free1(tk->left);
 	if (tk->right != NULL)
 		tty_keys_free1(tk->right);
-	xfree(tk);
+	free(tk);
 }
 
 /* Lookup a key in the tree. */
@@ -533,6 +533,7 @@ partial_key:
 	 * timer has expired, give up waiting and send the escape.
 	 */
 	if ((tty->flags & TTY_ESCAPE) &&
+	    evtimer_initialized(&tty->key_timer) &&
 	    !evtimer_pending(&tty->key_timer, NULL)) {
 		evbuffer_drain(tty->event->input, 1);
 		key = '\033';
@@ -543,7 +544,8 @@ partial_key:
 
 start_timer:
 	/* If already waiting for timer, do nothing. */
-	if (evtimer_pending(&tty->key_timer, NULL))
+	if (evtimer_initialized(&tty->key_timer) &&
+	    evtimer_pending(&tty->key_timer, NULL))
 		return (0);
 
 	/* Start the timer and wait for expiry or more data. */
@@ -734,7 +736,8 @@ tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
 		a = b = 0;
 
 	log_debug("received xterm version %u", b);
-	tty_set_version(tty, b);
+	if (b < 500)
+		tty_set_version(tty, b);
 
 	return (0);
 }
