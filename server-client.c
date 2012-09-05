@@ -911,7 +911,7 @@ server_client_msg_identify(
 
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
-		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+		c->flags |= CLIENT_CONTROL;  // TODO(georgen): Why does nick want this suspended?
 		if (data->flags & IDENTIFY_TERMIOS)
 		    	c->flags |= CLIENT_SESSION_NEEDS_HANDSHAKE;
 		server_write_client(c, MSG_STDIN, NULL, 0);
@@ -920,6 +920,7 @@ server_client_msg_identify(
 		c->tty.log_fd = -1;
 
 		close(fd);
+		control_handshake(c);
 		return;
 	}
 
