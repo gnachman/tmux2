@@ -94,7 +94,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	notify_disable();
 
 	retval = 0;
-	control_set_spontaneous_messages_allowed(0);
+	notify_disable();
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		if (guards)
 			ctx->print(ctx, "%%begin");

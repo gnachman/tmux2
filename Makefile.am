@@ -60,7 +60,6 @@ dist_tmux_SOURCES = \
 	cfg.c \
 	client.c \
 	clock.c \
-	control.c \
 	cmd-attach-session.c \
 	cmd-bind-key.c \
 	cmd-break-pane.c \

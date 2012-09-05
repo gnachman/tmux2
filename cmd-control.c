@@ -449,12 +449,12 @@ control_set_kvp_command(struct cmd_ctx *ctx, const char *value)
 	eq = strchr(temp, '=');
 	if (!eq) {
 		ctx->error(ctx, "no '=' found");
-		xfree(temp);
+		free(temp);
 		return (-1);
 	}
 	*eq = 0;
 	control_set_kvp(temp, eq + 1);
-	xfree(temp);
+	free(temp);
 	return (0);
 }
 
