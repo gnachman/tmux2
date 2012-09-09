@@ -188,7 +188,6 @@ client_exit_message(void)
 int
 client_main(int argc, char **argv, int flags)
 {
-	struct termios		 saved_termios;
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
 	struct msg_command_data	 cmddata;
@@ -302,10 +301,6 @@ client_main(int argc, char **argv, int flags)
 		client_send_environ();
 	client_send_identify(flags);
 
-	/* Save termios and restore it on exit. Can't count on the
-	 * server to do that because it might crash. */
-	tcgetattr(fileno(stdout), &saved_termios);
-
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
 		/* Fill in command line arguments. */
@@ -362,7 +357,8 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	} else if (flags & IDENTIFY_TERMIOS)
+	}
+	if (flags & IDENTIFY_TERMIOS)
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
