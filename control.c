@@ -128,56 +128,6 @@ control_write(struct client *c, const char *fmt, ...)
 }
 
 void
-control_write_input(struct client *c, struct window_pane *wp,
-			const u_char *buf, int len)
-{
-    	struct evbuffer	*hex_output;
-
-	if (!c->session)
-	    return;
-	/* Only write input if the window pane is linked to a window belonging
-	 * to the client's session. */
-	if (winlink_find_by_window(&c->session->windows, wp->window)) {
-	    	hex_output = evbuffer_new();
-	    	control_hex_encode_buffer(buf, len, hex_output);
-		evbuffer_add(hex_output, "\0", 1);  /* Null terminate */
-		control_write(c, "%%output %%%u %s", wp->id,
-			      EVBUFFER_DATA(hex_output));
-		evbuffer_free(hex_output);
-	}
-}
-
-static void
-control_foreach_client(control_write_cb *cb, void *user_data)
-{
-	for (int i = 0; i < (int) ARRAY_LENGTH(&clients); i++) {
-		struct client *c = ARRAY_ITEM(&clients, i);
-		if (c &&
-                    (c->flags & CLIENT_CONTROL) &&
-		    !(c->flags & CLIENT_SUSPENDED))
-			cb(c, user_data);
-	}
-}
-
-static void
-control_write_input_cb(struct client *c, void *user_data)
-{
-	struct control_input_ctx	*ctx = user_data;
-	if (c->flags & CLIENT_CONTROL_READY)
-	    control_write_input(c, ctx->wp, ctx->buf, ctx->len);
-}
-
-void
-control_broadcast_input(struct window_pane *wp, const u_char *buf, size_t len)
-{
-	struct control_input_ctx	ctx;
-	ctx.wp = wp;
-	ctx.buf = buf;
-	ctx.len = len;
-	control_foreach_client(control_write_input_cb, &ctx);
-}
-
-void
 control_handshake(struct client *c)
 {
 	if ((c->flags & CLIENT_SESSION_NEEDS_HANDSHAKE)) {
@@ -244,6 +194,15 @@ control_get_kvp_value(const char *name)
 void control_init(void)
 {
 	options_init(&control_options, NULL);
+}
+
+/* Write a buffer, adding a terminal newline. Empties buffer. */
+void
+control_write_buffer(struct client *c, struct evbuffer *buffer)
+{
+	evbuffer_add_buffer(c->stdout_data, buffer);
+	evbuffer_add(c->stdout_data, "\n", 1);
+	server_push_stdout(c);
 }
 
 /* Control input callback. Read lines and fire commands. */
