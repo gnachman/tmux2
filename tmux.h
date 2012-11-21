@@ -96,7 +96,8 @@ extern char   **environ;
 #define CHOOSE_CLIENT_TEMPLATE					\
 	"#{client_tty}: #{session_name} "			\
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
-	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),} "	\
+	"(last used #{client_activity_string})"
 
 /* Default templates for choose-tree. */
 #define CHOOSE_TREE_SESSION_TEMPLATE				\
@@ -548,6 +549,11 @@ enum mode_key_cmd {
 	MODEKEYCHOICE_SCROLLDOWN,
 	MODEKEYCHOICE_SCROLLUP,
 	MODEKEYCHOICE_STARTNUMBERPREFIX,
+	MODEKEYCHOICE_TREE_COLLAPSE,
+	MODEKEYCHOICE_TREE_COLLAPSE_ALL,
+	MODEKEYCHOICE_TREE_EXPAND,
+	MODEKEYCHOICE_TREE_EXPAND_ALL,
+	MODEKEYCHOICE_TREE_TOGGLE,
 	MODEKEYCHOICE_UP,
 
 	/* Copy keys. */
@@ -887,12 +893,16 @@ struct window_mode {
 /* Structures for choose mode. */
 struct window_choose_data {
 	struct client		*client;
-	struct session		*session;
+	struct session		*session; /* Session of current client. */
+	struct session		*tree_session; /* Session of items in tree. */
 	struct format_tree	*ft;
 	struct winlink		*wl;
 	char		        *ft_template;
 	char			*command;
 	u_int			 idx;
+	int			 type;
+#define TREE_WINDOW 0x1
+#define TREE_SESSION 0x2
 	int			 pane_id;
 };
 
@@ -900,6 +910,8 @@ struct window_choose_mode_item {
 	struct window_choose_data	*wcd;
 	char				*name;
 	int				 pos;
+	int				 state;
+#define TREE_EXPANDED 0x1
 };
 
 /* Child window structure. */
@@ -1104,29 +1116,6 @@ struct session {
 RB_HEAD(sessions, session);
 ARRAY_DECL(sessionslist, struct session *);
 
-/*
- * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
- * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
- * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
- * and 5.
- */
-struct mouse_event {
-	u_int	b;
-#define MOUSE_1 0
-#define MOUSE_2 1
-#define MOUSE_3 2
-#define MOUSE_UP 3
-#define MOUSE_BUTTON 3
-#define MOUSE_SHIFT 4
-#define MOUSE_ESCAPE 8
-#define MOUSE_CTRL 16
-#define MOUSE_DRAG 32
-#define MOUSE_45 64
-#define MOUSE_RESIZE_PANE 128 /* marker for resizing */
-	u_int	x;
-	u_int	y;
-};
-
 /* TTY information. */
 struct tty_key {
 	char		 ch;
@@ -1154,6 +1143,47 @@ struct tty_term {
 	LIST_ENTRY(tty_term) entry;
 };
 LIST_HEAD(tty_terms, tty_term);
+
+/* Mouse wheel states. */
+#define MOUSE_WHEEL_UP 0
+#define MOUSE_WHEEL_DOWN 1
+
+/* Mouse events. */
+#define MOUSE_EVENT_DOWN (1 << 0)
+#define MOUSE_EVENT_DRAG (1 << 1)
+#define MOUSE_EVENT_UP (1 << 2)
+#define MOUSE_EVENT_CLICK (1 << 3)
+#define MOUSE_EVENT_WHEEL (1 << 4)
+
+/* Mouse flags. */
+#define MOUSE_RESIZE_PANE (1 << 0)
+
+/*
+ * Mouse input. When sent by xterm:
+ *
+ * - buttons are in the bottom two bits: 0 = b1; 1 = b2; 2 = b3; 3 = released
+ * - bits 3, 4 and 5 are for keys
+ * - bit 6 is set for dragging
+ * - bit 7 for buttons 4 and 5
+ */
+struct mouse_event {
+	u_int	xb;
+
+	u_int	x;
+	u_int	lx;
+	u_int	sx;
+
+	u_int	y;
+	u_int	ly;
+	u_int	sy;
+
+	u_int	button;
+	u_int	clicks;
+
+	int	wheel;
+	int     event;
+	int     flags;
+};
 
 struct tty {
 	struct client	*client;
@@ -1314,8 +1344,6 @@ struct client {
 
 	struct session	*session;
 	struct session	*last_session;
-
-	struct mouse_event last_mouse;
 
 	int		 wlmouse;
 
@@ -1527,6 +1555,7 @@ enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 /* notify.c */
 void	notify_enable(void);
 void	notify_disable(void);
+void	notify_input(struct window_pane *, struct evbuffer *);
 void	notify_window_layout_changed(struct window *);
 void	notify_window_unlinked(struct session *, struct window *);
 void	notify_window_linked(struct session *, struct window *);
@@ -1910,7 +1939,8 @@ void	 input_parse(struct window_pane *);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, int);
-void	 input_mouse(struct window_pane *, struct mouse_event *);
+void	 input_mouse(struct window_pane *, struct session *,
+	     struct mouse_event *);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(int);
@@ -2154,8 +2184,7 @@ void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(
 		     struct window_pane *, enum layout_type, int);
-void		 layout_resize_pane_mouse(
-		     struct client *c, struct mouse_event *mouse);
+void		 layout_resize_pane_mouse(struct client *c);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
@@ -2217,8 +2246,11 @@ void	clear_signals(int);
 /* control.c */
 void	control_callback(struct client *, int, void*);
 void printflike2 control_write(struct client *, const char *, ...);
+void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
+void	control_notify_input(struct client *, struct window_pane *,
+	    struct evbuffer *);
 void	control_notify_window_layout_changed(struct window *);
 void	control_notify_window_unlinked(struct session *, struct window *);
 void	control_notify_window_linked(struct session *, struct window *);
@@ -2273,7 +2305,7 @@ u_int	utf8_split2(u_int, u_char *);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
-char		*osdep_get_cwd(pid_t);
+char		*osdep_get_cwd(int);
 struct event_base *osdep_event_init(void);
 
 /* log.c */
