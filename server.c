@@ -152,7 +152,6 @@ server_start(int lockfd, char *lockfile)
 	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();
-	control_init();
 
 	start_time = time(NULL);
 	log_debug("socket path %s", socket_path);

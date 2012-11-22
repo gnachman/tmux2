@@ -1841,7 +1841,6 @@ int	cmd_string_parse(const char *, struct cmd_list **, char **);
 int	client_main(int, char **, int);
 
 /* control.c */
-void	control_init(void);
 void	control_start(struct client *);
 void	control_write_window(struct client *, struct window *);
 void	control_write_window_pane(struct client *, struct window_pane *);
@@ -1858,8 +1857,6 @@ void	control_force_write_str(struct client *c, const char *str);
 void	control_handshake(struct client *);
 void	control_print_session_layouts(struct session *session,
 	    struct cmd_ctx *);
-void	control_set_kvp(const char *, const char *);
-char	*control_get_kvp_value(const char *);
 void	control_notify_attached_session_changed(struct client *);
 void	control_notify_session_closed(struct session *);
 void	control_notify_session_created(struct session *);

@@ -36,8 +36,6 @@
 
 typedef void control_write_cb(struct client *c, void *user_data);
 
-/* Global key-value pairs. */
-struct options	 control_options;
 
 /* Stored text to send control clients. */
 struct control_input_ctx {
@@ -171,29 +169,6 @@ control_print_session_layouts(struct session *session, struct cmd_ctx *ctx)
 		format_winlink(ft, session, wl);
 		ctx->print(ctx, "%s", format_expand(ft, template));
 	}
-}
-
-void
-control_set_kvp(const char *name, const char *value)
-{
-	options_set_string(&control_options, name, "%s", value);
-}
-
-char *
-control_get_kvp_value(const char *name)
-{
-    	struct options_entry	*o;
-
-	o = options_find(&control_options, name);
-	if (o == NULL || o->type != OPTIONS_STRING)
-	    	return NULL;
-
-	return o->str;
-}
-
-void control_init(void)
-{
-	options_init(&control_options, NULL);
 }
 
 /* Write a buffer, adding a terminal newline. Empties buffer. */
