@@ -1324,7 +1324,6 @@ struct client {
 #define CLIENT_CONTROL 0x2000
 #define CLIENT_SESSION_CHANGED 0x4000  /* needs session-changed notification */
 #define CLIENT_SESSION_NEEDS_HANDSHAKE 0x8000  /* a handshake should be sent */
-#define CLIENT_CONTROL_READY 0x10000	/* control client ready for messages */
 	int		 flags;
 
 	struct event	 identify_timer;

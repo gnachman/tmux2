@@ -51,14 +51,13 @@ int cmd_control_exec(struct cmd *, struct cmd_ctx *);
  * get-value key: Output value from key-value store.
  * set-value key=value: Set "key" to "value" in key-value store.
  * set-client-size client-size: Set client size, value is like "80x25".
- * set-ready: Mark client ready for notifications.
  */
 const struct cmd_entry cmd_control_entry = {
 	"control", "control",
 	"al:t:", 1, 2,
 	"[-a] [-l lines] [-t target-pane] "
 	"get-emulatorstate|get-history|get-value|"
-	"set-value|set-client-size|set-ready [client-size|key|key=value]",
+	"set-value|set-client-size [client-size|key|key=value]",
 	0,
 	NULL,
 	NULL,
@@ -381,7 +380,7 @@ control_get_kvp_command(
 
 	o = options_find(control_get_options(), name);
 	if (o == NULL || o->type != OPTIONS_STRING)
-	    return (-1);
+	    return (0);
 
 	value = o->str;
 
@@ -446,17 +445,6 @@ control_set_client_size_command(struct cmd_ctx *ctx, const char *value)
 }
 
 static int
-control_set_ready_command(struct cmd_ctx *ctx)
-{
-	struct client   *c;
-
-	c = cmd_find_client(ctx, NULL);
-	if (c)
-	    c->flags |= CLIENT_CONTROL_READY;
-	return (0);
-}
-
-static int
 control_set_kvp_command(struct cmd_ctx *ctx, const char *value)
 {
 	char		*temp;
@@ -502,8 +490,6 @@ cmd_control_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	    value = args->argv[1];
 	    return control_set_client_size_command(ctx, value);
-	} else if (!strcmp(subcommand, "set-ready")) {
-	    return control_set_ready_command(ctx);
 	} else if (!strcmp(subcommand, "set-value")) {
 	    value = args->argv[1];
 	    return control_set_kvp_command(ctx, value);
