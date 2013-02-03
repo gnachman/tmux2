@@ -164,7 +164,7 @@ control_history_print_line(struct cmd_ctx *ctx, struct grid_line *linedata)
 		cells[i].flags = (linedata->celldata[i].flags & flag_mask);
 		if (cells[i].flags & GRID_FLAG_UTF8)
 		    control_concat_utf8(linedata->utf8data + i,
-					cells[i].encoded + 1);
+					cells[i].encoded);
 		else
 		    sprintf(cells[i].encoded, "%02x",
 			    (linedata->celldata[i].data & 0xff));
