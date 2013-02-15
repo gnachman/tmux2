@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,9 +35,10 @@
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
-char	 	       *cfg_cause;
-int     	 	cfg_finished;
-struct causelist	cfg_causes = ARRAY_INITIALIZER;
+char			*cfg_cause;
+int			 cfg_finished;
+int	 		 cfg_references;
+struct causelist	 cfg_causes;
 
 /* ARGSUSED */
 void printflike2
@@ -72,63 +74,77 @@ cfg_add_cause(struct causelist *causes, const char *fmt, ...)
  * Load configuration file. Returns -1 for an error with a list of messages in
  * causes. Note that causes must be initialised by the caller!
  */
-int
+enum cmd_retval
 load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 {
 	FILE		*f;
 	u_int		 n;
-	char		*buf, *line, *cause;
-	size_t		 len;
+	char		*buf, *copy, *line, *cause;
+	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
 	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
 		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
-	n = 0;
 
+	cfg_references++;
+
+	n = 0;
 	line = NULL;
 	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
+		/* Trim \n. */
 		if (buf[len - 1] == '\n')
 			len--;
+		log_debug ("%s: %s", path, buf);
 
-		if (line != NULL)
-			line = xrealloc(line, 1, strlen(line) + len + 1);
-		else {
+		/* Current line is the continuation of the previous one. */
+		if (line != NULL) {
+			oldlen = strlen(line);
+			line = xrealloc(line, 1, oldlen + len + 1);
+		} else {
+			oldlen = 0;
 			line = xmalloc(len + 1);
-			*line = '\0';
 		}
 
-		/* Append buffer to line. strncat will terminate. */
-		strncat(line, buf, len);
+		/* Append current line to the previous. */
+		memcpy(line + oldlen, buf, len);
+		line[oldlen + len] = '\0';
 		n++;
 
 		/* Continuation: get next line? */
 		len = strlen(line);
 		if (len > 0 && line[len - 1] == '\\') {
 			line[len - 1] = '\0';
+
 			/* Ignore escaped backslash at EOL. */
 			if (len > 1 && line[len - 2] != '\\')
 				continue;
 		}
-		buf = line;
+		copy = line;
 		line = NULL;
 
+		/* Skip empty lines. */
+		buf = copy;
+		while (isspace((u_char)*buf))
+			buf++;
+		if (*buf == '\0')
+			continue;
+
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
-			free(buf);
+			free(copy);
 			if (cause == NULL)
 				continue;
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
 			free(cause);
 			continue;
-		} else
-			free(buf);
+		}
+		free(copy);
 		if (cmdlist == NULL)
 			continue;
-		cfg_cause = NULL;
 
 		if (ctxin == NULL) {
 			ctx.msgdata = NULL;
@@ -159,8 +175,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		}
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
-			cfg_add_cause(
-			    causes, "%s: %d: %s", path, n, cfg_cause);
+			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
 			free(cfg_cause);
 		}
 	}
@@ -171,5 +186,29 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	}
 	fclose(f);
 
+	cfg_references--;
+
 	return (retval);
+}
+
+void
+show_cfg_causes(struct session *s)
+{
+	struct window_pane	*wp;
+	char			*cause;
+	u_int			 i;
+
+	if (s == NULL || ARRAY_EMPTY(&cfg_causes))
+		return;
+
+	wp = s->curw->window->active;
+
+	window_pane_set_mode(wp, &window_copy_mode);
+	window_copy_init_for_output(wp);
+	for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+		cause = ARRAY_ITEM(&cfg_causes, i);
+		window_copy_add(wp, "%s", cause);
+		free(cause);
+	}
+	ARRAY_FREE(&cfg_causes);
 }
