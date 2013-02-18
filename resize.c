@@ -50,12 +50,11 @@ recalculate_sizes(void)
 	struct window		*w;
 	struct window_pane	*wp;
 	u_int			 i, j, ssx, ssy, has, limit;
-	int			 flag;
-	int			 session_has_status;
-	u_int			 ssy_ex_status;
+	int			 flag, has_status;
 
 	RB_FOREACH(s, sessions, &sessions) {
-		session_has_status = options_get_number(&s->options, "status");
+		has_status = options_get_number(&s->options, "status");
+
 		ssx = ssy = UINT_MAX;
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
@@ -64,16 +63,12 @@ recalculate_sizes(void)
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
 					ssx = c->tty.sx;
-				/* Reserve one line for status if the session
-				 * wants it, the client supports it, and there
-				 * is room. */
-				ssy_ex_status = c->tty.sy;
-				if (session_has_status &&
+				if (has_status &&
 				    !(c->flags & CLIENT_CONTROL) &&
-				    ssy_ex_status > 1)
-					--ssy_ex_status;
-				if (ssy_ex_status < ssy)
-					ssy = ssy_ex_status;
+				    c->tty.sy > 1 && c->tty.sy - 1 < ssy)
+					ssy = c->tty.sy - 1;
+				else if (c->tty.sy < ssy)
+					ssy = c->tty.sy;
 			}
 		}
 		if (ssx == UINT_MAX || ssy == UINT_MAX) {
@@ -82,14 +77,14 @@ recalculate_sizes(void)
 		}
 		s->flags &= ~SESSION_UNATTACHED;
 
-		if (session_has_status && ssy == 0)
+		if (has_status && ssy == 0)
 			ssy = 1;
 
 		if (s->sx == ssx && s->sy == ssy)
 			continue;
 
-		log_debug(
-		    "session size %u,%u (was %u,%u)", ssx, ssy, s->sx, s->sy);
+		log_debug("session size %u,%u (was %u,%u)", ssx, ssy, s->sx,
+		    s->sy);
 
 		s->sx = ssx;
 		s->sy = ssy;
@@ -129,8 +124,8 @@ recalculate_sizes(void)
 		if (w->sx == ssx && w->sy == ssy)
 			continue;
 
-		log_debug(
-		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
+		log_debug("window size %u,%u (was %u,%u)", ssx, ssy, w->sx,
+		    w->sy);
 
 		layout_resize(w, ssx, ssy);
 		window_resize(w, ssx, ssy);

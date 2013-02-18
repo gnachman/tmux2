@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
-#include <string.h>
 
 #include "tmux.h"
 
@@ -444,6 +443,39 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	layout_fix_panes(w, sx, sy);
 }
 
+/* Resize a pane to an absolute size. */
+void
+layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
+    u_int new_size)
+{
+	struct layout_cell     *lc, *lcparent;
+	int			change, size;
+
+	lc = wp->layout_cell;
+
+	/* Find next parent of the same type. */
+	lcparent = lc->parent;
+	while (lcparent != NULL && lcparent->type != type) {
+		lc = lcparent;
+		lcparent = lc->parent;
+	}
+	if (lcparent == NULL)
+		return;
+
+	/* Work out the size adjustment. */
+	if (type == LAYOUT_LEFTRIGHT)
+		size = lc->sx;
+	else
+		size = lc->sy;
+	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
+		change = size - new_size;
+	else
+		change = new_size - size;
+
+	/* Resize the pane. */
+	layout_resize_pane(wp, type, change);
+}
+
 /* Resize a single pane within the layout. */
 void
 layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
@@ -487,6 +519,7 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	notify_window_layout_changed(wp->window);
 }
 
+/* Resize pane based on mouse events. */
 void
 layout_resize_pane_mouse(struct client *c)
 {
@@ -535,6 +568,7 @@ layout_resize_pane_mouse(struct client *c)
 		m->flags &= ~MOUSE_RESIZE_PANE;
 }
 
+/* Helper function to grow pane. */
 int
 layout_resize_pane_grow(
     struct layout_cell *lc, enum layout_type type, int needed)
@@ -575,6 +609,7 @@ layout_resize_pane_grow(
 	return (size);
 }
 
+/* Helper function to shrink pane. */
 int
 layout_resize_pane_shrink(
     struct layout_cell *lc, enum layout_type type, int needed)
@@ -746,75 +781,4 @@ layout_close_pane(struct window_pane *wp)
 		layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
 	}
 	notify_window_layout_changed(wp->window);
-}
-
-/* Add layout to list. */
-void
-layout_list_add(struct window *w)
-{
-	struct last_layout	*ll, *ll_last;
-	char			*layout;
-	u_int			 limit;
-
-	layout = layout_dump(w);
-
-	ll_last = w->layout_list_last;
-	if (ll_last != NULL && strcmp(ll_last->layout, layout) == 0) {
-		free(layout);
-		return;
-	}
-
-	ll = xmalloc(sizeof *ll);
-	ll->layout = layout;
-	if (ll_last == NULL)
-		TAILQ_INSERT_TAIL(&w->layout_list, ll, entry);
-	else
-		TAILQ_INSERT_AFTER(&w->layout_list, ll_last, ll, entry);
-	w->layout_list_size++;
-	w->layout_list_last = ll;
-
-	limit = options_get_number(&w->options, "layout-history-limit");
-	while (w->layout_list_size > limit) {
-		ll = TAILQ_LAST(&w->layout_list, last_layouts);
-		if (ll == w->layout_list_last)
-			ll = TAILQ_FIRST(&w->layout_list);
-
-		TAILQ_REMOVE(&w->layout_list, ll, entry);
-		w->layout_list_size--;
-
-		free(ll->layout);
-		free(ll);
-	}
-}
-
-/* Apply next layout from list. */
-const char *
-layout_list_redo(struct window *w)
-{
-	struct last_layout	*ll, *ll_last;
-
-	ll_last = w->layout_list_last;
-	if (ll_last == NULL)
-		return (NULL);
-	ll = TAILQ_NEXT(ll_last, entry);
-	if (ll == NULL)
-		return (NULL);
-	w->layout_list_last = ll;
-	return (ll->layout);
-}
-
-/* Apply previous layout from list. */
-const char *
-layout_list_undo(struct window *w)
-{
-	struct last_layout	*ll, *ll_last;
-
-	ll_last = w->layout_list_last;
-	if (ll_last == NULL)
-		return (NULL);
-	ll = TAILQ_PREV(ll_last, last_layouts, entry);
-	if (ll == NULL)
-		return (NULL);
-	w->layout_list_last = ll;
-	return (ll->layout);
 }

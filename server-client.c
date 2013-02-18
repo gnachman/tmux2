@@ -33,6 +33,7 @@ void	server_client_check_exit(struct client *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
 void	server_client_reset_state(struct client *);
+int	server_client_assume_paste(struct session *);
 
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct msg_command_data *);
@@ -324,6 +325,22 @@ server_client_check_mouse(struct client *c, struct window_pane *wp)
 	window_pane_mouse(wp, c->session, m);
 }
 
+/* Is this fast enough to probably be a paste? */
+int
+server_client_assume_paste(struct session *s)
+{
+	struct timeval	tv;
+	int		t;
+
+	if ((t = options_get_number(&s->options, "assume-paste-time")) == 0)
+		return (0);
+
+	timersub(&s->activity_time, &s->last_activity_time, &tv);
+	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000)
+		return (1);
+	return (0);
+}
+
 /* Handle data key input from client. */
 void
 server_client_handle_key(struct client *c, int key)
@@ -333,11 +350,12 @@ server_client_handle_key(struct client *c, int key)
 	struct window_pane	*wp;
 	struct timeval		 tv;
 	struct key_binding	*bd;
-	int		      	 xtimeout, isprefix;
+	int		      	 xtimeout, isprefix, ispaste;
 
 	/* Check the client is good to accept input. */
 	if ((c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		return;
+
 	if (c->session == NULL)
 		return;
 	s = c->session;
@@ -345,6 +363,9 @@ server_client_handle_key(struct client *c, int key)
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
 		fatal("gettimeofday failed");
+
+	memcpy(&s->last_activity_time, &s->activity_time,
+	    sizeof s->last_activity_time);
 	memcpy(&s->activity_time, &c->activity_time, sizeof s->activity_time);
 
 	w = c->session->curw->window;
@@ -381,30 +402,38 @@ server_client_handle_key(struct client *c, int key)
 	}
 
 	/* Is this a prefix key? */
-	if (key == options_get_number(&c->session->options, "prefix"))
+	if (key == options_get_number(&s->options, "prefix"))
 		isprefix = 1;
-	else if (key == options_get_number(&c->session->options, "prefix2"))
+	else if (key == options_get_number(&s->options, "prefix2"))
 		isprefix = 1;
 	else
 		isprefix = 0;
 
+	/* Treat prefix as a regular key when pasting is detected. */
+	ispaste = server_client_assume_paste(s);
+	if (ispaste)
+		isprefix = 0;
+
 	/* No previous prefix key. */
 	if (!(c->flags & CLIENT_PREFIX)) {
-		if (isprefix)
+		if (isprefix) {
 			c->flags |= CLIENT_PREFIX;
-		else {
-			/* Try as a non-prefix key binding. */
-			if ((bd = key_bindings_lookup(key)) == NULL) {
-				if (!(c->flags & CLIENT_READONLY))
-					window_pane_key(wp, c->session, key);
-			} else
-				key_bindings_dispatch(bd, c);
+			server_status_client(c);
+			return;
 		}
+
+		/* Try as a non-prefix key binding. */
+		if (ispaste || (bd = key_bindings_lookup(key)) == NULL) {
+			if (!(c->flags & CLIENT_READONLY))
+				window_pane_key(wp, s, key);
+		} else
+			key_bindings_dispatch(bd, c);
 		return;
 	}
 
 	/* Prefix key already pressed. Reset prefix and lookup key. */
 	c->flags &= ~CLIENT_PREFIX;
+	server_status_client(c);
 	if ((bd = key_bindings_lookup(key | KEYC_PREFIX)) == NULL) {
 		/* If repeating, treat this as a key, else ignore. */
 		if (c->flags & CLIENT_REPEAT) {
@@ -412,7 +441,7 @@ server_client_handle_key(struct client *c, int key)
 			if (isprefix)
 				c->flags |= CLIENT_PREFIX;
 			else if (!(c->flags & CLIENT_READONLY))
-				window_pane_key(wp, c->session, key);
+				window_pane_key(wp, s, key);
 		}
 		return;
 	}
@@ -423,12 +452,12 @@ server_client_handle_key(struct client *c, int key)
 		if (isprefix)
 			c->flags |= CLIENT_PREFIX;
 		else if (!(c->flags & CLIENT_READONLY))
-			window_pane_key(wp, c->session, key);
+			window_pane_key(wp, s, key);
 		return;
 	}
 
 	/* If this key can repeat, reset the repeat flags and timer. */
-	xtimeout = options_get_number(&c->session->options, "repeat-time");
+	xtimeout = options_get_number(&s->options, "repeat-time");
 	if (xtimeout != 0 && bd->can_repeat) {
 		c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
 
@@ -557,14 +586,16 @@ server_client_reset_state(struct client *c)
 }
 
 /* Repeat time callback. */
-/* ARGSUSED */
 void
 server_client_repeat_timer(unused int fd, unused short events, void *data)
 {
 	struct client	*c = data;
 
-	if (c->flags & CLIENT_REPEAT)
+	if (c->flags & CLIENT_REPEAT) {
+		if (c->flags & CLIENT_PREFIX)
+			server_status_client(c);
 		c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
+	}
 }
 
 /* Check if client should be exited. */
@@ -727,8 +758,9 @@ server_client_msg_dispatch(struct client *c)
 			if (datalen != 0)
 				fatalx("bad MSG_RESIZE size");
 
-			if (!(c->flags & CLIENT_CONTROL) &&
-			    tty_resize(&c->tty)) {
+			if (c->flags & CLIENT_CONTROL)
+				break;
+			if (tty_resize(&c->tty)) {
 				recalculate_sizes();
 				server_redraw_client(c);
 			}
@@ -903,7 +935,7 @@ server_client_msg_identify(
 
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
-		c->flags |= CLIENT_CONTROL;  // TODO(georgen): Why does nick want this suspended?
+		c->flags |= CLIENT_CONTROL;
 		if (data->flags & IDENTIFY_TERMIOS)
 		    	c->flags |= CLIENT_SESSION_NEEDS_HANDSHAKE;
 		server_write_client(c, MSG_STDIN, NULL, 0);

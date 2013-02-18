@@ -101,7 +101,7 @@ extern char   **environ;
 
 /* Default templates for choose-tree. */
 #define CHOOSE_TREE_SESSION_TEMPLATE				\
-	"#{session_name}: #{session_windows} windows "		\
+	"#{session_name}: #{session_windows} windows"		\
 	"#{?session_grouped, (group ,}"				\
 	"#{session_group}#{?session_grouped,),}"		\
 	"#{?session_attached, (attached),}"
@@ -270,6 +270,7 @@ enum tty_code_code {
 	TTYC_DL,	/* parm_delete_line, DL */
 	TTYC_DL1,	/* delete_line, dl */
 	TTYC_E3,
+	TTYC_ECH,	/* erase_chars, ec */
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
@@ -660,17 +661,12 @@ struct mode_key_table {
 #define MODE_MOUSE_BUTTON 0x40
 #define MODE_MOUSE_ANY 0x80
 #define MODE_MOUSE_UTF8 0x100
-#define MODE_BRACKETPASTE 0x200
+#define MODE_MOUSE_SGR 0x200
+#define MODE_BRACKETPASTE 0x400
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
-/*
- * A single UTF-8 character.
- *
- * The data member in this must be UTF8_SIZE to allow screen_write_copy to
- * reinject stored UTF-8 data back into screen_write_cell after combining (ugh
- * XXX XXX).
- */
+/* A single UTF-8 character. */
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
@@ -704,7 +700,6 @@ struct utf8_data {
 #define GRID_FLAG_FG256 0x1
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
-#define GRID_FLAG_UTF8 0x8
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -715,22 +710,15 @@ struct grid_cell {
 	u_char	flags;
 	u_char	fg;
 	u_char	bg;
-	u_char	data;
-} __packed;
 
-/* Grid cell UTF-8 data. Used instead of data in grid_cell for UTF-8 cells. */
-struct grid_utf8 {
-	u_char	width;
-	u_char	data[UTF8_SIZE];
+	u_char	xstate; /* top 4 bits width, bottom 4 bits size */
+	u_char	xdata[UTF8_SIZE];
 } __packed;
 
 /* Grid line. */
 struct grid_line {
 	u_int	cellsize;
 	struct grid_cell *celldata;
-
-	u_int	utf8size;
-	struct grid_utf8 *utf8data;
 
 	int	flags;
 } __packed;
@@ -892,18 +880,24 @@ struct window_mode {
 
 /* Structures for choose mode. */
 struct window_choose_data {
-	struct client		*client;
-	struct session		*session; /* Session of current client. */
-	struct session		*tree_session; /* Session of items in tree. */
-	struct format_tree	*ft;
-	struct winlink		*wl;
-	char		        *ft_template;
-	char			*command;
+	struct client		*start_client;
+	struct session		*start_session;
+
 	u_int			 idx;
 	int			 type;
+#define TREE_OTHER 0x0
 #define TREE_WINDOW 0x1
 #define TREE_SESSION 0x2
+
+	struct session		*tree_session; /* session of items in tree */
+
+	struct winlink		*wl;
 	int			 pane_id;
+
+	char		        *ft_template;
+	struct format_tree	*ft;
+
+	char			*command;
 };
 
 struct window_choose_mode_item {
@@ -969,13 +963,6 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
-/* Window last layout. */
-struct last_layout {
-	char	*layout;
-
-	TAILQ_ENTRY(last_layout) entry;
-};
-
 /* Window structure. */
 struct window {
 	u_int		 id;
@@ -989,9 +976,6 @@ struct window {
 
 	int		 lastlayout;
 	struct layout_cell *layout_root;
-	TAILQ_HEAD(last_layouts, last_layout) layout_list;
-	u_int		 layout_list_size;
-	struct last_layout *layout_list_last;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1091,6 +1075,7 @@ struct session {
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
+	struct timeval	 last_activity_time;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1166,6 +1151,9 @@ LIST_HEAD(tty_terms, tty_term);
  * - bits 3, 4 and 5 are for keys
  * - bit 6 is set for dragging
  * - bit 7 for buttons 4 and 5
+ *
+ * With the SGR 1006 extension the released button becomes known. Store these
+ * in separate fields and store the value converted to the old format in xb.
  */
 struct mouse_event {
 	u_int	xb;
@@ -1177,6 +1165,10 @@ struct mouse_event {
 	u_int	y;
 	u_int	ly;
 	u_int	sy;
+
+	u_int   sgr;		/* whether the input arrived in SGR format */
+	u_int   sgr_xb;		/* only for SGR: the unmangled button */
+	u_int   sgr_rel;	/* only for SGR: if it is a release event */
 
 	u_int	button;
 	u_int	clicks;
@@ -1219,7 +1211,7 @@ struct tty {
 
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
-#define TTY_ESCAPE 0x4
+#define TTY_TIMER 0x4
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
@@ -1238,7 +1230,6 @@ struct tty_ctx {
 	struct window_pane *wp;
 
 	const struct grid_cell *cell;
-	const struct grid_utf8 *utf8;
 
 	u_int		 num;
 	void		*ptr;
@@ -1259,7 +1250,6 @@ struct tty_ctx {
 
 	/* Saved last cell on line. */
 	struct grid_cell last_cell;
-	struct grid_utf8 last_utf8;
 	u_int		 last_width;
 };
 
@@ -1589,12 +1579,11 @@ long long options_get_number(struct options *, const char *);
 extern const struct options_table_entry server_options_table[];
 extern const struct options_table_entry session_options_table[];
 extern const struct options_table_entry window_options_table[];
-void	options_table_populate_tree(
-	    const struct options_table_entry *, struct options *);
-const char *options_table_print_entry(
-	    const struct options_table_entry *, struct options_entry *);
-int	options_table_find(
-	    const char *, const struct options_table_entry **,
+void	options_table_populate_tree(const struct options_table_entry *,
+	    struct options *);
+const char *options_table_print_entry(const struct options_table_entry *,
+	    struct options_entry *, int);
+int	options_table_find(const char *, const struct options_table_entry **,
 	    const struct options_table_entry **);
 
 /* job.c */
@@ -1630,10 +1619,11 @@ void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
 void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
 void	tty_putcode_ptr1(struct tty *, enum tty_code_code, const void *);
-void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *, const void *);
+void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *,
+	    const void *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
-void	tty_pututf8(struct tty *, const struct grid_utf8 *);
+void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
@@ -1658,6 +1648,7 @@ void	tty_cmd_clearscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearstartofline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearstartofscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_deletecharacter(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearcharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_deleteline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_erasecharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_insertcharacter(struct tty *, const struct tty_ctx *);
@@ -1690,7 +1681,7 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_acs_get(struct tty *, u_char);
 
 /* tty-keys.c */
-void	tty_keys_init(struct tty *);
+void	tty_keys_build(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
@@ -1705,7 +1696,6 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 char		*paste_print(struct paste_buffer *, size_t);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
-
 
 /* clock.c */
 extern const char clock_table[14][5][5];
@@ -1741,7 +1731,7 @@ int		 cmd_find_index(
 		     struct cmd_ctx *, const char *, struct session **);
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
-char		*cmd_template_replace(char *, const char *, int);
+char		*cmd_template_replace(const char *, const char *, int);
 const char     	*cmd_get_default_path(struct cmd_ctx *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
@@ -2002,13 +1992,9 @@ void	 grid_collect_history(struct grid *);
 void	 grid_scroll_history(struct grid *);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_expand_line(struct grid *, u_int, u_int);
-void	 grid_expand_line_utf8(struct grid *, u_int, u_int);
 const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
 struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
-const struct grid_utf8 *grid_peek_utf8(struct grid *, u_int, u_int);
-struct grid_utf8 *grid_get_utf8(struct grid *, u_int, u_int);
-void	 grid_set_utf8(struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
@@ -2016,23 +2002,19 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
+u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 
-/* grid-utf8.c */
-size_t	 grid_utf8_size(const struct grid_utf8 *);
-size_t	 grid_utf8_copy(const struct grid_utf8 *, char *, size_t);
-void	 grid_utf8_set(struct grid_utf8 *, const struct utf8_data *);
-int	 grid_utf8_append(struct grid_utf8 *, const struct utf8_data *);
-int	 grid_utf8_compare(const struct grid_utf8 *, const struct grid_utf8 *);
+/* grid-cell.c */
+u_int	 grid_cell_width(const struct grid_cell *);
+void	 grid_cell_get(const struct grid_cell *, struct utf8_data *);
+void	 grid_cell_set(struct grid_cell *, const struct utf8_data *);
+void	 grid_cell_one(struct grid_cell *, u_char);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
 struct grid_cell *grid_view_get_cell(struct grid *, u_int, u_int);
 void	 grid_view_set_cell(
 	     struct grid *, u_int, u_int, const struct grid_cell *);
-const struct grid_utf8 *grid_view_peek_utf8(struct grid *, u_int, u_int);
-struct grid_utf8 *grid_view_get_utf8(struct grid *, u_int, u_int);
-void	 grid_view_set_utf8(
-	     struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_view_clear_history(struct grid *);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
@@ -2067,6 +2049,8 @@ void	 screen_write_putc(
 void	 screen_write_copy(struct screen_write_ctx *,
 	     struct screen *, u_int, u_int, u_int, u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
+void	 screen_write_mode_set(struct screen_write_ctx *, int);
+void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
@@ -2074,33 +2058,25 @@ void	 screen_write_cursorleft(struct screen_write_ctx *, u_int);
 void	 screen_write_alignmenttest(struct screen_write_ctx *);
 void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int);
+void	 screen_write_clearcharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_insertline(struct screen_write_ctx *, u_int);
 void	 screen_write_deleteline(struct screen_write_ctx *, u_int);
 void	 screen_write_clearline(struct screen_write_ctx *);
 void	 screen_write_clearendofline(struct screen_write_ctx *);
 void	 screen_write_clearstartofline(struct screen_write_ctx *);
 void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_cursormode(struct screen_write_ctx *, int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_insertmode(struct screen_write_ctx *, int);
-void	 screen_write_utf8mousemode(struct screen_write_ctx *, int);
-void	 screen_write_mousemode_on(struct screen_write_ctx *, int);
-void	 screen_write_mousemode_off(struct screen_write_ctx *);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
 void	 screen_write_linefeedscreen(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
-void	 screen_write_kcursormode(struct screen_write_ctx *, int);
-void	 screen_write_kkeypadmode(struct screen_write_ctx *, int);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
-void	 screen_write_cell(struct screen_write_ctx *,
-	     const struct grid_cell *, const struct utf8_data *);
+void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
-void	 screen_write_bracketpaste(struct screen_write_ctx *, int);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, int, int);
@@ -2114,11 +2090,12 @@ void	 screen_reset_tabs(struct screen *);
 void	 screen_set_cursor_style(struct screen *, u_int);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 void	 screen_set_title(struct screen *, const char *);
-void	 screen_resize(struct screen *, u_int, u_int);
+void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
+void	 screen_reflow(struct screen *, u_int);
 
 /* window.c */
 extern struct windows windows;
@@ -2201,8 +2178,7 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(
-		     struct layout_cell *, struct layout_cell **);
+void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
 void		 layout_set_size(
 		     struct layout_cell *, u_int, u_int, u_int, u_int);
 void		 layout_make_leaf(
@@ -2216,16 +2192,15 @@ void		 layout_resize_adjust(
 void		 layout_init(struct window *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
-void		 layout_resize_pane(
-		     struct window_pane *, enum layout_type, int);
-void		 layout_resize_pane_mouse(struct client *c);
+void		 layout_resize_pane(struct window_pane *, enum layout_type,
+		     int);
+void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
+		     u_int);
+void		 layout_resize_pane_mouse(struct client *);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
-void		 layout_list_add(struct window *);
-const char	*layout_list_redo(struct window *);
-const char	*layout_list_undo(struct window *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *);
@@ -2255,19 +2230,20 @@ extern const struct window_mode window_choose_mode;
 void		 window_choose_add(struct window_pane *,
 			 struct window_choose_data *);
 void		 window_choose_ready(struct window_pane *,
-		     u_int, void (*)(struct window_choose_data *),
-		     void (*)(struct window_choose_data *));
-struct window_choose_data	*window_choose_data_create(struct cmd_ctx *);
-void		 window_choose_ctx(struct window_choose_data *);
+		     u_int, void (*)(struct window_choose_data *));
+struct window_choose_data	*window_choose_data_create (int,
+		     struct client *, struct session *);
+void	window_choose_data_free(struct window_choose_data *);
+void	window_choose_data_run(struct window_choose_data *);
 struct window_choose_data	*window_choose_add_window(struct window_pane *,
-			struct cmd_ctx *, struct session *, struct winlink *,
-			const char *, char *, u_int);
+			struct client *, struct session *, struct winlink *,
+			const char *, const char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
-			struct cmd_ctx *, struct session *, const char *,
-			char *, u_int);
+			struct client *, struct session *, const char *,
+			const char *, u_int);
 struct window_choose_data	*window_choose_add_item(struct window_pane *,
-			struct cmd_ctx *, struct winlink *, const char *,
-			char *, u_int);
+			struct client *, struct winlink *, const char *,
+			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
 
 /* names.c */

@@ -40,13 +40,11 @@ int			 cfg_finished;
 int	 		 cfg_references;
 struct causelist	 cfg_causes;
 
-/* ARGSUSED */
 void printflike2
 cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
-/* ARGSUSED */
 void printflike2
 cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 {
@@ -131,8 +129,10 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		buf = copy;
 		while (isspace((u_char)*buf))
 			buf++;
-		if (*buf == '\0')
+		if (*buf == '\0') {
+			free(copy);
 			continue;
+		}
 
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
 			free(copy);

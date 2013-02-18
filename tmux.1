@@ -1040,14 +1040,22 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
+.Op Fl p
 .Op Fl b Ar buffer-index
+.Op Fl c Ar target-client
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic capturep )
-Capture the contents of a pane to the specified buffer, or a new buffer if none
-is specified.
+Capture the contents of a pane.
+If
+.Fl p
+is given, the output goes to
+.Ar target-client
+stdout, otherwise to the buffer specified with
+.Fl b
+or a new buffer if omitted.
 .Pp
 .Fl S
 and
@@ -1078,8 +1086,7 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
-This command works only from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Xo
 .Ic choose-list
 .Op Fl l Ar items
@@ -1105,8 +1112,7 @@ also accepts format specifiers.
 For the meaning of this see the
 .Sx FORMATS
 section.
-This command works only from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Xo
 .Ic choose-session
 .Op Fl F Ar format
@@ -1128,13 +1134,10 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
-This command works only from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl s
-.Op Fl w
-.Op Fl u
+.Op Fl suw
 .Op Fl b Ar session-template
 .Op Fl c Ar window-template
 .Op Fl S Ar format
@@ -1159,25 +1162,30 @@ is given, will show sessions.
 If
 .Fl w
 is given, will show windows.
-If
+.Pp
+By default, the tree is collapsed and sessions must be expanded to windows
+with the right arrow key.
+The
 .Fl u
-is given, the tree is uncollapsed by default.
+will start with all all sessions expanded instead.
+.Pp
 If
 .Fl b
 is given, will override the default session command.
 Note that
 .Ql %%
-can be used, and will be replaced with the session name.
+can be used and will be replaced with the session name.
 The default option if not specified is "switch-client -t '%%'".
 If
 .Fl c
 is given, will override the default window command.
-Note that
+Like
+.Fl b ,
 .Ql %%
-can be used, and will be replaced with the session name and window index.
-This command will run
-.Ar session-template
-before it.
+can be used and will be replaced with the session name and window index.
+When a window is chosen from the list, the session command is run before the
+window command.
+.Pp
 If
 .Fl S
 is given will display the specified format instead of the default session
@@ -1193,8 +1201,8 @@ and
 options, see the
 .Sx FORMATS
 section.
-This command only works from inside
-.Nm .
+.Pp
+This command works only if at least one client is attached.
 .It Xo
 .Ic choose-window
 .Op Fl F Ar format
@@ -1216,8 +1224,7 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
-This command works only from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Ic display-panes Op Fl t Ar target-client
 .D1 (alias: Ic displayp)
 Display a visible indicator of each pane shown by
@@ -1261,8 +1268,7 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
-This command only works from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Xo Ic join-pane
 .Op Fl bdhv
 .Oo Fl l
@@ -1551,17 +1557,25 @@ if specified, to
 .It Xo Ic resize-pane
 .Op Fl DLRU
 .Op Fl t Ar target-pane
+.Op Fl x Ar width
+.Op Fl y Ar height
 .Op Ar adjustment
 .Xc
 .D1 (alias: Ic resizep )
-Resize a pane, upward with
-.Fl U
-(the default), downward with
+Resize a pane, up, down, left or right by
+.Ar adjustment
+with
+.Fl U ,
 .Fl D ,
-to the left with
 .Fl L
-and to the right with
-.Fl R .
+or
+.Fl R ,
+or
+to an absolute size
+with
+.Fl x
+or
+.Fl y .
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
@@ -1605,7 +1619,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl npUu
+.Op Fl np
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1622,13 +1636,6 @@ are equivalent to the
 and
 .Ic previous-layout
 commands.
-.Pp
-.Fl U
-and
-.Fl u
-step forward and back through previous layouts, up to the maximum set by the
-.Ic layout-history-limit
-option.
 .It Xo Ic select-pane
 .Op Fl lDLRU
 .Op Fl t Ar target-pane
@@ -1956,6 +1963,19 @@ All window options are documented with the
 .Ic set-window-option
 command.
 .Pp
+.Nm
+also supports user options which are prefixed with a
+.Ql \&@ .
+User options may have any name, so long as it is prefixed with
+.Ql \&@,
+and be set to any string.
+For example
+.Bd -literal -offset indent
+$ tmux setw -q @foo "abc123"
+$ tmux showw -v @foo
+abc123
+.Ed
+.Pp
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
@@ -2048,6 +2068,13 @@ interactive menu when required.
 .Pp
 Available session options are:
 .Bl -tag -width Ds
+.It Ic assume-paste-time Ar milliseconds
+If keys are entered faster than one in
+.Ar milliseconds ,
+they are assumed to have been pasted rather than typed and
+.Nm
+key bindings are not processed.
+The default is one millisecond and zero disables.
 .It Ic base-index Ar index
 Set the base index from which an unused index should be searched when a new
 window is created.
@@ -2674,13 +2701,6 @@ or
 .Ar height .
 A value of zero restores the default unlimited setting.
 .Pp
-.It Ic layout-history-limit Ar limit
-Set the number of previous layouts stored for recovery with
-.Ic select-layout
-.Fl U
-and
-.Fl u .
-.Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
@@ -2882,7 +2902,7 @@ If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
 .El
 .It Xo Ic show-options
-.Op Fl gsw
+.Op Fl gsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -2898,8 +2918,10 @@ otherwise the session options for
 Global session or window options are listed if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .It Xo Ic show-window-options
-.Op Fl g
+.Op Fl gv
 .Op Fl t Ar target-window
 .Op Ar option
 .Xc
@@ -2909,6 +2931,8 @@ List the window options or a single option for
 or the global window options if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .El
 .Sh FORMATS
 Certain commands accept the
@@ -2952,7 +2976,10 @@ The following variables are available, where appropriate:
 .It Li "client_created_string" Ta "String time client created"
 .It Li "client_cwd" Ta "Working directory of client"
 .It Li "client_height" Ta "Height of client"
+.It Li "client_last_session" Ta "Name of the client's last session"
+.It Li "client_prefix" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "1 if client is readonly"
+.It Li "client_session" Ta "Name of the client's session"
 .It Li "client_termname" Ta "Terminal name of client"
 .It Li "client_tty" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "1 if client supports utf8"
@@ -3317,8 +3344,7 @@ For the meaning of the
 flag, see the
 .Sx FORMATS
 section.
-This command works only from inside
-.Nm .
+This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
