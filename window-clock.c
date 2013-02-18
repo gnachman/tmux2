@@ -79,11 +79,10 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
-	screen_resize(s, sx, sy);
+	screen_resize(s, sx, sy, 0);
 	window_clock_draw_screen(wp);
 }
 
-/* ARGSUSED */
 void
 window_clock_key(
     struct window_pane *wp, unused struct session *sess, unused int key)

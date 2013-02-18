@@ -251,10 +251,11 @@ format_expand(struct format_tree *ft, const char *fmt)
 					continue;
 				}
 			}
-			while (len - off < 2) {
+			while (len - off < 3) {
 				buf = xrealloc(buf, 2, len);
 				len *= 2;
 			}
+			buf[off++] = '#';
 			buf[off++] = ch;
 			continue;
 		}
@@ -300,8 +301,9 @@ format_session(struct format_tree *ft, struct session *s)
 void
 format_client(struct format_tree *ft, struct client *c)
 {
-	char	*tim;
-	time_t	 t;
+	char		*tim;
+	time_t		 t;
+	struct session	*s;
 
 	format_add(ft, "client_cwd", "%s", c->cwd);
 	format_add(ft, "client_height", "%u", c->tty.sy);
@@ -321,6 +323,8 @@ format_client(struct format_tree *ft, struct client *c)
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "client_activity_string", "%s", tim);
 
+	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
+
 	if (c->tty.flags & TTY_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
 	else
@@ -330,6 +334,13 @@ format_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_readonly", "%d", 1);
 	else
 		format_add(ft, "client_readonly", "%d", 0);
+
+	s = c->session;
+	if (s != NULL)
+		format_add(ft, "client_session", "%s", s->name);
+	s = c->last_session;
+	if (s != NULL && session_alive(s))
+		format_add(ft, "client_last_session", "%s", s->name);
 }
 
 /* Set default format keys for a winlink. */
@@ -365,12 +376,12 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	unsigned long long	 size;
 	u_int			 i;
 	u_int			 idx;
+	const char		*cwd;
 
 	size = 0;
 	for (i = 0; i < gd->hsize; i++) {
 		gl = &gd->linedata[i];
 		size += gl->cellsize * sizeof *gl->celldata;
-		size += gl->utf8size * sizeof *gl->utf8data;
 	}
 	size += gd->hsize * sizeof *gd->linedata;
 
@@ -391,9 +402,11 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if (wp->cwd != NULL)
 		format_add(ft, "pane_start_path", "%s", wp->cwd);
-	format_add(ft, "pane_current_path", "%s", osdep_get_cwd(wp->fd));
+	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
+		format_add(ft, "pane_current_path", "%s", cwd);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	format_add(ft, "pane_tty", "%s", wp->tty);
+	if (wp->tty != NULL)
+		format_add(ft, "pane_tty", "%s", wp->tty);
 }
 
 void

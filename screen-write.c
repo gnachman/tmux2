@@ -41,7 +41,6 @@ screen_write_start(
 }
 
 /* Finish writing. */
-/* ARGSUSED */
 void
 screen_write_stop(unused struct screen_write_ctx *ctx)
 {
@@ -52,14 +51,13 @@ screen_write_stop(unused struct screen_write_ctx *ctx)
 void
 screen_write_reset(struct screen_write_ctx *ctx)
 {
-	screen_reset_tabs(ctx->s);
+	struct screen	*s = ctx->s;
 
-	screen_write_scrollregion(ctx, 0, screen_size_y(ctx->s) - 1);
+	screen_reset_tabs(s);
+	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
 
-	screen_write_insertmode(ctx, 0);
-	screen_write_kcursormode(ctx, 0);
-	screen_write_kkeypadmode(ctx, 0);
-	screen_write_mousemode_off(ctx);
+	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD);
+	s->mode &= ~(ALL_MOUSE_MODES|MODE_MOUSE_UTF8|MODE_MOUSE_SGR);
 
 	screen_write_clearscreen(ctx);
 	screen_write_cursormove(ctx, 0, 0);
@@ -67,11 +65,10 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 /* Write character. */
 void
-screen_write_putc(
-    struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
+screen_write_putc(struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
 {
-	gc->data = ch;
-	screen_write_cell(ctx, gc, NULL);
+	grid_cell_one(gc, ch);
+	screen_write_cell(ctx, gc);
 }
 
 /* Calculate string length, with embedded formatting. */
@@ -203,9 +200,8 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			}
 			size += utf8data.width;
 
-			gc->flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, gc, &utf8data);
-			gc->flags &= ~GRID_FLAG_UTF8;
+			grid_cell_set(gc, &utf8data);
+			screen_write_cell(ctx, gc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -277,9 +273,8 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 			}
 			size += utf8data.width;
 
-			lgc.flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, &lgc, &utf8data);
-			lgc.flags &= ~GRID_FLAG_UTF8;
+			grid_cell_set(&lgc, &utf8data);
+			screen_write_cell(ctx, &lgc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -385,8 +380,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct grid		*gd = src->grid;
 	struct grid_line	*gl;
 	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int		 	 xx, yy, cx, cy, ax, bx;
 
 	cx = s->cx;
@@ -414,16 +408,8 @@ screen_write_copy(struct screen_write_ctx *ctx,
 					gc = &grid_default_cell;
 				else
 					gc = &gl->celldata[xx];
-				if (!(gc->flags & GRID_FLAG_UTF8)) {
-					screen_write_cell(ctx, gc, NULL);
-					continue;
-				}
-				/* Reinject the UTF-8 sequence. */
-				gu = &gl->utf8data[xx];
-				utf8data.size = grid_utf8_copy(
-				    gu, utf8data.data, sizeof utf8data.data);
-				utf8data.width = gu->width;
-				screen_write_cell(ctx, gc, &utf8data);
+				grid_cell_get(gc, &ud);
+				screen_write_cell(ctx, gc);
 			}
 			if (px + nx == gd->sx && px + nx > gl->cellsize)
 				screen_write_clearendofline(ctx);
@@ -442,7 +428,6 @@ screen_write_initctx(
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
 	u_int			 xx;
 
 	ttyctx->wp = ctx->wp;
@@ -465,10 +450,24 @@ screen_write_initctx(
 	}
 	ttyctx->last_width = xx;
 	memcpy(&ttyctx->last_cell, gc, sizeof ttyctx->last_cell);
-	if (gc->flags & GRID_FLAG_UTF8) {
-		gu = grid_view_peek_utf8(gd, screen_size_x(s) - xx, s->cy);
-		memcpy(&ttyctx->last_utf8, gu, sizeof ttyctx->last_utf8);
-	}
+}
+
+/* Set a mode. */
+void
+screen_write_mode_set(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode |= mode;
+}
+
+/* Clear a mode. */
+void
+screen_write_mode_clear(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode &= ~mode;
 }
 
 /* Cursor up by ny. */
@@ -584,7 +583,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	screen_write_initctx(ctx, &ttyctx, 0);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.data = 'E';
+	grid_cell_one(&gc, 'E');
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		for (xx = 0; xx < screen_size_x(s); xx++)
@@ -647,6 +646,30 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 
 	ttyctx.num = nx;
 	tty_write(tty_cmd_deletecharacter, &ttyctx);
+}
+
+/* Clear nx characters. */
+void
+screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx)
+{
+	struct screen	*s = ctx->s;
+	struct tty_ctx	 ttyctx;
+
+	if (nx == 0)
+		nx = 1;
+
+	if (nx > screen_size_x(s) - s->cx)
+		nx = screen_size_x(s) - s->cx;
+	if (nx == 0)
+		return;
+
+	screen_write_initctx(ctx, &ttyctx, 0);
+
+	if (s->cx <= screen_size_x(s) - 1)
+		grid_view_clear(s->grid, s->cx, s->cy, nx, 1);
+
+	ttyctx.num = nx;
+	tty_write(tty_cmd_clearcharacter, &ttyctx);
 }
 
 /* Insert ny lines. */
@@ -798,18 +821,6 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 	s->cy = py;
 }
 
-/* Set cursor mode. */
-void
-screen_write_cursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_CURSOR;
-	else
-		s->mode &= ~MODE_CURSOR;
-}
-
 /* Reverse index (up with scroll).  */
 void
 screen_write_reverseindex(struct screen_write_ctx *ctx)
@@ -849,61 +860,6 @@ screen_write_scrollregion(
 	s->rlower = rlower;
 }
 
-/* Set insert mode. */
-void
-screen_write_insertmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_INSERT;
-	else
-		s->mode &= ~MODE_INSERT;
-}
-
-/* Set UTF-8 mouse mode.  */
-void
-screen_write_utf8mousemode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_MOUSE_UTF8;
-	else
-		s->mode &= ~MODE_MOUSE_UTF8;
-}
-
-/* Set mouse mode off. */
-void
-screen_write_mousemode_off(struct screen_write_ctx *ctx)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-}
-
-/* Set mouse mode on. */
-void
-screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-	s->mode |= mode;
-}
-
-/* Set bracketed paste mode. */
-void
-screen_write_bracketpaste(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_BRACKETPASTE;
-	else
-		s->mode &= ~MODE_BRACKETPASTE;
-}
-
 /* Line feed. */
 void
 screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
@@ -936,30 +892,6 @@ screen_write_carriagereturn(struct screen_write_ctx *ctx)
 	struct screen	*s = ctx->s;
 
 	s->cx = 0;
-}
-
-/* Set keypad cursor keys mode. */
-void
-screen_write_kcursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KCURSOR;
-	else
-		s->mode &= ~MODE_KCURSOR;
-}
-
-/* Set keypad number keys mode. */
-void
-screen_write_kkeypadmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KKEYPAD;
-	else
-		s->mode &= ~MODE_KKEYPAD;
 }
 
 /* Clear to end of screen from cursor. */
@@ -1042,26 +974,20 @@ screen_write_clearhistory(struct screen_write_ctx *ctx)
 
 /* Write cell data. */
 void
-screen_write_cell(struct screen_write_ctx *ctx,
-    const struct grid_cell *gc, const struct utf8_data *utf8data)
+screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	struct grid_utf8	 gu;
-	u_int		 	 width, xx;
+	u_int		 	 width, xx, last;
 	struct grid_cell 	 tmp_gc, *tmp_gcp;
-	int			 insert = 0;
+	struct utf8_data	 ud;
+	int			 insert;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
-
-	/* Find character width. */
-	if (gc->flags & GRID_FLAG_UTF8)
-		width = utf8data->width;
-	else
-		width = 1;
+	width = grid_cell_width(gc);
 
 	/*
 	 * If this is a wide character and there is no room on the screen, for
@@ -1078,7 +1004,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	 * there is space.
 	 */
 	if (width == 0) {
-		if (screen_write_combine(ctx, utf8data) == 0) {
+		grid_cell_get(gc, &ud);
+		if (screen_write_combine(ctx, &ud) == 0) {
 			screen_write_initctx(ctx, &ttyctx, 0);
 			tty_write(tty_cmd_utf8character, &ttyctx);
 		}
@@ -1093,7 +1020,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		xx = screen_size_x(s) - s->cx - width;
 		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
 		insert = 1;
-	}
+	} else
+		insert = 0;
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width) {
@@ -1101,9 +1029,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		s->cx = 0;	/* carriage return */
 	}
 
-	/* Sanity checks. */
-	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
-	    || s->cy > screen_size_y(s) - 1)
+	/* Sanity check cursor position. */
+	if (s->cx > screen_size_x(s) - width || s->cy > screen_size_y(s) - 1)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
@@ -1121,26 +1048,27 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
-	if (gc->flags & GRID_FLAG_UTF8) {
-		/* Construct UTF-8 and write it. */
-		grid_utf8_set(&gu, utf8data);
-		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
-	}
 
-	/* Move the cursor. */
-	s->cx += width;
+	/*
+	 * Move the cursor. If not wrapping, stick at the last character and
+	 * replace it.
+	 */
+	last = !!(s->mode & MODE_WRAP);
+	if (s->cx <= screen_size_x(s) - last - width)
+		s->cx += width;
+	else
+		s->cx = screen_size_x(s) - last;
 
 	/* Draw to the screen if necessary. */
 	if (insert) {
 		ttyctx.num = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
-	ttyctx.utf8 = &gu;
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
 		memcpy(&tmp_gc, &s->sel.cell, sizeof tmp_gc);
-		tmp_gc.data = gc->data;
-		tmp_gc.flags = gc->flags &
-		    ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+		grid_cell_get(gc, &ud);
+		grid_cell_set(&tmp_gc, &ud);
+		tmp_gc.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
 		tmp_gc.flags |= s->sel.cell.flags &
 		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc;
@@ -1153,49 +1081,33 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 /* Combine a UTF-8 zero-width character onto the previous. */
 int
-screen_write_combine(
-    struct screen_write_ctx *ctx, const struct utf8_data *utf8data)
+screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_cell	*gc;
-	struct grid_utf8	*gu, tmp_gu;
-	u_int			 i;
+	struct utf8_data	 ud1;
 
 	/* Can't combine if at 0. */
 	if (s->cx == 0)
 		return (-1);
 
-	/* Empty utf8data is out. */
-	if (utf8data->size == 0)
+	/* Empty data is out. */
+	if (ud->size == 0)
 		fatalx("UTF-8 data empty");
 
-	/* Retrieve the previous cell and convert to UTF-8 if not already. */
+	/* Retrieve the previous cell. */
 	gc = grid_view_get_cell(gd, s->cx - 1, s->cy);
-	if (!(gc->flags & GRID_FLAG_UTF8)) {
-		tmp_gu.data[0] = gc->data;
-		tmp_gu.data[1] = 0xff;
-		tmp_gu.width = 1;
+	grid_cell_get(gc, &ud1);
 
-		grid_view_set_utf8(gd, s->cx - 1, s->cy, &tmp_gu);
-		gc->flags |= GRID_FLAG_UTF8;
-	}
+	/* Check there is enough space. */
+	if (ud1.size + ud->size > sizeof ud1.data)
+		return (-1);
 
-	/* Append the current cell. */
-	gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
-	if (grid_utf8_append(gu, utf8data) != 0) {
-		/* Failed: scrap this character and replace with underscores. */
-		if (gu->width == 1) {
-			gc->data = '_';
-			gc->flags &= ~GRID_FLAG_UTF8;
-		} else {
-			for (i = 0; i < gu->width && i != sizeof gu->data; i++)
-				gu->data[i] = '_';
-			if (i != sizeof gu->data)
-				gu->data[i] = 0xff;
-			gu->width = i;
-		}
-	}
+	/* Append the data and set the cell. */
+	memcpy(ud1.data + ud1.size, ud->data, ud->size);
+	ud1.size += ud->size;
+	grid_cell_set(gc, &ud1);
 
 	return (0);
 }

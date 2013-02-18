@@ -90,6 +90,13 @@ const struct options_table_entry server_options_table[] = {
 
 /* Session options. */
 const struct options_table_entry session_options_table[] = {
+	{ .name = "assume-paste-time",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 1,
+	},
+
 	{ .name = "base-index",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
@@ -509,13 +516,6 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "layout-history-limit",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .minimum = 1,
-	  .maximum = USHRT_MAX,
-	  .default_num = 20
-	},
-
 	{ .name = "main-pane-height",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 1,
@@ -745,8 +745,8 @@ options_table_populate_tree(
 
 /* Print an option using its type from the table. */
 const char *
-options_table_print_entry(
-    const struct options_table_entry *oe, struct options_entry *o)
+options_table_print_entry(const struct options_table_entry *oe,
+    struct options_entry *o, int no_quotes)
 {
 	static char	 out[BUFSIZ];
 	const char	*s;
@@ -754,13 +754,17 @@ options_table_print_entry(
 	*out = '\0';
 	switch (oe->type) {
 	case OPTIONS_TABLE_STRING:
-		xsnprintf(out, sizeof out, "\"%s\"", o->str);
+		if (no_quotes)
+			xsnprintf(out, sizeof out, "%s", o->str);
+		else
+			xsnprintf(out, sizeof out, "\"%s\"", o->str);
 		break;
 	case OPTIONS_TABLE_NUMBER:
 		xsnprintf(out, sizeof out, "%lld", o->num);
 		break;
 	case OPTIONS_TABLE_KEY:
-		xsnprintf(out, sizeof out, "%s", key_string_lookup_key(o->num));
+		xsnprintf(out, sizeof out, "%s",
+		    key_string_lookup_key(o->num));
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		s = colour_tostring(o->num);

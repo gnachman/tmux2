@@ -135,6 +135,7 @@ enum input_csi_type {
 	INPUT_CSI_DECSTBM,
 	INPUT_CSI_DL,
 	INPUT_CSI_DSR,
+	INPUT_CSI_ECH,
 	INPUT_CSI_ED,
 	INPUT_CSI_EL,
 	INPUT_CSI_HPA,
@@ -167,6 +168,7 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'L', "",  INPUT_CSI_IL },
 	{ 'M', "",  INPUT_CSI_DL },
 	{ 'P', "",  INPUT_CSI_DCH },
+	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
 	{ 'c', "",  INPUT_CSI_DA },
 	{ 'c', ">", INPUT_CSI_DA_TWO },
@@ -877,8 +879,8 @@ input_clear(struct input_ctx *ictx)
 int
 input_print(struct input_ctx *ictx)
 {
-	ictx->cell.data = ictx->ch;
-	screen_write_cell(&ictx->ctx, &ictx->cell, NULL);
+	grid_cell_one(&ictx->cell, ictx->ch);
+	screen_write_cell(&ictx->ctx, &ictx->cell);
 
 	return (0);
 }
@@ -1031,10 +1033,10 @@ input_esc_dispatch(struct input_ctx *ictx)
 		screen_write_reverseindex(sctx);
 		break;
 	case INPUT_ESC_DECKPAM:
-		screen_write_kkeypadmode(sctx, 1);
+		screen_write_mode_set(sctx, MODE_KKEYPAD);
 		break;
 	case INPUT_ESC_DECKPNM:
-		screen_write_kkeypadmode(sctx, 0);
+		screen_write_mode_clear(sctx, MODE_KKEYPAD);
 		break;
 	case INPUT_ESC_DECSC:
 		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
@@ -1143,6 +1145,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		}
 		break;
+	case INPUT_CSI_ECH:
+		screen_write_clearcharacter(sctx, input_get(ictx, 0, 1, 1));
+		break;
 	case INPUT_CSI_DCH:
 		screen_write_deletecharacter(sctx, input_get(ictx, 0, 1, 1));
 		break;
@@ -1227,7 +1232,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_RM:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 4:		/* IRM */
-			screen_write_insertmode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_INSERT);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1237,23 +1242,29 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_RM_PRIVATE:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 1:		/* GATM */
-			screen_write_kcursormode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_clear(&ictx->ctx, MODE_WRAP);
+			break;
 		case 25:	/* TCEM */
-			screen_write_cursormode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
 		case 1001:
 		case 1002:
 		case 1003:
-			screen_write_mousemode_off(&ictx->ctx);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
 			break;
 		case 1005:
-			screen_write_utf8mousemode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_MOUSE_UTF8);
+			break;
+		case 1006:
+			screen_write_mode_clear(&ictx->ctx, MODE_MOUSE_SGR);
 			break;
 		case 47:
 		case 1047:
@@ -1263,7 +1274,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			window_pane_alternate_off(wp, &ictx->cell, 1);
 			break;
 		case 2004:
-			screen_write_bracketpaste(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_BRACKETPASTE);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1281,7 +1292,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_SM:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 4:		/* IRM */
-			screen_write_insertmode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_INSERT);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1291,28 +1302,35 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_SM_PRIVATE:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 1:		/* GATM */
-			screen_write_kcursormode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_set(&ictx->ctx, MODE_WRAP);
+			break;
 		case 25:	/* TCEM */
-			screen_write_cursormode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_STANDARD);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_STANDARD);
 			break;
 		case 1002:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_BUTTON);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_BUTTON);
 			break;
 		case 1003:
-			screen_write_mousemode_on(&ictx->ctx, MODE_MOUSE_ANY);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_ANY);
 			break;
 		case 1005:
-			screen_write_utf8mousemode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_UTF8);
+			break;
+		case 1006:
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_SGR);
 			break;
 		case 47:
 		case 1047:
@@ -1322,7 +1340,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			window_pane_alternate_on(wp, &ictx->cell, 1);
 			break;
 		case 2004:
-			screen_write_bracketpaste(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_BRACKETPASTE);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1560,10 +1578,11 @@ input_exit_osc(struct input_ctx *ictx)
 		server_status_window(ictx->wp->window);
 		break;
 	case 12:
-		screen_set_cursor_colour(ictx->ctx.s, p);
+		if (*p != '?') /* ? is colour request */
+			screen_set_cursor_colour(ictx->ctx.s, p);
 		break;
 	case 112:
-		if (*p == '\0') /* No arguments allowed. */
+		if (*p == '\0') /* no arguments allowed */
 			screen_set_cursor_colour(ictx->ctx.s, "");
 		break;
 	default:
@@ -1651,9 +1670,8 @@ input_utf8_close(struct input_ctx *ictx)
 
 	utf8_append(&ictx->utf8data, ictx->ch);
 
-	ictx->cell.flags |= GRID_FLAG_UTF8;
-	screen_write_cell(&ictx->ctx, &ictx->cell, &ictx->utf8data);
-	ictx->cell.flags &= ~GRID_FLAG_UTF8;
+	grid_cell_set(&ictx->cell, &ictx->utf8data);
+	screen_write_cell(&ictx->ctx, &ictx->cell);
 
 	return (0);
 }
