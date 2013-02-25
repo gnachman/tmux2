@@ -75,7 +75,7 @@ dist_tmux_SOURCES = \
 	cmd-clock-mode.c \
 	cmd-command-prompt.c \
 	cmd-confirm-before.c \
-    cmd-control-helper.c \
+        cmd-control-helper.c \
 	cmd-copy-mode.c \
 	cmd-delete-buffer.c \
 	cmd-detach-client.c \
