@@ -62,7 +62,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28ClquvV] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28lquvV] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -262,8 +262,10 @@ main(int argc, char **argv)
 			shell_cmd = xstrdup(optarg);
 			break;
 		case 'C':
-			flags |= IDENTIFY_TERMIOS;
-			flags |= IDENTIFY_CONTROL;
+			if (flags & IDENTIFY_CONTROL)
+				flags |= IDENTIFY_TERMIOS;
+			else
+				flags |= IDENTIFY_CONTROL;
 			break;
 		case 'V':
 			printf("%s %s\n", __progname, VERSION);
@@ -333,8 +335,6 @@ main(int argc, char **argv)
 
 	options_init(&global_w_options, NULL);
 	options_table_populate_tree(window_options_table, &global_w_options);
-
-	ARRAY_INIT(&cfg_causes);
 
 	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
 	if (flags & IDENTIFY_UTF8) {

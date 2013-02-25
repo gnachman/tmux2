@@ -104,7 +104,10 @@ control_notify_window_unlinked(unused struct session *s, struct window *w)
 			continue;
 		cs = c->session;
 
-		control_write(c, "%%window-close %u", w->id);
+		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL)
+			control_write(c, "%%window-close %u", w->id);
+		else
+			control_write(c, "%%unlinked-window-close %u", w->id);
 	}
 }
 

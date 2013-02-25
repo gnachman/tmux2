@@ -194,7 +194,7 @@ server_status_window(struct window *w)
 
 	/*
 	 * This is slightly different. We want to redraw the status line of any
-	 * clients containing this window rather than any where it is the
+	 * clients containing this window rather than anywhere it is the
 	 * current window.
 	 */
 
@@ -239,7 +239,7 @@ server_lock_client(struct client *c)
 	size_t			 cmdlen;
 	struct msg_lock_data	 lockdata;
 
-	if (!(c->flags & CLIENT_CONTROL))
+	if (c->flags & CLIENT_CONTROL)
 		return;
 
 	if (c->flags & CLIENT_SUSPENDED)
@@ -377,6 +377,7 @@ server_destroy_pane(struct window_pane *wp)
 		return;
 	}
 
+	server_unzoom_window(w);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
@@ -563,7 +564,7 @@ int
 server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
     void *), void *cb_data, char **cause)
 {
-	if (c == NULL) {
+	if (c == NULL || c->session != NULL) {
 		*cause = xstrdup("no client with stdin");
 		return (-1);
 	}
@@ -587,4 +588,12 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 	server_write_client(c, MSG_STDIN, NULL, 0);
 
 	return (0);
+}
+
+void
+server_unzoom_window(struct window *w)
+{
+	window_unzoom(w);
+	server_redraw_window(w);
+	server_status_window(w);
 }

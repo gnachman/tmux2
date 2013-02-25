@@ -6,7 +6,7 @@ dist_man1_MANS = tmux.1
 
 # Distribution tarball options.
 EXTRA_DIST = \
-	CHANGES FAQ NOTES TODO examples compat \
+	CHANGES FAQ README TODO examples compat \
 	array.h compat.h tmux.h osdep-*.c
 dist-hook:
 	grep "^#found_debug=" configure
@@ -26,13 +26,15 @@ endif
 if IS_GCC
 CFLAGS += -std=c99
 if IS_DEBUG
-CFLAGS += -g -ggdb -O0
+CFLAGS += -O0 -g
 CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 CFLAGS += -Wdeclaration-after-statement
 CPPFLAGS += -DDEBUG
+else
+CFLAGS += -O2
 endif
 if IS_GCC4
 CPPFLAGS += -iquote. -I/usr/local/include
@@ -73,7 +75,7 @@ dist_tmux_SOURCES = \
 	cmd-clock-mode.c \
 	cmd-command-prompt.c \
 	cmd-confirm-before.c \
-	cmd-control.c \
+    cmd-control-helper.c \
 	cmd-copy-mode.c \
 	cmd-delete-buffer.c \
 	cmd-detach-client.c \
@@ -103,6 +105,7 @@ dist_tmux_SOURCES = \
 	cmd-new-window.c \
 	cmd-paste-buffer.c \
 	cmd-pipe-pane.c \
+	cmd-queue.c \
 	cmd-refresh-client.c \
 	cmd-rename-session.c \
 	cmd-rename-window.c \
@@ -116,12 +119,10 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
-	cmd-send-prefix.c \
 	cmd-server-info.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
-	cmd-show-buffer.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \

@@ -27,13 +27,12 @@
  * Write the entire contents of a pane to a buffer or stdout.
  */
 
-enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:c:E:pS:t:", 0, 0,
-	"[-p] [-c target-client] [-b buffer-index] [-E end-line] "
-	"[-S start-line] "
+	"ab:CeE:JpS:t:", 0, 0,
+	"[-aCeJp] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -42,25 +41,36 @@ const struct cmd_entry cmd_capture_pane_entry = {
 };
 
 enum cmd_retval
-cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
 	struct window_pane	*wp;
-	char 			*buf, *line, *cause;
+	char			*buf, *line, *cause;
 	struct screen		*s;
 	struct grid		*gd;
-	int			 buffer, n;
-	u_int			 i, limit, top, bottom, tmp;
-	size_t         		 len, linelen;
+	int			 buffer, n, with_codes, escape_c0, join_lines;
+	u_int			 i, limit, top, bottom, tmp, sx;
+	size_t			 len, linelen;
+	struct grid_cell	*gc;
+	const struct grid_line	*gl;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
+	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (CMD_RETURN_ERROR);
-	s = &wp->base;
-	gd = s->grid;
+	if (args_has(args, 'a')) {
+		s = NULL;
+		gd = wp->saved_grid;
+		sx = screen_size_x(&wp->base);
+		if (gd == NULL) {
+			cmdq_error(cmdq, "no alternate screen");
+			return (CMD_RETURN_ERROR);
+		}
+	} else {
+		s = &wp->base;
+		sx = screen_size_x(s);
+		gd = s->grid;
+	}
 
 	buf = NULL;
 	len = 0;
@@ -93,21 +103,32 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		top = tmp;
 	}
 
+	with_codes = args_has(args, 'e');
+	escape_c0 = args_has(args, 'C');
+	join_lines = args_has(args, 'J');
+
+	gc = NULL;
 	for (i = top; i <= bottom; i++) {
-	       line = grid_string_cells(s->grid, 0, i, screen_size_x(s));
-	       linelen = strlen(line);
+		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
+		    escape_c0);
+		linelen = strlen(line);
 
-	       buf = xrealloc(buf, 1, len + linelen + 1);
-	       memcpy(buf + len, line, linelen);
-	       len += linelen;
-	       buf[len++] = '\n';
+		buf = xrealloc(buf, 1, len + linelen + 1);
+		memcpy(buf + len, line, linelen);
+		len += linelen;
 
-	       free(line);
+		gl = grid_peek_line(gd, i);
+		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+			buf[len++] = '\n';
+
+		free(line);
 	}
 
 	if (args_has(args, 'p')) {
-		if (c == NULL) {
-			ctx->error(ctx, "can't write to stdout");
+		c = cmdq->client;
+		if (c == NULL ||
+		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
+			cmdq_error(cmdq, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, buf, len);
@@ -121,14 +142,14 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "buffer %s", cause);
+			cmdq_error(cmdq, "buffer %s", cause);
 			free(buf);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
 
 		if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
-			ctx->error(ctx, "no buffer %d", buffer);
+			cmdq_error(cmdq, "no buffer %d", buffer);
 			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
