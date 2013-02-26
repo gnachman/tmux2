@@ -30,14 +30,14 @@
 enum cmd_retval	 cmd_show_options_exec(struct cmd *, struct cmd_q *);
 
 enum cmd_retval	cmd_show_options_one(struct cmd *, struct cmd_q *,
-		    struct options *);
+		    struct options *, int);
 enum cmd_retval cmd_show_options_all(struct cmd *, struct cmd_q *,
 		    const struct options_table_entry *, struct options *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"gst:vw", 0, 1,
-	"[-gsvw] [-t target-session|target-window] [option]",
+	"gqst:vw", 0, 1,
+	"[-gqsvw] [-t target-session|target-window] [option]",
 	0,
 	NULL,
 	NULL,
@@ -90,14 +90,15 @@ cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args->argc != 0)
-		return (cmd_show_options_one(self, cmdq, oo));
+		return (cmd_show_options_one(self, cmdq, oo,
+                                             args_has(self->args, 'q')));
 	else
 		return (cmd_show_options_all(self, cmdq, table, oo));
 }
 
 enum cmd_retval
 cmd_show_options_one(struct cmd *self, struct cmd_q *cmdq,
-    struct options *oo)
+    struct options *oo, int quiet)
 {
 	struct args				*args = self->args;
 	const struct options_table_entry	*table, *oe;
@@ -106,8 +107,13 @@ cmd_show_options_one(struct cmd *self, struct cmd_q *cmdq,
 
 	if (*args->argv[0] == '@') {
 		if ((o = options_find1(oo, args->argv[0])) == NULL) {
-			cmdq_error(cmdq, "unknown option: %s", args->argv[0]);
-			return (CMD_RETURN_ERROR);
+                  	if (quiet)
+                            return (CMD_RETURN_NORMAL);
+                        else {
+                            cmdq_error(cmdq, "unknown option: %s",
+                                       args->argv[0]);
+                            return (CMD_RETURN_ERROR);
+                        }
 		}
 		if (args_has(self->args, 'v'))
 			cmdq_print(cmdq, "%s", o->str);
@@ -122,8 +128,12 @@ cmd_show_options_one(struct cmd *self, struct cmd_q *cmdq,
 		return (CMD_RETURN_ERROR);
 	}
 	if (oe == NULL) {
-		cmdq_error(cmdq, "unknown option: %s", args->argv[0]);
-		return (CMD_RETURN_ERROR);
+                if (quiet)
+                    return (CMD_RETURN_NORMAL);
+                else {
+                    cmdq_error(cmdq, "unknown option: %s", args->argv[0]);
+                    return (CMD_RETURN_ERROR);
+                }
 	}
 	if ((o = options_find1(oo, oe->name)) == NULL)
 		return (CMD_RETURN_NORMAL);
