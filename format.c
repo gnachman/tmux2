@@ -282,6 +282,7 @@ format_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
 	format_add(ft, "session_width", "%u", s->sx);
 	format_add(ft, "session_height", "%u", s->sy);
+        format_add(ft, "session_index", "%u", s->idx);
 
 	sg = session_group_find(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);

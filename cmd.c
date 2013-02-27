@@ -123,6 +123,7 @@ struct session	*cmd_choose_session(int);
 struct client	*cmd_choose_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
+struct session	*cmd_lookup_session_index(const char *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 struct window_pane *cmd_lookup_paneid(const char *);
@@ -551,6 +552,22 @@ cmd_lookup_client(const char *name)
 	return (NULL);
 }
 
+/* Find the target session or report an error and return NULL. */
+struct session *
+cmd_lookup_session_index(const char *arg)
+{
+        char	*endptr;
+        long	 idx;
+
+        if (arg[0] != '$')
+                return NULL;
+        idx = strtol(arg + 1, &endptr, 10);
+        if (arg[1] != '\0' && *endptr == '\0')
+        	return session_find_by_index(idx);
+        else
+        	return NULL;
+}
+
 /* Lookup a session by name. If no session is found, NULL is returned. */
 struct session *
 cmd_lookup_session(const char *name, int *ambiguous)
@@ -559,6 +576,11 @@ cmd_lookup_session(const char *name, int *ambiguous)
 
 	*ambiguous = 0;
 
+        /*
+         * Look for $index first.
+         */
+        if ((s = cmd_lookup_session_index(name)) != NULL)
+        	return (s);
 	/*
 	 * Look for matches. First look for exact matches - session names must
 	 * be unique so an exact match can't be ambigious and can just be
