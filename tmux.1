@@ -369,9 +369,9 @@ Clients may be listed with the
 command.
 .Pp
 .Ar target-session
-is either the name of a session (as listed by the
+is the session id prefixed with a $, the name of a session (as listed by the
 .Ic list-sessions
-command) or the name of a client with the same syntax as
+command), or the name of a client with the same syntax as
 .Ar target-client ,
 in which case the session attached to the client is used.
 When looking for the session name,
@@ -670,7 +670,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl d
+.Op Fl AdD
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
 .Op Fl t Ar target-session
@@ -700,6 +700,21 @@ specify the size of the initial window (80 by 24 if not given).
 If run from a terminal, any
 .Xr termios 4
 special characters are saved and used for new windows in the new session.
+.Pp
+The
+.Fl A
+flag makes
+.Ic new-session
+behave like
+.Ic attach-session
+if
+.Ar session-name
+already exists; in the case,
+.Fl D
+behaves like
+.Fl d
+to
+.Ic attach-session .
 .Pp
 If
 .Fl t
@@ -854,7 +869,7 @@ The following keys are supported as appropriate for the mode:
 .It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Top of history" Ta "g" Ta "M->"
-.It Li "Transpose chars" Ta "" Ta "C-t"
+.It Li "Transpose characters" Ta "" Ta "C-t"
 .El
 .Pp
 The next and previous word keys use space and the
@@ -916,6 +931,17 @@ command and keys modified or removed with
 .Ic bind-key
 and
 .Ic unbind-key .
+One command in accepts an argument,
+.Ic copy-pipe ,
+which copies the selection and pipes it to a command.
+For example the following will bind
+.Ql C-q
+to copy the selection into
+.Pa /tmp
+as well as the paste buffer:
+.Bd -literal -offset indent
+bind-key -temacs-copy C-q copy-pipe "cat >/tmp/out"
+.Ed
 .Pp
 The paste buffer key pastes the first line from the top paste buffer on the
 stack.
@@ -1040,9 +1066,8 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl p
+.Op Fl aepq
 .Op Fl b Ar buffer-index
-.Op Fl c Ar target-client
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
@@ -1051,11 +1076,23 @@ but a different format may be specified with
 Capture the contents of a pane.
 If
 .Fl p
-is given, the output goes to
-.Ar target-client
-stdout, otherwise to the buffer specified with
+is given, the output goes to stdout, otherwise to the buffer specified with
 .Fl b
 or a new buffer if omitted.
+If
+.Fl a
+is given, the alternate screen is used, and the history is not accessible.
+If no alternate screen exists, an error will be returned unless
+.Fl q
+is given.
+If
+.Fl e
+is given, the output includes escape sequences for text and background
+attributes.
+.Fl C
+also escapes non-printable characters as octal \\xxx.
+.Fl J
+joins wrapped lines and preserves trailing spaces at each line's end.
 .Pp
 .Fl S
 and
@@ -1555,7 +1592,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLRU
+.Op Fl DLRUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -1579,6 +1616,11 @@ or
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
+.Pp
+With
+.Fl Z ,
+the active pane is toggled between occupying the whole of the window and its
+normal position in the layout.
 .It Xo Ic respawn-pane
 .Op Fl k
 .Op Fl t Ar target-pane
@@ -1979,7 +2021,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agqsuw
+.Op Fl agoqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -2006,6 +2048,10 @@ The
 flag unsets an option, so a session inherits the option from the global
 options.
 It is not possible to unset a global option.
+.Pp
+The
+.Fl o
+flag prevents setting an option that is already set.
 .Pp
 The
 .Fl q
@@ -2691,6 +2737,13 @@ Set clock colour.
 .Xc
 Set clock hour format.
 .Pp
+.It Ic command-prefix Ar string
+String prefixed to commands (apart from a plain shell as set by the
+.Ic default-shell
+option).
+The default is
+.Ql "exec\ " .
+.Pp
 .It Ic force-height Ar height
 .It Ic force-width Ar width
 Prevent
@@ -2902,7 +2955,7 @@ If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
 .El
 .It Xo Ic show-options
-.Op Fl gsvw
+.Op Fl gqsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -2920,6 +2973,11 @@ Global session or window options are listed if
 is used.
 .Fl v
 shows only the option value, not the name.
+If
+.Fl q
+is set, no error will be returned if
+.Ar option
+is unset.
 .It Xo Ic show-window-options
 .Op Fl gv
 .Op Fl t Ar target-window
@@ -2968,6 +3026,9 @@ if it is unattached.
 The following variables are available, where appropriate:
 .Bl -column "session_created_string" "Replaced with" -offset indent
 .It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "alternate_on" Ta "If pane is in alternate screen"
+.It Li "alternate_saved_x" Ta "Saved cursor X in alternate screen"
+.It Li "alternate_saved_y" Ta "Saved cursor Y in alternate screen"
 .It Li "buffer_sample" Ta "First 50 characters from the specified buffer"
 .It Li "buffer_size" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "Integer time client last had activity"
@@ -2984,29 +3045,47 @@ The following variables are available, where appropriate:
 .It Li "client_tty" Ta "Pseudo terminal of client"
 .It Li "client_utf8" Ta "1 if client supports utf8"
 .It Li "client_width" Ta "Width of client"
-.It Li "host" Ta "Hostname of local host"
+.It Li "cursor_flag" Ta "Pane cursor flag"
+.It Li "cursor_x" Ta "Cursor X position in pane"
+.It Li "cursor_y" Ta "Cursor Y position in pane"
 .It Li "history_bytes" Ta "Number of bytes in window history"
 .It Li "history_limit" Ta "Maximum window history lines"
 .It Li "history_size" Ta "Size of history in bytes"
+.It Li "host" Ta "Hostname of local host"
+.It Li "insert_flag" Ta "Pane insert flag"
+.It Li "keypad_cursor_flag" Ta "Pane keypad cursor flag"
+.It Li "keypad_flag" Ta "Pane keypad flag"
 .It Li "line" Ta "Line number in the list"
+.It Li "mouse_any_flag" Ta "Pane mouse any flag"
+.It Li "mouse_button_flag" Ta "Pane mouse button flag"
+.It Li "mouse_standard_flag" Ta "Pane mouse standard flag"
+.It Li "mouse_utf8_flag" Ta "Pane mouse UTF-8 flag"
 .It Li "pane_active" Ta "1 if active pane"
+.It Li "pane_current_command" Ta "Current command if available"
 .It Li "pane_current_path" Ta "Current path if available"
 .It Li "pane_dead" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "Height of pane"
 .It Li "pane_id" Ta "Unique pane ID"
+.It Li "pane_in_mode" Ta "If pane is in a mode"
 .It Li "pane_index" Ta "Index of pane"
 .It Li "pane_pid" Ta "PID of first process in pane"
 .It Li "pane_start_command" Ta "Command pane started with"
 .It Li "pane_start_path" Ta "Path pane started with"
+.It Li "pane_tabs" Ta "Pane tab positions"
 .It Li "pane_title" Ta "Title of pane"
 .It Li "pane_tty" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "Width of pane"
+.It Li "saved_cursor_x" Ta "Saved cursor X in pane"
+.It Li "saved_cursor_y" Ta "Saved cursor Y in pane"
+.It Li "scroll_region_lower" Ta "Bottom of scroll region in pane"
+.It Li "scroll_region_upper" Ta "Top of scroll region in pane"
 .It Li "session_attached" Ta "1 if session attached"
 .It Li "session_created" Ta "Integer time session created"
 .It Li "session_created_string" Ta "String time session created"
 .It Li "session_group" Ta "Number of session group"
 .It Li "session_grouped" Ta "1 if session in a group"
 .It Li "session_height" Ta "Height of session"
+.It Li "session_id" Ta "Unique session ID"
 .It Li "session_name" Ta "Name of session"
 .It Li "session_width" Ta "Width of session"
 .It Li "session_windows" Ta "Number of windows in session"
@@ -3020,6 +3099,7 @@ The following variables are available, where appropriate:
 .It Li "window_name" Ta "Name of window"
 .It Li "window_panes" Ta "Number of panes in window"
 .It Li "window_width" Ta "Width of window"
+.It Li "wrap_flag" Ta "Pane wrap flag"
 .El
 .Sh NAMES AND TITLES
 .Nm
@@ -3423,7 +3503,12 @@ Miscellaneous commands are as follows:
 .Bl -tag -width Ds
 .It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
-.It Ic if-shell Ar shell-command command Op Ar command
+.It Xo Ic if-shell
+.Op Fl b
+.Op Fl t Ar target-pane
+.Ar shell-command command
+.Op Ar command
+.Xc
 .D1 (alias: Ic if )
 Execute the first
 .Ar command
@@ -3432,19 +3517,35 @@ if
 returns success or the second
 .Ar command
 otherwise.
+With
+.Fl b ,
+.Ar shell-command
+is run in the background.
+Before being executed, shell-command is expanded using the rules specified in the
+.Sx FORMATS
+section, including those relevant to
+.Ar target-pane .
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
 .It Xo Ic run-shell
+.Fl b
 .Op Fl t Ar target-pane
 .Ar shell-command
 .Xc
 .D1 (alias: Ic run )
 Execute
 .Ar shell-command
-in the background without creating a window.
+without creating a window.
+With
+.Fl b ,
+the command is run in the background.
+Before being executed, shell-command is expanded using the rules specified in
+the
+.Sx FORMATS
+section.
 After it finishes, any output to stdout is displayed in copy mode (in the pane
 specified by
 .Fl t
@@ -3453,6 +3554,23 @@ If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
+.It Xo Ic wait-for
+.Fl LSU
+.Ar channel
+.Xc
+.D1 (alias: Ic wait )
+When used without options, prevents the client from exiting until woken using
+.Ic wait-for
+.Fl S
+with the same channel.
+When
+.Fl L
+is used, the channel is locked and any clients that try to lock the same
+channel are made to wait until the channel is unlocked with
+.Ic wait-for
+.Fl U .
+This command only works from outside
+.Nm .
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm

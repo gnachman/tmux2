@@ -1,7 +1,7 @@
-/* $Id$ */
+/* $OpenBSD$ */
 
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2012 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,39 +18,38 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
 
-/*
- * Suspend client with SIGTSTP.
- */
-
-enum cmd_retval	 cmd_suspend_client_exec(struct cmd *, struct cmd_q *);
-
-const struct cmd_entry cmd_suspend_client_entry = {
-	"suspend-client", "suspendc",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
-	0,
-	NULL,
-	NULL,
-	cmd_suspend_client_exec
-};
-
-enum cmd_retval
-cmd_suspend_client_exec(struct cmd *self, struct cmd_q *cmdq)
+/* Get cell width. */
+u_int
+grid_cell_width(const struct grid_cell *gc)
 {
-	struct args	*args = self->args;
-	struct client	*c;
+	return (gc->xstate >> 4);
+}
 
-	if ((c = cmd_find_client(cmdq, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
+/* Get cell data. */
+void
+grid_cell_get(const struct grid_cell *gc, struct utf8_data *ud)
+{
+	ud->size = gc->xstate & 0xf;
+	ud->width = gc->xstate >> 4;
+	memcpy(ud->data, gc->xdata, ud->size);
+}
 
-	tty_stop_tty(&c->tty);
-	c->flags |= CLIENT_SUSPENDED;
-	server_write_client(c, MSG_SUSPEND, NULL, 0);
+/* Set cell data. */
+void
+grid_cell_set(struct grid_cell *gc, const struct utf8_data *ud)
+{
+	memcpy(gc->xdata, ud->data, ud->size);
+	gc->xstate = (ud->width << 4) | ud->size;
+}
 
-	return (CMD_RETURN_NORMAL);
+/* Set a single character as cell data. */
+void
+grid_cell_one(struct grid_cell *gc, u_char ch)
+{
+	*gc->xdata = ch;
+	gc->xstate = (1 << 4) | 1;
 }

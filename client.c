@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <termios.h>
 
 #include "tmux.h"
 
@@ -50,7 +49,6 @@ enum {
 int		client_exitval;
 enum msgtype	client_exittype;
 int		client_attached;
-static int	is_control_client;
 
 int		client_get_lock(char *);
 int		client_connect(char *, int);
@@ -64,8 +62,7 @@ void		client_write(int, const char *, size_t);
 void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
-const char	*client_exit_message(void);
-void		client_wait_for_exit_confirmation(void);
+const char     *client_exit_message(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
@@ -137,28 +134,6 @@ failed:
 	return (-1);
 }
 
-/* Read lines from stdin until an empty line is read, then return. */
-void
-client_wait_for_exit_confirmation(void)
-{
-	char	 buffer[100];
-	char	*newline;
-
-	setblocking(fileno(stdin), 1);
-	while (1) {
-		if (!fgets(buffer, sizeof(buffer), stdin))
-			break;
-		newline = strchr(buffer, '\n');
-		if (newline)
-		    	*newline = '\0';
-		newline = strchr(buffer, '\r');
-		if (newline)
-		    	*newline = '\0';
-		if (!buffer[0])
-			break;
-	}
-}
-
 /* Get exit string from reason number. */
 const char *
 client_exit_message(void)
@@ -213,7 +188,8 @@ client_main(int argc, char **argv, int flags)
 		 * later in server) but it is necessary to get the start server
 		 * flag.
 		 */
-		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
+		cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause);
+		if (cmdlist == NULL) {
 			fprintf(stderr, "%s\n", cause);
 			return (1);
 		}
@@ -246,17 +222,6 @@ client_main(int argc, char **argv, int flags)
 	if (fd == -1) {
 		fprintf(stderr, "failed to connect to server\n");
 		return (1);
-	}
-	if (flags & IDENTIFY_CONTROL) {
-		if (!isatty(fileno(stdout))) {
-			/* This test must be performed earlier for control clients because
-			 * the CLIENT_TERMINAL flag is used for more than detecting the presence
-			 * of a terminal and control mode is completely useless without a tty
-			 * because echo can't be disabled. */
-			log_fatalx("not a terminal");
-			return (1);
-		}
-		is_control_client = 1;
 	}
 
 	/* Set process title, log and signals now this is the client. */
@@ -305,7 +270,7 @@ client_main(int argc, char **argv, int flags)
 	if (msg == MSG_COMMAND) {
 		/* Fill in command line arguments. */
 		cmddata.pid = environ_pid;
-		cmddata.idx = environ_idx;
+		cmddata.session_id = environ_session_id;
 
 		/* Prepare command for server. */
 		cmddata.argc = argc;
@@ -324,42 +289,23 @@ client_main(int argc, char **argv, int flags)
 	event_dispatch();
 
 	/* Print the exit message, if any, and exit. */
-	if (client_attached || is_control_client) {
-		if (client_exitreason != CLIENT_EXIT_NONE && !login_shell) {
-			if (flags & IDENTIFY_CONTROL) {
-				switch (client_exitreason) {
-				case CLIENT_EXIT_LOST_SERVER:
-				    	/* The server died without being able to
-					 * send %exit. Shut the control client
-					 * down cleanly. */
-					printf("%%exit %s\r\n", client_exit_message());
-					client_wait_for_exit_confirmation();
-					break;
-
-				case CLIENT_EXIT_LOST_TTY:
-				case CLIENT_EXIT_TERMINATED:
-					/* The client is being killed. Try to
-					 * shut down cleanly although it's not
-					 * likely to make it to the client in
-					 * the case of a lost TTY. */
-					printf("%%exit %s\r\n", client_exit_message());
-					break;
-
-				default:
-					break;
-				}
-			} else {
-				printf("[%s]\n", client_exit_message());
-			}
-		} else if (is_control_client)
-		    printf("%%exit\r\n");
+	if (client_attached) {
+		if (client_exitreason != CLIENT_EXIT_NONE && !login_shell)
+			printf("[%s]\n", client_exit_message());
 
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	}
-	if (flags & IDENTIFY_TERMIOS)
+	} else if (flags & IDENTIFY_TERMIOS) {
+		if (flags & IDENTIFY_CONTROL) {
+			if (client_exitreason != CLIENT_EXIT_NONE)
+			    printf("%%exit %s\n", client_exit_message());
+			else
+			    printf("%%exit\n");
+			printf("\033\\");
+		}
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
+	}
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
@@ -446,21 +392,13 @@ client_signal(int sig, unused short events, unused void *data)
 		switch (sig) {
 		case SIGHUP:
 			client_exitreason = CLIENT_EXIT_LOST_TTY;
-			if (is_control_client) {
-				event_loopexit(NULL);
-			} else {
-				client_exitval = 1;
-				client_write_server(MSG_EXITING, NULL, 0);
-			}
+			client_exitval = 1;
+			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case SIGTERM:
 			client_exitreason = CLIENT_EXIT_TERMINATED;
-			if (is_control_client) {
-				event_loopexit(NULL);
-			} else {
-				client_exitval = 1;
-				client_write_server(MSG_EXITING, NULL, 0);
-			}
+			client_exitval = 1;
+			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case SIGWINCH:
 			client_write_server(MSG_RESIZE, NULL, 0);

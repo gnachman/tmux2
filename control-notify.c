@@ -141,13 +141,7 @@ control_notify_window_renamed(struct window *w)
 			continue;
 		s = c->session;
 
-		if (winlink_find_by_window_id(&s->windows, w->id) != NULL) {
-			control_write(c, "%%window-renamed %u %s",
-			    w->id, w->name);
-		} else {
-			control_write(c, "%%unlinked-window-renamed %u %s",
-			    w->id, w->name);
-		}
+                control_write(c, "%%window-renamed %u %s", w->id, w->name);
 	}
 }
 
@@ -160,7 +154,7 @@ control_notify_attached_session_changed(struct client *c)
 		return;
 	s = c->session;
 
-	control_write(c, "%%session-changed %d %s", s->idx, s->name);
+	control_write(c, "%%session-changed %d %s", s->id, s->name);
 }
 
 void

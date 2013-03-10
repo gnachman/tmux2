@@ -32,8 +32,11 @@
  * string.
  */
 
-int	format_replace(struct format_tree *,
-	    const char *, size_t, char **, size_t *, size_t *);
+int	format_replace(struct format_tree *, const char *, size_t, char **,
+	    size_t *, size_t *);
+void	format_window_pane_tabs(struct format_tree *, struct window_pane *);
+void   format_window_pane_pending_output(struct format_tree *,
+           struct window_pane *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -279,6 +282,7 @@ format_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
 	format_add(ft, "session_width", "%u", s->sx);
 	format_add(ft, "session_height", "%u", s->sy);
+	format_add(ft, "session_id", "%u", s->id);
 
 	sg = session_group_find(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
@@ -367,6 +371,47 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	free(layout);
 }
 
+/* Add window pane tabs. */
+void
+format_window_pane_tabs(struct format_tree *ft, struct window_pane *wp)
+{
+	struct evbuffer	*buffer;
+	u_int		 i;
+
+	buffer = evbuffer_new();
+	for (i = 0; i < wp->base.grid->sx; i++) {
+		if (!bit_test(wp->base.tabs, i))
+			continue;
+
+		if (EVBUFFER_LENGTH(buffer) > 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%d", i);
+	}
+
+	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
+	    EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
+/* Add window pane pending output. */
+void
+format_window_pane_pending_output(struct format_tree *ft,
+    struct window_pane *wp)
+{
+       struct evbuffer *buffer;
+       u_char	  *data = EVBUFFER_DATA(wp->ictx.since_ground);
+       size_t	   size = EVBUFFER_LENGTH(wp->ictx.since_ground);
+       size_t	   i;
+
+       buffer = evbuffer_new();
+       for (i = 0; i < size; i++)
+	       evbuffer_add_printf(buffer, "%02x", data[i]);
+
+       format_add(ft, "pending_output", "%.*s", (int) EVBUFFER_LENGTH(buffer),
+	   EVBUFFER_DATA(buffer));
+       evbuffer_free(buffer);
+}
+
 /* Set default format keys for a window pane. */
 void
 format_window_pane(struct format_tree *ft, struct window_pane *wp)
@@ -374,9 +419,9 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	struct grid		*gd = wp->base.grid;
 	struct grid_line	*gl;
 	unsigned long long	 size;
-	u_int			 i;
-	u_int			 idx;
+	u_int			 i, idx;
 	const char		*cwd;
+	char			*cmd;
 
 	size = 0;
 	for (i = 0; i < gd->hsize; i++) {
@@ -384,31 +429,72 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 		size += gl->cellsize * sizeof *gl->celldata;
 	}
 	size += gd->hsize * sizeof *gd->linedata;
+	format_add(ft, "history_size", "%u", gd->hsize);
+	format_add(ft, "history_limit", "%u", gd->hlimit);
+	format_add(ft, "history_bytes", "%llu", size);
 
 	if (window_pane_index(wp, &idx) != 0)
 		fatalx("index not found");
+	format_add(ft, "pane_index", "%u", idx);
 
 	format_add(ft, "pane_width", "%u", wp->sx);
 	format_add(ft, "pane_height", "%u", wp->sy);
 	format_add(ft, "pane_title", "%s", wp->base.title);
-	format_add(ft, "pane_index", "%u", idx);
-	format_add(ft, "history_size", "%u", gd->hsize);
-	format_add(ft, "history_limit", "%u", gd->hlimit);
-	format_add(ft, "history_bytes", "%llu", size);
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+
+	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
+
+	if (wp->tty != NULL)
+		format_add(ft, "pane_tty", "%s", wp->tty);
+	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if (wp->cmd != NULL)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if (wp->cwd != NULL)
 		format_add(ft, "pane_start_path", "%s", wp->cwd);
 	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
 		format_add(ft, "pane_current_path", "%s", cwd);
-	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	if (wp->tty != NULL)
-		format_add(ft, "pane_tty", "%s", wp->tty);
+	if ((cmd = osdep_get_name(wp->fd, wp->tty)) != NULL) {
+		format_add(ft, "pane_current_command", "%s", cmd);
+		free(cmd);
+	}
+
+	format_add(ft, "cursor_x", "%d", wp->base.cx);
+	format_add(ft, "cursor_y", "%d", wp->base.cy);
+	format_add(ft, "scroll_region_upper", "%d", wp->base.rupper);
+	format_add(ft, "scroll_region_lower", "%d", wp->base.rlower);
+	format_add(ft, "saved_cursor_x", "%d", wp->ictx.old_cx);
+	format_add(ft, "saved_cursor_y", "%d", wp->ictx.old_cy);
+
+	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
+	format_add(ft, "alternate_saved_x", "%d", wp->saved_cx);
+	format_add(ft, "alternate_saved_y", "%d", wp->saved_cy);
+
+	format_add(ft, "cursor_flag", "%d",
+	    !!(wp->base.mode & MODE_CURSOR));
+	format_add(ft, "insert_flag", "%d",
+	    !!(wp->base.mode & MODE_INSERT));
+	format_add(ft, "keypad_cursor_flag", "%d",
+	    !!(wp->base.mode & MODE_KCURSOR));
+	format_add(ft, "keypad_flag", "%d",
+	    !!(wp->base.mode & MODE_KKEYPAD));
+	format_add(ft, "wrap_flag", "%d",
+	    !!(wp->base.mode & MODE_WRAP));
+
+	format_add(ft, "mouse_standard_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
+	format_add(ft, "mouse_button_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
+	format_add(ft, "mouse_any_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_ANY));
+	format_add(ft, "mouse_utf8_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_UTF8));
+
+	format_window_pane_tabs(ft, wp);
 }
 
+/* Set default format keys for paste buffer. */
 void
 format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 {
