@@ -47,7 +47,6 @@ struct clients	 dead_clients;
 
 int		 server_fd;
 int		 server_shutdown;
-int		 next_command_id;
 struct event	 server_ev_accept;
 struct event	 server_ev_second;
 
@@ -165,8 +164,6 @@ server_start(int lockfd, char *lockfile)
 	free(lockfile);
 	close(lockfd);
 
-	gettimeofday(&tv, NULL);
-	next_command_id = (tv.tv_sec ^ tv.tv_usec);
 	cfg_cmd_q = cmdq_new(NULL);
 	cfg_cmd_q->emptyfn = cfg_default_done;
 	cfg_finished = 0;

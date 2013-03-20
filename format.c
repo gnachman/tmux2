@@ -35,8 +35,6 @@
 int	format_replace(struct format_tree *, const char *, size_t, char **,
 	    size_t *, size_t *);
 void	format_window_pane_tabs(struct format_tree *, struct window_pane *);
-void   format_window_pane_pending_output(struct format_tree *,
-           struct window_pane *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -282,7 +280,7 @@ format_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_windows", "%u", winlink_count(&s->windows));
 	format_add(ft, "session_width", "%u", s->sx);
 	format_add(ft, "session_height", "%u", s->sy);
-	format_add(ft, "session_id", "%u", s->id);
+	format_add(ft, "session_id", "$%u", s->id);
 
 	sg = session_group_find(s);
 	format_add(ft, "session_grouped", "%d", sg != NULL);
@@ -391,25 +389,6 @@ format_window_pane_tabs(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
 	    EVBUFFER_DATA(buffer));
 	evbuffer_free(buffer);
-}
-
-/* Add window pane pending output. */
-void
-format_window_pane_pending_output(struct format_tree *ft,
-    struct window_pane *wp)
-{
-       struct evbuffer *buffer;
-       u_char	  *data = EVBUFFER_DATA(wp->ictx.since_ground);
-       size_t	   size = EVBUFFER_LENGTH(wp->ictx.since_ground);
-       size_t	   i;
-
-       buffer = evbuffer_new();
-       for (i = 0; i < size; i++)
-	       evbuffer_add_printf(buffer, "%02x", data[i]);
-
-       format_add(ft, "pending_output", "%.*s", (int) EVBUFFER_LENGTH(buffer),
-	   EVBUFFER_DATA(buffer));
-       evbuffer_free(buffer);
 }
 
 /* Set default format keys for a window pane. */

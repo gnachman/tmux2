@@ -1412,6 +1412,9 @@ struct cmd_q {
 	struct cmd_q_item	*item;
 	struct cmd		*cmd;
 
+	time_t			 time;
+	u_int			 number;
+
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
@@ -1765,7 +1768,6 @@ extern const struct cmd_entry cmd_clear_history_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_confirm_before_entry;
-extern const struct cmd_entry cmd_control_helper_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
@@ -1854,6 +1856,7 @@ int		 cmdq_free(struct cmd_q *);
 void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_info(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
+int		 cmdq_guard(struct cmd_q *, const char *);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *);
 int		 cmdq_continue(struct cmd_q *);
@@ -1885,7 +1888,6 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 extern struct paste_stack global_buffers;
-extern int	next_command_id;
 int	 server_start(int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
